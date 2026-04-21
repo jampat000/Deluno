@@ -1,11 +1,6 @@
 namespace Deluno.Platform.Contracts;
 
-public sealed record CreateLibraryRequest(
-    string? Name,
-    string? MediaType,
-    string? Purpose,
-    string? RootPath,
-    string? DownloadsPath,
+public sealed record UpdateLibraryAutomationRequest(
     bool AutoSearchEnabled,
     bool MissingSearchEnabled,
     bool UpgradeSearchEnabled,
