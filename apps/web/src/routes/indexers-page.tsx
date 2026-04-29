@@ -38,7 +38,6 @@ import {
   type ImportJobResponse,
   type ImportPreviewRequest,
   type ImportPreviewResponse,
-  type DownloadClientTelemetrySnapshot,
   type DownloadQueueItem,
   type DownloadTelemetryOverview,
   type IndexerItem,
@@ -48,6 +47,7 @@ import {
   type TagItem,
 } from "../lib/api";
 import { authedFetch } from "../lib/use-auth";
+import { telemetryCapabilityChips } from "../lib/download-telemetry";
 import { cn } from "../lib/utils";
 import { KpiCard } from "../components/app/kpi-card";
 import { OperationPathBanner } from "../components/app/operations-guide";
@@ -191,6 +191,10 @@ interface ClientPreset {
   isUsenet: boolean;
   defaultMoviesCategory: string;
   defaultTvCategory: string;
+  authMode: string;
+  supportsRecheck: boolean;
+  supportsImportPath: boolean;
+  setupHint: string;
 }
 
 const CLIENT_PRESETS: ClientPreset[] = [
@@ -203,6 +207,10 @@ const CLIENT_PRESETS: ClientPreset[] = [
     isUsenet: false,
     defaultMoviesCategory: "deluno-movies",
     defaultTvCategory: "deluno-tv",
+    authMode: "Web login",
+    supportsRecheck: true,
+    supportsImportPath: true,
+    setupHint: "Enable the Web UI and use the same username and password you use in qBittorrent.",
   },
   {
     protocol: "transmission",
@@ -213,6 +221,10 @@ const CLIENT_PRESETS: ClientPreset[] = [
     isUsenet: false,
     defaultMoviesCategory: "deluno-movies",
     defaultTvCategory: "deluno-tv",
+    authMode: "Basic auth",
+    supportsRecheck: true,
+    supportsImportPath: true,
+    setupHint: "Use the RPC port. Deluno handles the Transmission session token automatically.",
   },
   {
     protocol: "deluge",
@@ -223,6 +235,10 @@ const CLIENT_PRESETS: ClientPreset[] = [
     isUsenet: false,
     defaultMoviesCategory: "deluno-movies",
     defaultTvCategory: "deluno-tv",
+    authMode: "Password",
+    supportsRecheck: true,
+    supportsImportPath: true,
+    setupHint: "Use the Deluge Web UI password. Labels are used as Deluno categories.",
   },
   {
     protocol: "utorrent",
@@ -233,6 +249,10 @@ const CLIENT_PRESETS: ClientPreset[] = [
     isUsenet: false,
     defaultMoviesCategory: "deluno-movies",
     defaultTvCategory: "deluno-tv",
+    authMode: "Token auth",
+    supportsRecheck: true,
+    supportsImportPath: false,
+    setupHint: "Use the Web UI credentials. uTorrent may not expose a reliable finished path, so imports can need the shared downloads path.",
   },
   {
     protocol: "sabnzbd",
@@ -243,6 +263,10 @@ const CLIENT_PRESETS: ClientPreset[] = [
     isUsenet: true,
     defaultMoviesCategory: "Movies",
     defaultTvCategory: "TV",
+    authMode: "API key",
+    supportsRecheck: false,
+    supportsImportPath: true,
+    setupHint: "Paste the SABnzbd API key into the password field. Categories map directly to SABnzbd folders.",
   },
   {
     protocol: "nzbget",
@@ -253,42 +277,16 @@ const CLIENT_PRESETS: ClientPreset[] = [
     isUsenet: true,
     defaultMoviesCategory: "Movies",
     defaultTvCategory: "TV",
+    authMode: "Basic auth",
+    supportsRecheck: false,
+    supportsImportPath: true,
+    setupHint: "Use NZBGet username and password. Deluno reads queue groups, history, download rate, and destination folders.",
   },
 ];
 
 /* Health helpers */
 function healthVariant(v: string): "success" | "warning" | "destructive" {
   return v === "healthy" ? "success" : v === "degraded" || v === "untested" ? "warning" : "destructive";
-}
-
-function telemetryCapabilityChips(client: DownloadClientTelemetrySnapshot) {
-  const caps = client.capabilities;
-  return [
-    { label: caps.supportsQueue ? "Queue telemetry" : "No queue telemetry", enabled: caps.supportsQueue },
-    { label: caps.supportsHistory ? "History" : "History limited", enabled: caps.supportsHistory },
-    { label: caps.supportsPauseResume ? "Pause/resume" : "No pause/resume", enabled: caps.supportsPauseResume },
-    { label: caps.supportsRemove ? "Remove" : "No remove", enabled: caps.supportsRemove },
-    { label: caps.supportsRecheck ? "Recheck" : "No recheck", enabled: caps.supportsRecheck },
-    { label: caps.supportsImportPath ? "Import path" : "Path limited", enabled: caps.supportsImportPath },
-    { label: authModeLabel(caps.authMode), enabled: caps.authMode !== "unknown" }
-  ];
-}
-
-function authModeLabel(mode: string) {
-  switch (mode) {
-    case "api-key":
-      return "API key";
-    case "basic":
-      return "Basic auth";
-    case "basic-token":
-      return "Token auth";
-    case "form":
-      return "Web login";
-    case "password":
-      return "Password";
-    default:
-      return "Auth unknown";
-  }
 }
 
 function healthLabel(v: string) {
@@ -563,6 +561,30 @@ function Help({ text }: { text: string }) {
 }
 
 /* ── Indexer add wizard ───────────────────────────────────────────── */
+function PresetCapabilityChip({ label, enabled }: { label: string; enabled: boolean }) {
+  return (
+    <span
+      className={cn(
+        "rounded-full border px-2 py-0.5 text-[10px] font-medium",
+        enabled
+          ? "border-primary/25 bg-primary/8 text-primary"
+          : "border-hairline bg-background/40 text-muted-foreground"
+      )}
+    >
+      {enabled ? label : `No ${label.toLowerCase()}`}
+    </span>
+  );
+}
+
+function HealthFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-lg border border-hairline bg-background/30 px-2 py-1">
+      <span className="font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">{label}</span>
+      <span className="ml-1 font-mono text-muted-foreground">{value}</span>
+    </div>
+  );
+}
+
 function IndexerAddPanel({ onSave, onCancel }: {
   onSave: (data: Record<string, unknown>) => Promise<void>;
   onCancel: () => void;
@@ -819,7 +841,7 @@ function ClientAddPanel({ onSave, onCancel }: {
               <span className="text-xl leading-none">{p.icon}</span>
               <div className="min-w-0 flex-1">
                 <p className="text-[12.5px] font-semibold text-foreground leading-tight">{p.label}</p>
-                <p className="text-[10px] text-muted-foreground">{p.isUsenet ? "Usenet" : "Torrent"}</p>
+                <p className="text-[10px] text-muted-foreground">{p.isUsenet ? "Usenet" : "Torrent"} / {p.authMode}</p>
               </div>
               {protocol === p.protocol && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
             </button>
@@ -829,6 +851,25 @@ function ClientAddPanel({ onSave, onCancel }: {
 
       {protocol && (
         <>
+          {preset ? (
+            <div className="grid gap-3 rounded-2xl border border-hairline bg-surface-2 p-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="min-w-0">
+                <p className="text-[12.5px] font-semibold text-foreground">{preset.label}</p>
+                <p className="mt-1 text-[12px] text-muted-foreground">{preset.description}</p>
+                <p className="mt-1 text-[11.5px] text-muted-foreground">{preset.setupHint}</p>
+              </div>
+              <div className="flex flex-wrap content-start gap-1.5 lg:max-w-[360px] lg:justify-end">
+                <PresetCapabilityChip label="Queue telemetry" enabled />
+                <PresetCapabilityChip label="History" enabled />
+                <PresetCapabilityChip label="Pause/resume" enabled />
+                <PresetCapabilityChip label="Remove" enabled />
+                <PresetCapabilityChip label="Recheck" enabled={preset.supportsRecheck} />
+                <PresetCapabilityChip label="Import path" enabled={preset.supportsImportPath} />
+                <PresetCapabilityChip label={preset.authMode} enabled />
+              </div>
+            </div>
+          ) : null}
+
           {/* Connection details */}
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -1540,6 +1581,12 @@ export function IndexersPage() {
                   ) : client.lastHealthMessage ? (
                     <p className="mt-1 text-[11px] text-muted-foreground">{client.lastHealthMessage}</p>
                   ) : null}
+                  <div className="mt-2 grid gap-1.5 text-[10.5px] text-muted-foreground sm:grid-cols-3">
+                    <HealthFact label="Endpoint" value={client.endpointUrl ?? ([client.host, client.port].filter(Boolean).join(":") || "Not configured")} />
+                    <HealthFact label="Last test" value={client.lastHealthTestUtc ? formatClientHistoryTime(client.lastHealthTestUtc) : "Not tested"} />
+                    <HealthFact label="Latency" value={client.lastHealthLatencyMs != null ? `${client.lastHealthLatencyMs} ms` : "No sample"} />
+                    {client.lastHealthFailureCategory ? <HealthFact label="Failure" value={client.lastHealthFailureCategory} /> : null}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                   <Button
