@@ -744,6 +744,7 @@ public sealed class DownloadClientTelemetryService(
             EndpointUrl: client.EndpointUrl,
             HealthStatus: health,
             LastHealthMessage: message,
+            Capabilities: ResolveCapabilities(client.Protocol),
             Summary: Summarize(queue),
             Queue: queue,
             History: history ?? CreateHistoryFromQueue(client, queue, capturedUtc),
@@ -1185,6 +1186,67 @@ public sealed class DownloadClientTelemetryService(
 
     private static DownloadClientActionResult Success(DownloadClientItem client, string queueItemId, string action, string message)
         => new(client.Id, queueItemId, action, true, message);
+
+    private static DownloadClientTelemetryCapabilities ResolveCapabilities(string protocol)
+        => protocol.Trim().ToLowerInvariant() switch
+        {
+            "qbittorrent" => new(
+                SupportsQueue: true,
+                SupportsHistory: true,
+                SupportsPauseResume: true,
+                SupportsRemove: true,
+                SupportsRecheck: true,
+                SupportsImportPath: true,
+                AuthMode: "form"),
+            "sabnzbd" => new(
+                SupportsQueue: true,
+                SupportsHistory: true,
+                SupportsPauseResume: true,
+                SupportsRemove: true,
+                SupportsRecheck: false,
+                SupportsImportPath: true,
+                AuthMode: "api-key"),
+            "nzbget" => new(
+                SupportsQueue: true,
+                SupportsHistory: true,
+                SupportsPauseResume: true,
+                SupportsRemove: true,
+                SupportsRecheck: false,
+                SupportsImportPath: true,
+                AuthMode: "basic"),
+            "transmission" => new(
+                SupportsQueue: true,
+                SupportsHistory: true,
+                SupportsPauseResume: true,
+                SupportsRemove: true,
+                SupportsRecheck: true,
+                SupportsImportPath: true,
+                AuthMode: "basic"),
+            "deluge" => new(
+                SupportsQueue: true,
+                SupportsHistory: true,
+                SupportsPauseResume: true,
+                SupportsRemove: true,
+                SupportsRecheck: true,
+                SupportsImportPath: true,
+                AuthMode: "password"),
+            "utorrent" => new(
+                SupportsQueue: true,
+                SupportsHistory: true,
+                SupportsPauseResume: true,
+                SupportsRemove: true,
+                SupportsRecheck: true,
+                SupportsImportPath: false,
+                AuthMode: "basic-token"),
+            _ => new(
+                SupportsQueue: false,
+                SupportsHistory: false,
+                SupportsPauseResume: false,
+                SupportsRemove: false,
+                SupportsRecheck: false,
+                SupportsImportPath: false,
+                AuthMode: "unknown")
+        };
 
     private static DownloadTelemetrySummary Summarize(IEnumerable<DownloadQueueItem> queue)
     {

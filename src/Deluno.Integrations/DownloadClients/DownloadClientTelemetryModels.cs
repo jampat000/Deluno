@@ -46,6 +46,15 @@ public sealed record DownloadClientHistoryItem(
     string? ErrorMessage,
     string? SourcePath = null);
 
+public sealed record DownloadClientTelemetryCapabilities(
+    bool SupportsQueue,
+    bool SupportsHistory,
+    bool SupportsPauseResume,
+    bool SupportsRemove,
+    bool SupportsRecheck,
+    bool SupportsImportPath,
+    string AuthMode);
+
 public sealed record DownloadClientTelemetrySnapshot(
     string ClientId,
     string ClientName,
@@ -53,6 +62,7 @@ public sealed record DownloadClientTelemetrySnapshot(
     string? EndpointUrl,
     string HealthStatus,
     string? LastHealthMessage,
+    DownloadClientTelemetryCapabilities Capabilities,
     DownloadTelemetrySummary Summary,
     IReadOnlyList<DownloadQueueItem> Queue,
     IReadOnlyList<DownloadClientHistoryItem> History,

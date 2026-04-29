@@ -38,6 +38,7 @@ import {
   type ImportJobResponse,
   type ImportPreviewRequest,
   type ImportPreviewResponse,
+  type DownloadClientTelemetrySnapshot,
   type DownloadQueueItem,
   type DownloadTelemetryOverview,
   type IndexerItem,
@@ -259,6 +260,37 @@ const CLIENT_PRESETS: ClientPreset[] = [
 function healthVariant(v: string): "success" | "warning" | "destructive" {
   return v === "healthy" ? "success" : v === "degraded" || v === "untested" ? "warning" : "destructive";
 }
+
+function telemetryCapabilityChips(client: DownloadClientTelemetrySnapshot) {
+  const caps = client.capabilities;
+  return [
+    { label: caps.supportsQueue ? "Queue telemetry" : "No queue telemetry", enabled: caps.supportsQueue },
+    { label: caps.supportsHistory ? "History" : "History limited", enabled: caps.supportsHistory },
+    { label: caps.supportsPauseResume ? "Pause/resume" : "No pause/resume", enabled: caps.supportsPauseResume },
+    { label: caps.supportsRemove ? "Remove" : "No remove", enabled: caps.supportsRemove },
+    { label: caps.supportsRecheck ? "Recheck" : "No recheck", enabled: caps.supportsRecheck },
+    { label: caps.supportsImportPath ? "Import path" : "Path limited", enabled: caps.supportsImportPath },
+    { label: authModeLabel(caps.authMode), enabled: caps.authMode !== "unknown" }
+  ];
+}
+
+function authModeLabel(mode: string) {
+  switch (mode) {
+    case "api-key":
+      return "API key";
+    case "basic":
+      return "Basic auth";
+    case "basic-token":
+      return "Token auth";
+    case "form":
+      return "Web login";
+    case "password":
+      return "Password";
+    default:
+      return "Auth unknown";
+  }
+}
+
 function healthLabel(v: string) {
   if (v === "healthy") return "Healthy";
   if (v === "untested") return "Untested";
@@ -1486,6 +1518,28 @@ export function IndexersPage() {
                       </span>
                     )}
                   </div>
+                  {clientTelemetry ? (
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      {telemetryCapabilityChips(clientTelemetry).map((chip) => (
+                        <span
+                          key={chip.label}
+                          className={cn(
+                            "rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                            chip.enabled
+                              ? "border-primary/25 bg-primary/8 text-primary"
+                              : "border-hairline bg-surface-1 text-muted-foreground"
+                          )}
+                        >
+                          {chip.label}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                  {clientTelemetry?.lastHealthMessage ? (
+                    <p className="mt-1 text-[11px] text-muted-foreground">{clientTelemetry.lastHealthMessage}</p>
+                  ) : client.lastHealthMessage ? (
+                    <p className="mt-1 text-[11px] text-muted-foreground">{client.lastHealthMessage}</p>
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                   <Button
@@ -1567,7 +1621,7 @@ export function IndexersPage() {
                         ) : null}
                         <QueueActionButton busyKey={busyKey} clientId={client.id} item={item} action="pause" onAction={handleQueueAction} />
                         <QueueActionButton busyKey={busyKey} clientId={client.id} item={item} action="resume" onAction={handleQueueAction} />
-                        {["qbittorrent", "transmission", "deluge", "utorrent"].includes(client.protocol) ? (
+                        {clientTelemetry?.capabilities.supportsRecheck ? (
                           <QueueActionButton busyKey={busyKey} clientId={client.id} item={item} action="recheck" onAction={handleQueueAction} />
                         ) : null}
                         <QueueActionButton busyKey={busyKey} clientId={client.id} item={item} action="delete" onAction={handleQueueAction} />

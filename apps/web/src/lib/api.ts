@@ -657,6 +657,16 @@ export interface DownloadClientHistoryItem {
   sourcePath: string | null;
 }
 
+export interface DownloadClientTelemetryCapabilities {
+  supportsQueue: boolean;
+  supportsHistory: boolean;
+  supportsPauseResume: boolean;
+  supportsRemove: boolean;
+  supportsRecheck: boolean;
+  supportsImportPath: boolean;
+  authMode: string;
+}
+
 export interface DownloadClientTelemetrySnapshot {
   clientId: string;
   clientName: string;
@@ -664,6 +674,7 @@ export interface DownloadClientTelemetrySnapshot {
   endpointUrl: string | null;
   healthStatus: string;
   lastHealthMessage: string | null;
+  capabilities: DownloadClientTelemetryCapabilities;
   summary: DownloadTelemetrySummary;
   queue: DownloadQueueItem[];
   history: DownloadClientHistoryItem[];
