@@ -1,5 +1,6 @@
 using Deluno.Jobs.Contracts;
 using Deluno.Jobs.Data;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -43,6 +44,17 @@ public static class DownloadDispatchesEndpointRouteBuilderExtensions
         imports.MapGet(string.Empty, GetImportResolutions)
             .WithName("List Import Resolutions")
             .WithDescription("Query import outcomes for external tools");
+
+        var alerts = endpoints.MapGroup("/api/v1/dispatch-alerts")
+            .WithName("DispatchAlerts");
+
+        alerts.MapGet(string.Empty, GetDispatchAlerts)
+            .WithName("List Dispatch Alerts")
+            .WithDescription("Get open alerts for dispatch failures");
+
+        alerts.MapPost("/{alertId}/acknowledge", AcknowledgeAlert)
+            .WithName("Acknowledge Alert")
+            .WithDescription("Mark a dispatch alert as acknowledged");
 
         return endpoints;
     }
@@ -258,5 +270,45 @@ public static class DownloadDispatchesEndpointRouteBuilderExtensions
             nextPageToken,
             hasMore = !string.IsNullOrEmpty(nextPageToken)
         });
+    }
+
+    private static async Task<IResult> GetDispatchAlerts(
+        [FromServices] IDispatchAlertRepository alertRepository,
+        string? severity = null,
+        int limit = 50,
+        CancellationToken cancellationToken = default)
+    {
+        var alerts = await alertRepository.GetOpenAlertsAsync(severity, limit, cancellationToken);
+
+        return Results.Ok(new
+        {
+            openCount = alerts.Count,
+            alerts = alerts.Select(a => new
+            {
+                a.Id,
+                a.DispatchId,
+                a.Title,
+                a.Summary,
+                a.AlertKind,
+                a.Severity,
+                a.Metadata,
+                a.DetectedUtc
+            })
+        });
+    }
+
+    private static async Task<IResult> AcknowledgeAlert(
+        string alertId,
+        [FromServices] IDispatchAlertRepository alertRepository,
+        CancellationToken cancellationToken)
+    {
+        var acknowledged = await alertRepository.AcknowledgeAlertAsync(alertId, cancellationToken);
+
+        if (!acknowledged)
+        {
+            return Results.NotFound(new { error = "Alert not found" });
+        }
+
+        return Results.NoContent();
     }
 }

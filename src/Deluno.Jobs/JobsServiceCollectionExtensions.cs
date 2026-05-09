@@ -20,6 +20,9 @@ public static class JobsServiceCollectionExtensions
             provider.GetRequiredService<SqliteImportResolutionsRepository>());
         services.AddSingleton<IDispatchRecoveryHandler>(provider =>
             new CompositeDispatchRecoveryHandler(provider.GetServices<IDispatchRecoveryHandler>().Where(h => h is not CompositeDispatchRecoveryHandler).ToList()));
+        services.AddSingleton<SqliteDispatchAlertRepository>();
+        services.AddSingleton<IDispatchAlertRepository>(provider =>
+            provider.GetRequiredService<SqliteDispatchAlertRepository>());
         services.AddSingleton<DownloadDispatchPollingService>();
         services.AddSingleton<IDownloadDispatchPollingService>(provider =>
         {
