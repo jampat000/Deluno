@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path . -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(grep -o '[^/]*\\\\.cs$')",
+      "Bash(gh label *)",
+      "WebSearch",
+      "Bash(git add *)"
+    ]
+  }
+}
