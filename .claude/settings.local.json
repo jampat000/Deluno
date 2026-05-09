@@ -6,7 +6,8 @@
       "Bash(grep -o '[^/]*\\\\.cs$')",
       "Bash(gh label *)",
       "WebSearch",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

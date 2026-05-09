@@ -7,7 +7,8 @@ public static class JobsDatabaseMigrations
     public static readonly IReadOnlyList<IDelunoDatabaseMigration> All =
     [
         new V0001InitialSchema(),
-        new V0002JobIntegrity()
+        new V0002JobIntegrity(),
+        new V0003DownloadOutcomeTracking()
     ];
 
     private sealed class V0001InitialSchema : SqliteSqlMigration

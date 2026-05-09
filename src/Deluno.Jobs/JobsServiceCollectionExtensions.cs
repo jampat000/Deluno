@@ -11,6 +11,9 @@ public static class JobsServiceCollectionExtensions
         services.AddSingleton<IJobScheduler>(provider => provider.GetRequiredService<SqliteJobStore>());
         services.AddSingleton<IJobQueueRepository>(provider => provider.GetRequiredService<SqliteJobStore>());
         services.AddSingleton<IActivityFeedRepository>(provider => provider.GetRequiredService<SqliteJobStore>());
+        services.AddSingleton<SqliteDownloadDispatchesRepository>();
+        services.AddSingleton<IDownloadDispatchesRepository>(provider =>
+            provider.GetRequiredService<SqliteDownloadDispatchesRepository>());
         services.AddHostedService<JobsSchemaInitializer>();
         return services;
     }
