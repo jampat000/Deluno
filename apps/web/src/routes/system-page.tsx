@@ -39,6 +39,7 @@ import {
 import { authedFetch } from "../lib/use-auth";
 import { densityDisplayName } from "../lib/use-density";
 import { Button } from "../components/ui/button";
+import { ConfirmDialog } from "../components/ui/confirm-dialog";
 import { Input } from "../components/ui/input";
 import { PathInput } from "../components/ui/path-input";
 import { RouteSkeleton } from "../components/shell/skeleton";
@@ -512,6 +513,7 @@ function BackupCard({
   const [message, setMessage] = useState<string | null>(null);
   const [restorePreview, setRestorePreview] = useState<RestorePreviewResponse | null>(null);
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
+  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
 
   async function reload() {
     const [nextBackups, nextSettings] = await Promise.all([
@@ -581,9 +583,12 @@ function BackupCard({
 
   async function restoreBackup() {
     if (!restoreFile) return;
-    if (!window.confirm("Restore this backup now? Deluno data files will be replaced and you should restart Deluno immediately after restore.")) {
-      return;
-    }
+    setShowRestoreConfirm(true);
+  }
+
+  async function confirmRestore() {
+    setShowRestoreConfirm(false);
+    if (!restoreFile) return;
     setBusy("restore");
     setMessage(null);
     const formData = new FormData();
@@ -735,6 +740,17 @@ function BackupCard({
           {backups.length === 0 ? <p className="text-sm text-muted-foreground">No backups yet.</p> : null}
         </div>
       </CardContent>
+
+      <ConfirmDialog
+        open={showRestoreConfirm}
+        onOpenChange={setShowRestoreConfirm}
+        title="Restore this backup?"
+        description="Deluno's data files will be replaced with this backup. Restart Deluno immediately after the restore completes."
+        confirmLabel="Restore now"
+        confirmVariant="destructive"
+        busy={busy === "restore"}
+        onConfirm={() => void confirmRestore()}
+      />
     </Card>
   );
 }

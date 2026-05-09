@@ -70,6 +70,7 @@ type EventMap = {
   QueueItemRemoved: QueueItemRemovedEvent;
   HealthChanged: HealthChangedEvent;
   ActivityEventAdded: ActivityEventAddedEvent;
+  DownloadTelemetryChanged: Record<string, never>;
 };
 
 export type SignalREventName = keyof EventMap;

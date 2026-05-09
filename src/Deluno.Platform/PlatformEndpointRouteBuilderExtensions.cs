@@ -1968,6 +1968,10 @@ public static class PlatformEndpointRouteBuilderExtensions
         {
             errors["password"] = ["Give this user a password."];
         }
+        else if (password.Length < 8)
+        {
+            errors["password"] = ["Use at least 8 characters for the password."];
+        }
 
         return errors;
     }
