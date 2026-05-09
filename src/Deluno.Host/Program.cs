@@ -21,6 +21,12 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
     WebRootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot")
 });
 
+// Explicitly configure Kestrel to listen on port 5000
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(5000);
+});
+
 builder.Services.AddDelunoInfrastructure(builder.Configuration);
 builder.Services.AddDelunoApi();
 builder.Services.AddDelunoPlatformModule();
