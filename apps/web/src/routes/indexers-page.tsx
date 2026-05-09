@@ -8,7 +8,7 @@
  *      as an option for a movies library.
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useLoaderData, useNavigation, useRevalidator } from "react-router-dom";
 import {
   AlertTriangle,
@@ -47,7 +47,7 @@ import {
   type TagItem,
 } from "../lib/api";
 import { authedFetch } from "../lib/use-auth";
-import { telemetryCapabilityChips } from "../lib/download-telemetry";
+import { downloadQueueStatuses, queueStatusLabel, telemetryCapabilityChips } from "../lib/download-telemetry";
 import { cn } from "../lib/utils";
 import { KpiCard } from "../components/app/kpi-card";
 import { OperationPathBanner } from "../components/app/operations-guide";
@@ -59,6 +59,7 @@ import { EmptyState } from "../components/shell/empty-state";
 import { CardSkeleton, RowSkeleton } from "../components/shell/skeleton";
 import { Stagger, StaggerItem } from "../components/shell/motion";
 import { toast } from "../components/shell/toaster";
+import { useSignalREvent } from "../lib/use-signalr";
 
 const PRIORITY_OPTIONS = [
   { label: "Highest priority (1)", value: "1" },
@@ -1167,6 +1168,7 @@ export function IndexersPage() {
   const loaderData = useLoaderData() as LoaderData | undefined;
   const navigation = useNavigation();
   const revalidator = useRevalidator();
+  const lastTelemetryEventRefresh = useRef(0);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [showIndexerAdd, setShowIndexerAdd] = useState(false);
   const [showClientAdd, setShowClientAdd] = useState(false);
@@ -1178,6 +1180,14 @@ export function IndexersPage() {
 
   const { clients, indexers, libraries, routing, settings, tags, telemetry } = loaderData;
   const isRouteLoading = navigation.state !== "idle";
+
+  useSignalREvent("DownloadTelemetryChanged", () => {
+    const now = Date.now();
+    if (revalidator.state === "idle" && now - lastTelemetryEventRefresh.current > 5000) {
+      lastTelemetryEventRefresh.current = now;
+      revalidator.revalidate();
+    }
+  });
 
   const healthyIndexers = indexers.filter((i) => i.healthStatus === "healthy").length;
   const unhealthyCount = [...indexers, ...clients].filter((i) => i.isEnabled && i.healthStatus !== "healthy").length;
@@ -1362,6 +1372,42 @@ export function IndexersPage() {
     }
   }
 
+  async function handleToggleIndexer(id: string, name: string, enabled: boolean) {
+    setBusyKey(`toggle:${id}`);
+    try {
+      const res = await authedFetch(`/api/indexers/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isEnabled: enabled }),
+      });
+      if (!res.ok) throw new Error("Could not update indexer.");
+      toast.success(enabled ? `"${name}" enabled` : `"${name}" disabled`);
+      revalidator.revalidate();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Update failed.");
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
+  async function handleToggleClient(id: string, name: string, enabled: boolean) {
+    setBusyKey(`toggle-client:${id}`);
+    try {
+      const res = await authedFetch(`/api/download-clients/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isEnabled: enabled }),
+      });
+      if (!res.ok) throw new Error("Could not update client.");
+      toast.success(enabled ? `"${name}" enabled` : `"${name}" disabled`);
+      revalidator.revalidate();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Update failed.");
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
   async function handleSaveRouting(libraryId: string, sourceIds: string[], clientIds: string[]) {
     setBusyKey(`routing:${libraryId}`);
     try {
@@ -1434,20 +1480,30 @@ export function IndexersPage() {
         ) : indexers.length > 0 ? (
           <div className="rounded-2xl border border-hairline overflow-hidden divide-y divide-hairline">
             {indexers.map((idx) => (
-              <div key={idx.id} className="group flex items-center gap-3 px-[calc(var(--tile-pad)*0.8)] py-[calc(var(--tile-pad)*0.7)]">
+              <div key={idx.id} className={cn("group flex items-center gap-3 px-[calc(var(--tile-pad)*0.8)] py-[calc(var(--tile-pad)*0.7)] transition-opacity", !idx.isEnabled && "opacity-60")}>
+                {/* Always-visible enable toggle — most important control */}
+                <span title={idx.isEnabled ? "Enabled — click to disable" : "Disabled — click to enable"}>
+                  <Toggle
+                    checked={idx.isEnabled}
+                    onChange={(v) => void handleToggleIndexer(idx.id, idx.name, v)}
+                  />
+                </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium text-foreground">{idx.name}</p>
+                    <p className={cn("font-medium", idx.isEnabled ? "text-foreground" : "text-muted-foreground")}>{idx.name}</p>
                     <ScopeBadge scope={idx.mediaScope} />
-                    <Badge variant={healthVariant(idx.healthStatus)} className="text-[9.5px]">
-                      {healthLabel(idx.healthStatus)}
+                    <Badge variant={healthVariant(idx.isEnabled ? idx.healthStatus : "disabled")} className="text-[9.5px]">
+                      {idx.isEnabled ? healthLabel(idx.healthStatus) : "Disabled"}
                     </Badge>
                     <span className="rounded-full border border-hairline px-1.5 py-0.5 text-[10px] font-medium uppercase text-muted-foreground">
                       {idx.protocol}
                     </span>
+                    <span className="rounded-full border border-hairline px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      P{idx.priority}
+                    </span>
                   </div>
                   <p className="mt-0.5 font-mono text-[11px] text-muted-foreground truncate">{idx.baseUrl}</p>
-                  {idx.lastHealthMessage && (
+                  {idx.lastHealthMessage && idx.isEnabled && (
                     <p className="mt-0.5 text-[11px] text-muted-foreground">{idx.lastHealthMessage}</p>
                   )}
                 </div>
@@ -1456,7 +1512,8 @@ export function IndexersPage() {
                     size="sm"
                     variant="outline"
                     onClick={() => void handleTestIndexer(idx.id)}
-                    disabled={busyKey === `test:${idx.id}`}
+                    disabled={busyKey === `test:${idx.id}` || !idx.isEnabled}
+                    title={idx.isEnabled ? "Test connectivity to this indexer" : "Enable the indexer before testing"}
                     className="gap-1.5"
                   >
                     {busyKey === `test:${idx.id}` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wifi className="h-3 w-3" />}
@@ -1467,6 +1524,7 @@ export function IndexersPage() {
                     variant="ghost"
                     onClick={() => void handleDeleteIndexer(idx.id, idx.name)}
                     disabled={busyKey === `di:${idx.id}`}
+                    title="Remove this indexer"
                   >
                     {busyKey === `di:${idx.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />}
                   </Button>
@@ -1518,13 +1576,19 @@ export function IndexersPage() {
             {clients.map((client) => {
               const clientTelemetry = telemetryByClientId.get(client.id);
               return (
-              <div key={client.id} className="group px-[calc(var(--tile-pad)*0.8)] py-[calc(var(--tile-pad)*0.7)]">
+              <div key={client.id} className={cn("group px-[calc(var(--tile-pad)*0.8)] py-[calc(var(--tile-pad)*0.7)] transition-opacity", !client.isEnabled && "opacity-60")}>
               <div className="flex items-center gap-3">
+                <span title={client.isEnabled ? "Enabled — click to disable" : "Disabled — click to enable"}>
+                  <Toggle
+                    checked={client.isEnabled}
+                    onChange={(v) => void handleToggleClient(client.id, client.name, v)}
+                  />
+                </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium text-foreground">{client.name}</p>
-                    <Badge variant={healthVariant(client.healthStatus)} className="text-[9.5px]">
-                      {healthLabel(client.healthStatus)}
+                    <p className={cn("font-medium", client.isEnabled ? "text-foreground" : "text-muted-foreground")}>{client.name}</p>
+                    <Badge variant={healthVariant(client.isEnabled ? client.healthStatus : "disabled")} className="text-[9.5px]">
+                      {client.isEnabled ? healthLabel(client.healthStatus) : "Disabled"}
                     </Badge>
                     <span className="rounded-full border border-hairline px-1.5 py-0.5 text-[10px] font-medium uppercase text-muted-foreground">
                       {client.protocol}
@@ -1616,8 +1680,8 @@ export function IndexersPage() {
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="truncate text-[12.5px] font-medium text-foreground">{item.title}</p>
-                          <Badge variant={item.status === "stalled" ? "destructive" : item.status === "importReady" ? "success" : "default"} className="text-[9px]">
-                            {item.status}
+                          <Badge variant={item.status === downloadQueueStatuses.stalled ? "destructive" : item.status === downloadQueueStatuses.importReady ? "success" : "default"} className="text-[9px]">
+                            {queueStatusLabel(item.status)}
                           </Badge>
                           <span className="font-mono text-[10.5px] text-muted-foreground">{item.progress.toFixed(1)}%</span>
                           <span className="font-mono text-[10.5px] text-muted-foreground">{item.speedMbps.toFixed(1)} MB/s</span>
@@ -1630,7 +1694,7 @@ export function IndexersPage() {
                         ) : null}
                       </div>
                       <div className="flex flex-wrap gap-1.5 lg:justify-end">
-                        {item.status === "importReady" ? (
+                        {item.status === downloadQueueStatuses.importReady ? (
                           <>
                             <Button
                               type="button"
@@ -1689,7 +1753,7 @@ export function IndexersPage() {
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="truncate text-[12px] font-medium text-foreground">{item.title}</p>
-                            <Badge variant={item.outcome === "failed" ? "destructive" : item.outcome === "importReady" ? "success" : "default"} className="text-[9px]">
+                            <Badge variant={item.outcome === "failed" ? "destructive" : item.outcome === downloadQueueStatuses.importReady ? "success" : "default"} className="text-[9px]">
                               {item.outcome}
                             </Badge>
                           </div>

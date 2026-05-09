@@ -1141,6 +1141,24 @@ public static class PlatformEndpointRouteBuilderExtensions
             return removed ? Results.NoContent() : Results.NotFound();
         });
 
+        indexers.MapPut("{id}", async (
+            string id,
+            HttpContext httpContext,
+            UpdateIndexerRequest request,
+            IPlatformSettingsRepository repository,
+            CancellationToken cancellationToken) =>
+        {
+            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, repository, cancellationToken);
+            if (denied is not null)
+            {
+                return denied;
+            }
+
+            var item = await repository.UpdateIndexerAsync(id, request, cancellationToken);
+            return item is null ? Results.NotFound() : Results.Ok(item);
+        });
+
+
         indexers.MapPost("{id}/test", async (
             string id,
             HttpContext httpContext,
@@ -1276,6 +1294,23 @@ public static class PlatformEndpointRouteBuilderExtensions
 
             var removed = await repository.DeleteDownloadClientAsync(id, cancellationToken);
             return removed ? Results.NoContent() : Results.NotFound();
+        });
+
+        downloadClients.MapPut("{id}", async (
+            string id,
+            HttpContext httpContext,
+            UpdateDownloadClientRequest request,
+            IPlatformSettingsRepository repository,
+            CancellationToken cancellationToken) =>
+        {
+            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, repository, cancellationToken);
+            if (denied is not null)
+            {
+                return denied;
+            }
+
+            var item = await repository.UpdateDownloadClientAsync(id, request, cancellationToken);
+            return item is null ? Results.NotFound() : Results.Ok(item);
         });
 
         downloadClients.MapPost("{id}/test", async (
