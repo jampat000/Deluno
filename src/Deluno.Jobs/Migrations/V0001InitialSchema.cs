@@ -8,7 +8,8 @@ public static class JobsDatabaseMigrations
     [
         new V0001InitialSchema(),
         new V0002JobIntegrity(),
-        new V0003DownloadOutcomeTracking()
+        new V0003DownloadOutcomeTracking(),
+        new V0004ImportResolutions()
     ];
 
     private sealed class V0001InitialSchema : SqliteSqlMigration
