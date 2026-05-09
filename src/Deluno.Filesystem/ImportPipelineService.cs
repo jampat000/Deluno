@@ -23,6 +23,7 @@ public sealed class ImportPipelineService(
     IActivityFeedRepository activityFeedRepository,
     IMediaProbeService mediaProbeService,
     IMediaDecisionService mediaDecisionService,
+    IImportResolutionsRepository? importResolutionsRepository,
     ILogger<ImportPipelineService> logger)
     : IImportPipelineService
 {
@@ -230,13 +231,23 @@ public sealed class ImportPipelineService(
             VerifyFinalImport(preview.DestinationPath, stagedSize);
 
             var libraries = await platformRepository.ListLibrariesAsync(cancellationToken);
-            var catalogUpdated = await MarkCatalogImportedAsync(
+            var catalogImportResult = await MarkCatalogImportedAsync(
                 request.Preview,
                 preview,
                 mediaType,
                 libraries,
                 settings.UnmonitorWhenCutoffMet,
                 cancellationToken);
+
+            if (importResolutionsRepository is not null && !string.IsNullOrEmpty(request.DispatchId) && catalogImportResult.CatalogUpdated && catalogImportResult.CatalogId is not null)
+            {
+                await importResolutionsRepository.RecordSuccessAsync(
+                    request.DispatchId,
+                    mediaType,
+                    catalogImportResult.CatalogId,
+                    mediaType == "tv" ? "series" : "movie",
+                    cancellationToken);
+            }
 
             await activityFeedRepository.RecordActivityAsync(
                 "filesystem.import.completed",
@@ -248,7 +259,7 @@ public sealed class ImportPipelineService(
                     preview.PreferredTransferMode,
                     TransferModeUsed = mode,
                     usedFallback,
-                    catalogUpdated,
+                    catalogUpdated = catalogImportResult.CatalogUpdated,
                     preview.MatchedRuleId,
                     preview.MatchedRuleName,
                     MediaProbe = preview.MediaProbe
@@ -274,7 +285,7 @@ public sealed class ImportPipelineService(
                         ["transferModeUsed"] = mode,
                         ["matchedRuleId"] = preview.MatchedRuleId,
                         ["matchedRuleName"] = preview.MatchedRuleName,
-                        ["catalogUpdated"] = catalogUpdated.ToString()
+                        ["catalogUpdated"] = catalogImportResult.CatalogUpdated.ToString()
                     },
                     Outcome: $"{TitleForActivity(request.Preview)} imported to {preview.DestinationPath}.",
                     Alternatives: []),
@@ -288,7 +299,7 @@ public sealed class ImportPipelineService(
                 Executed: true,
                 TransferModeUsed: mode,
                 UsedFallback: usedFallback,
-                CatalogUpdated: catalogUpdated,
+                CatalogUpdated: catalogImportResult.CatalogUpdated,
                 Message: usedFallback
                     ? "Import completed with copy fallback because hardlink creation was not possible."
                     : $"Import completed using {mode}.");
@@ -576,6 +587,19 @@ public sealed class ImportPipelineService(
             request.SourcePath,
             summary);
 
+        if (importResolutionsRepository is not null && !string.IsNullOrEmpty(executeRequest.DispatchId))
+        {
+            var catalogId = $"{title.ToLowerInvariant().Replace(" ", "-")}-{request.Year ?? 0}".Substring(0, Math.Min(64, $"{title.ToLowerInvariant().Replace(" ", "-")}-{request.Year ?? 0}".Length));
+            await importResolutionsRepository.RecordFailureAsync(
+                executeRequest.DispatchId,
+                mediaType,
+                catalogId,
+                mediaType == "tv" ? "series" : "movie",
+                failureKind,
+                summary,
+                cancellationToken);
+        }
+
         if (mediaType == "tv")
         {
             await seriesCatalogRepository.AddImportRecoveryCaseAsync(
@@ -701,7 +725,13 @@ public sealed class ImportPipelineService(
             request.AllowCopyFallback
         });
 
-    private async Task<bool> MarkCatalogImportedAsync(
+    private sealed class CatalogImportResult
+    {
+        public required bool CatalogUpdated { get; init; }
+        public required string? CatalogId { get; init; }
+    }
+
+    private async Task<CatalogImportResult> MarkCatalogImportedAsync(
         ImportPreviewRequest request,
         ImportPreviewResponse preview,
         string mediaType,
@@ -712,7 +742,7 @@ public sealed class ImportPipelineService(
         var library = ResolveLibraryForImport(preview.DestinationPath, mediaType, libraries);
         if (library is null)
         {
-            return false;
+            return new CatalogImportResult { CatalogUpdated = false, CatalogId = null };
         }
 
         var quality = mediaDecisionService.DetectQuality($"{preview.SourcePath} {preview.DestinationPath}");
@@ -724,10 +754,11 @@ public sealed class ImportPipelineService(
             UpgradeUntilCutoff: library.UpgradeUntilCutoff,
             UpgradeUnknownItems: library.UpgradeUnknownItems));
         var title = TitleForActivity(request);
+        var catalogId = $"{title.ToLowerInvariant().Replace(" ", "-")}-{request.Year ?? 0}".Substring(0, Math.Min(64, $"{title.ToLowerInvariant().Replace(" ", "-")}-{request.Year ?? 0}".Length));
 
         if (mediaType == "tv")
         {
-            return await seriesCatalogRepository.ImportExistingAsync(
+            var result = await seriesCatalogRepository.ImportExistingAsync(
                 library.Id,
                 title,
                 request.Year,
@@ -741,9 +772,10 @@ public sealed class ImportPipelineService(
                 GetFileSize(preview.DestinationPath),
                 null,
                 cancellationToken);
+            return new CatalogImportResult { CatalogUpdated = result, CatalogId = result ? catalogId : null };
         }
 
-        return await movieCatalogRepository.ImportExistingAsync(
+        var movieResult = await movieCatalogRepository.ImportExistingAsync(
             library.Id,
             title,
             request.Year,
@@ -756,6 +788,7 @@ public sealed class ImportPipelineService(
             preview.DestinationPath,
             GetFileSize(preview.DestinationPath),
             cancellationToken);
+        return new CatalogImportResult { CatalogUpdated = movieResult, CatalogId = movieResult ? catalogId : null };
     }
 
     private static long? GetFileSize(string path)
