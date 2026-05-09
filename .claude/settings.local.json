@@ -10,7 +10,9 @@
       "Bash(git commit -m ' *)",
       "Bash(dotnet build *)",
       "Bash(dotnet test *)",
-      "Bash(git commit -m 'fix: Phase 1 compilation - complete download tracking API and data layer *)"
+      "Bash(git commit -m 'fix: Phase 1 compilation - complete download tracking API and data layer *)",
+      "Bash(cd .. && dotnet test tests/Deluno.Persistence.Tests/Deluno.Persistence.Tests.csproj --filter \"DownloadDispatchRepositoryTests\" -v minimal 2>&1 | tail -150)",
+      "Bash(git commit -m 'feat: REST API integration tests for download dispatches *)"
     ]
   }
 }
