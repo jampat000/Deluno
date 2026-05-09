@@ -36,6 +36,7 @@ import {
   type SeriesImportRecoverySummary
 } from "../lib/api";
 import { authedFetch } from "../lib/use-auth";
+import { JOB_STATUS, isJobActive } from "../lib/job-status-constants";
 import { downloadQueueStatuses, isImportReadyStatus, isProcessingStatus, queueStatusLabel, telemetryCapabilityChips } from "../lib/download-telemetry";
 import { cn } from "../lib/utils";
 import { Badge } from "../components/ui/badge";
@@ -125,8 +126,8 @@ export function QueuePage() {
   const processing = allQueue.filter((item) => isProcessingStatus(item.status));
   const stalled = allQueue.filter((item) => item.status === downloadQueueStatuses.stalled || item.errorMessage);
   const openRecovery = movieRecovery.openCount + seriesRecovery.openCount;
-  const activeImportJobs = importJobs.filter((job) => job.status === "queued" || job.status === "running").length;
-  const failedImportJobs = importJobs.filter((job) => job.status === "failed").length;
+  const activeImportJobs = importJobs.filter((job) => isJobActive(job.status as any)).length;
+  const failedImportJobs = importJobs.filter((job) => job.status === JOB_STATUS.FAILED).length;
   const activeClients = telemetry.clients.filter((client) => isHealthyClient(client.healthStatus)).length;
 
   async function handleQueueAction(clientId: string, item: DownloadQueueItem, action: QueueAction) {
