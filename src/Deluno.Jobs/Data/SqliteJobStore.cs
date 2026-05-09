@@ -14,7 +14,8 @@ namespace Deluno.Jobs.Data;
 public sealed class SqliteJobStore(
     IDelunoDatabaseConnectionFactory databaseConnectionFactory,
     TimeProvider timeProvider,
-    IRealtimeEventPublisher realtimeEventPublisher)
+    IRealtimeEventPublisher realtimeEventPublisher,
+    IDownloadDispatchesRepository downloadDispatchesRepository)
     : IJobScheduler, IJobQueueRepository, IActivityFeedRepository
 {
     private static readonly JsonSerializerOptions PayloadJsonOptions = new()
@@ -1039,7 +1040,9 @@ public sealed class SqliteJobStore(
         string downloadClientName,
         string status,
         string? notesJson,
-        CancellationToken cancellationToken)
+        int? grabResponseCode = null,
+        string? grabFailureCode = null,
+        CancellationToken cancellationToken = default)
     {
         var now = timeProvider.GetUtcNow();
         var dispatchId = Guid.CreateVersion7().ToString("N");
@@ -1093,6 +1096,19 @@ public sealed class SqliteJobStore(
             cancellationToken: cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
+
+        var grabStatus = MapStatusToGrabStatus(status);
+        var responseCode = grabResponseCode ?? (string.Equals(status, "sent", StringComparison.OrdinalIgnoreCase) ? 200 : 400);
+
+        await downloadDispatchesRepository.RecordGrabAsync(
+            dispatchId: dispatchId,
+            grabStatus: grabStatus,
+            grabResponseCode: responseCode,
+            grabMessage: status,
+            grabFailureCode: grabFailureCode,
+            grabResponseJson: notesJson,
+            cancellationToken: cancellationToken);
+
         await realtimeEventPublisher.PublishDownloadProgressAsync(
             dispatchId,
             releaseName,
@@ -2010,4 +2026,16 @@ public sealed class SqliteJobStore(
         int MaxItems,
         int RetryDelayHours,
         string TriggeredBy);
+
+    private static string MapStatusToGrabStatus(string status) =>
+        status switch
+        {
+            "sent" => "succeeded",
+            "failed" => "failed",
+            "planned" => "planned",
+            "circuitOpen" => "circuit_open",
+            "notFound" => "not_found",
+            "paused" => "paused",
+            _ => status
+        };
 }

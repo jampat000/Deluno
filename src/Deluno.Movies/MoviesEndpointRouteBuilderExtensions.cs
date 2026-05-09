@@ -205,7 +205,9 @@ public static class MoviesEndpointRouteBuilderExtensions
                     downloadClient.DownloadClientName,
                     grabResult.Status,
                     JsonSerializer.Serialize(new { searchPlan, grabResult }),
-                    cancellationToken);
+                    grabResponseCode: grabResult.Succeeded ? 200 : 400,
+                    grabFailureCode: null,
+                    cancellationToken: cancellationToken);
             }
 
             await repository.RecordSearchAttemptAsync(
@@ -401,7 +403,9 @@ public static class MoviesEndpointRouteBuilderExtensions
                 downloadClient.DownloadClientName,
                 grabResult.Status,
                 JsonSerializer.Serialize(auditPayload),
-                cancellationToken);
+                grabResponseCode: grabResult.Succeeded ? 200 : 400,
+                grabFailureCode: null,
+                cancellationToken: cancellationToken);
 
             var now = timeProvider.GetUtcNow();
             await repository.RecordSearchAttemptAsync(

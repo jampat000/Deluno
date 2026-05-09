@@ -249,7 +249,9 @@ public static class SeriesEndpointRouteBuilderExtensions
                     downloadClient.DownloadClientName,
                     grabResult.Status,
                     JsonSerializer.Serialize(new { searchPlan, grabResult }),
-                    cancellationToken);
+                    grabResponseCode: grabResult.Succeeded ? 200 : 400,
+                    grabFailureCode: null,
+                    cancellationToken: cancellationToken);
             }
 
             await repository.RecordSearchAttemptAsync(
@@ -681,7 +683,9 @@ public static class SeriesEndpointRouteBuilderExtensions
                             searchPlan,
                             grabResult
                         }),
-                        cancellationToken);
+                        grabResponseCode: grabResult.Succeeded ? 200 : 400,
+                        grabFailureCode: null,
+                        cancellationToken: cancellationToken);
                 }
 
                 await repository.RecordSearchAttemptAsync(
@@ -876,7 +880,9 @@ public static class SeriesEndpointRouteBuilderExtensions
                 downloadClient.DownloadClientName,
                 grabResult.Status,
                 JsonSerializer.Serialize(auditPayload),
-                cancellationToken);
+                grabResponseCode: grabResult.Succeeded ? 200 : 400,
+                grabFailureCode: null,
+                cancellationToken: cancellationToken);
 
             var now = timeProvider.GetUtcNow();
             await repository.RecordSearchAttemptAsync(
@@ -1079,7 +1085,9 @@ public static class SeriesEndpointRouteBuilderExtensions
                         searchPlan,
                         grabResult
                     }),
-                    cancellationToken);
+                    grabResponseCode: grabResult.Succeeded ? 200 : 400,
+                    grabFailureCode: null,
+                    cancellationToken: cancellationToken);
             }
 
             foreach (var episode in seasonEpisodes)

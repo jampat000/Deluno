@@ -290,7 +290,7 @@ public sealed class ImportPipelineServiceTests
             platform,
             movies,
             new SqliteSeriesCatalogRepository(storage.Factory, timeProvider),
-            new SqliteJobStore(storage.Factory, timeProvider, new NullRealtimeEventPublisher()),
+            new SqliteJobStore(storage.Factory, timeProvider, new NullRealtimeEventPublisher(), new NullDownloadDispatchesRepository()),
             new SuccessfulProbeService(),
             new MediaDecisionService(new VersionedMediaPolicyEngine()),
             NullLogger<ImportPipelineService>.Instance);
@@ -304,7 +304,7 @@ public sealed class ImportPipelineServiceTests
             platform,
             movies,
             new SqliteSeriesCatalogRepository(storage.Factory, timeProvider),
-            new SqliteJobStore(storage.Factory, timeProvider, new NullRealtimeEventPublisher()),
+            new SqliteJobStore(storage.Factory, timeProvider, new NullRealtimeEventPublisher(), new NullDownloadDispatchesRepository()),
             timeProvider);
 
     private static async Task CreateMovieLibraryAsync(

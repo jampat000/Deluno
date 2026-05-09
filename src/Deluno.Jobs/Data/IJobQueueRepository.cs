@@ -56,7 +56,9 @@ public interface IJobQueueRepository
         string downloadClientName,
         string status,
         string? notesJson,
-        CancellationToken cancellationToken);
+        int? grabResponseCode = null,
+        string? grabFailureCode = null,
+        CancellationToken cancellationToken = default);
 
     Task RecordSearchCycleRunAsync(
         RecordSearchCycleRunRequest request,

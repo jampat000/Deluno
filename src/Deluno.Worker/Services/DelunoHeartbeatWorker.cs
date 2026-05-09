@@ -420,7 +420,9 @@ public sealed class DelunoHeartbeatWorker(
                                 downloadClient.DownloadClientName,
                                 grabResult.Status,
                                 SerializeSearchPlan(searchPlan, grabResult),
-                                cancellationToken);
+                                grabResponseCode: grabResult.Succeeded ? 200 : 400,
+                                grabFailureCode: null,
+                                cancellationToken: cancellationToken);
                         }
 
                         await movieCatalogRepository.RecordSearchAttemptAsync(
@@ -547,7 +549,9 @@ public sealed class DelunoHeartbeatWorker(
                             downloadClient.DownloadClientName,
                             grabResult.Status,
                             SerializeSearchPlan(searchPlan, grabResult),
-                            cancellationToken);
+                            grabResponseCode: grabResult.Succeeded ? 200 : 400,
+                            grabFailureCode: null,
+                            cancellationToken: cancellationToken);
                     }
 
                     await seriesCatalogRepository.RecordSearchAttemptAsync(
