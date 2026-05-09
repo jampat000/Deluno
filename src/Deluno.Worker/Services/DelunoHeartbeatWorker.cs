@@ -30,6 +30,7 @@ public sealed class DelunoHeartbeatWorker(
 
     private readonly string _workerId = $"worker-{Environment.MachineName.ToLowerInvariant()}";
     private DateTimeOffset _lastImportAutomationUtc = DateTimeOffset.MinValue;
+    private DateTimeOffset _lastDispatchCleanupUtc = DateTimeOffset.MinValue;
     private readonly JobLane[] _lanes =
     [
         new("search", TimeSpan.FromSeconds(5), ["library.search"], PlanAutomation: true),
@@ -118,6 +119,12 @@ public sealed class DelunoHeartbeatWorker(
                     stoppingToken);
             }
 
+            if (lane.Name == "maintenance")
+            {
+                var cleanupService = scope.ServiceProvider.GetRequiredService<IDispatchCleanupService>();
+                await RunDispatchCleanupAsync(cleanupService, timeProvider, stoppingToken);
+            }
+
             var job = await jobQueueRepository.LeaseNextAsync(
                 $"{_workerId}-{lane.Name}",
                 TimeSpan.FromMinutes(2),
@@ -158,6 +165,28 @@ public sealed class DelunoHeartbeatWorker(
                 logger.LogError(ex, "Worker {WorkerId} lane {LaneName} failed processing job {JobId}.", _workerId, lane.Name, job.Id);
                 await jobQueueRepository.FailAsync(job.Id, $"{_workerId}-{lane.Name}", ex.Message, stoppingToken);
             }
+        }
+    }
+
+    private async Task RunDispatchCleanupAsync(
+        IDispatchCleanupService cleanupService,
+        TimeProvider timeProvider,
+        CancellationToken cancellationToken)
+    {
+        var now = timeProvider.GetUtcNow();
+        if (now - _lastDispatchCleanupUtc < TimeSpan.FromHours(6))
+        {
+            return;
+        }
+
+        _lastDispatchCleanupUtc = now;
+        try
+        {
+            await cleanupService.RunCleanupPassAsync(cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Dispatch cleanup pass failed.");
         }
     }
 

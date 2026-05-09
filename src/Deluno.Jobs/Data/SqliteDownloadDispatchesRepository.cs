@@ -8,7 +8,7 @@ namespace Deluno.Jobs.Data;
 public sealed class SqliteDownloadDispatchesRepository(
     IDelunoDatabaseConnectionFactory databaseConnectionFactory,
     TimeProvider timeProvider)
-    : IDownloadDispatchesRepository
+    : IDownloadDispatchesRepository, IDownloadDispatchRepository
 {
     public async Task<DownloadDispatchItem?> GetDispatchAsync(
         string dispatchId,
@@ -555,6 +555,117 @@ public sealed class SqliteDownloadDispatchesRepository(
             CreatedUtc: now);
     }
 
+    public async Task<IReadOnlyList<DownloadDispatchItem>> FindStaleFailedDispatchesAsync(
+        TimeSpan minAge,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        var cutoff = timeProvider.GetUtcNow().Subtract(minAge);
+
+        await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
+            DelunoDatabaseNames.Jobs, cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            SELECT
+                id, library_id, media_type, entity_type, entity_id, release_name,
+                indexer_name, download_client_id, download_client_name, status, notes_json,
+                created_utc, grab_status, grab_attempted_utc, grab_response_code,
+                grab_message, grab_failure_code, grab_response_json, detected_utc,
+                torrent_hash_or_item_id, downloaded_bytes, import_status, import_detected_utc,
+                import_completed_utc, imported_file_path, import_failure_code,
+                import_failure_message, circuit_open_until_utc
+            FROM download_dispatches
+            WHERE status = 'failed'
+              AND grab_attempted_utc < @cutoff
+              AND status != 'archived'
+            ORDER BY grab_attempted_utc ASC
+            LIMIT @limit
+            """;
+
+        AddParameter(command, "@cutoff", cutoff.ToString("O"));
+        AddParameter(command, "@limit", limit);
+
+        var results = new List<DownloadDispatchItem>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            results.Add(ReadDispatch(reader));
+        }
+
+        return results;
+    }
+
+    public async Task<DownloadDispatchItem?> FindDispatchByHashAsync(
+        string clientId,
+        string hash,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
+            DelunoDatabaseNames.Jobs, cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            SELECT
+                id, library_id, media_type, entity_type, entity_id, release_name,
+                indexer_name, download_client_id, download_client_name, status, notes_json,
+                created_utc, grab_status, grab_attempted_utc, grab_response_code,
+                grab_message, grab_failure_code, grab_response_json, detected_utc,
+                torrent_hash_or_item_id, downloaded_bytes, import_status, import_detected_utc,
+                import_completed_utc, imported_file_path, import_failure_code,
+                import_failure_message, circuit_open_until_utc
+            FROM download_dispatches
+            WHERE download_client_id = @clientId
+              AND torrent_hash_or_item_id = @hash
+              AND status != 'archived'
+            ORDER BY created_utc DESC
+            LIMIT 1
+            """;
+
+        AddParameter(command, "@clientId", clientId);
+        AddParameter(command, "@hash", hash);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken) ? ReadDispatch(reader) : null;
+    }
+
+    public async Task<DownloadDispatchItem?> FindDispatchByReleaseNameAsync(
+        string clientId,
+        string releaseName,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
+            DelunoDatabaseNames.Jobs, cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            SELECT
+                id, library_id, media_type, entity_type, entity_id, release_name,
+                indexer_name, download_client_id, download_client_name, status, notes_json,
+                created_utc, grab_status, grab_attempted_utc, grab_response_code,
+                grab_message, grab_failure_code, grab_response_json, detected_utc,
+                torrent_hash_or_item_id, downloaded_bytes, import_status, import_detected_utc,
+                import_completed_utc, imported_file_path, import_failure_code,
+                import_failure_message, circuit_open_until_utc
+            FROM download_dispatches
+            WHERE download_client_id = @clientId
+              AND release_name = @releaseName
+              AND detected_utc IS NULL
+              AND status != 'archived'
+            ORDER BY created_utc DESC
+            LIMIT 1
+            """;
+
+        AddParameter(command, "@clientId", clientId);
+        AddParameter(command, "@releaseName", releaseName);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken) ? ReadDispatch(reader) : null;
+    }
+
     private static DownloadDispatchItem ReadDispatch(DbDataReader reader)
     {
         return new DownloadDispatchItem(
@@ -586,6 +697,40 @@ public sealed class SqliteDownloadDispatchesRepository(
             ImportFailureCode: reader.IsDBNull(25) ? null : reader.GetString(25),
             ImportFailureMessage: reader.IsDBNull(26) ? null : reader.GetString(26),
             CircuitOpenUntilUtc: reader.IsDBNull(27) ? null : DateTimeOffset.Parse(reader.GetString(27)));
+    }
+
+    public async Task<int> IncrementAttemptCountAsync(string dispatchId, CancellationToken cancellationToken)
+    {
+        await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
+            DelunoDatabaseNames.Jobs, cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            UPDATE download_dispatches
+            SET attempt_count = attempt_count + 1
+            WHERE id = @id;
+            SELECT attempt_count FROM download_dispatches WHERE id = @id;
+            """;
+        AddParameter(command, "@id", dispatchId);
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result is long count ? (int)count : 0;
+    }
+
+    public async Task MarkDispatchFailedAsync(string dispatchId, CancellationToken cancellationToken)
+    {
+        await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
+            DelunoDatabaseNames.Jobs, cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            UPDATE download_dispatches
+            SET status = 'failed', grab_status = 'failed', grab_failure_code = 'max-retries-exceeded'
+            WHERE id = @id;
+            """;
+        AddParameter(command, "@id", dispatchId);
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     private static DispatchTimelineEvent ReadTimelineEvent(DbDataReader reader)

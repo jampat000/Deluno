@@ -10,7 +10,9 @@ public static class JobsDatabaseMigrations
         new V0002JobIntegrity(),
         new V0003DownloadOutcomeTracking(),
         new V0004ImportResolutions(),
-        new V0005DispatchAlerts()
+        new V0005DispatchAlerts(),
+        new V0006DownloadRetryTracking(),
+        new V0007IntegrationCircuitState()
     ];
 
     private sealed class V0001InitialSchema : SqliteSqlMigration

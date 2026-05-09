@@ -85,6 +85,30 @@ public interface IDownloadDispatchesRepository
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// Find a dispatch by torrent hash or item ID, scoped to a specific client.
+    /// </summary>
+    Task<DownloadDispatchItem?> FindDispatchByHashAsync(
+        string clientId,
+        string hash,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Find the most recent grabbed-but-undetected dispatch matching a release name for a client.
+    /// </summary>
+    Task<DownloadDispatchItem?> FindDispatchByReleaseNameAsync(
+        string clientId,
+        string releaseName,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Find dispatches that have been in a failed state for longer than <paramref name="minAge"/>.
+    /// </summary>
+    Task<IReadOnlyList<DownloadDispatchItem>> FindStaleFailedDispatchesAsync(
+        TimeSpan minAge,
+        int limit,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// Archive/delete a dispatch (soft delete).
     /// </summary>
     Task ArchiveDispatchAsync(

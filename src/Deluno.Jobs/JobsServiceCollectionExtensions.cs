@@ -11,6 +11,8 @@ public static class JobsServiceCollectionExtensions
         services.AddSingleton<SqliteDownloadDispatchesRepository>();
         services.AddSingleton<IDownloadDispatchesRepository>(provider =>
             provider.GetRequiredService<SqliteDownloadDispatchesRepository>());
+        services.AddSingleton<IDownloadDispatchRepository>(provider =>
+            provider.GetRequiredService<SqliteDownloadDispatchesRepository>());
         services.AddSingleton<SqliteImportResolutionsRepository>();
         services.AddSingleton<IImportResolutionsRepository>(provider =>
             provider.GetRequiredService<SqliteImportResolutionsRepository>());
@@ -28,6 +30,7 @@ public static class JobsServiceCollectionExtensions
 
         services.AddSingleton<CompositeDispatchRecoveryHandler>(provider =>
             new CompositeDispatchRecoveryHandler(provider.GetServices<IDispatchRecoveryHandler>().ToList()));
+        services.AddSingleton<IDispatchCleanupService, DispatchCleanupService>();
         services.AddSingleton<DownloadDispatchPollingService>();
         services.AddSingleton<IDownloadDispatchPollingService>(provider =>
         {

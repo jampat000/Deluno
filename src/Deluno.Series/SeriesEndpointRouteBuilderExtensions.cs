@@ -637,7 +637,9 @@ public static class SeriesEndpointRouteBuilderExtensions
                         wantedItem.TargetQuality,
                         routing?.Sources ?? [],
                         routing?.DownloadClients ?? [],
-                        customFormats),
+                        customFormats,
+                        SeasonNumber: episode.SeasonNumber,
+                        EpisodeNumber: episode.EpisodeNumber),
                     cancellationToken);
                 var searchPlan = decisionPlan.SearchPlan;
                 var bestCandidate = searchPlan.BestCandidate;
@@ -1056,7 +1058,8 @@ public static class SeriesEndpointRouteBuilderExtensions
                     wantedItem.TargetQuality,
                     routing?.Sources ?? [],
                     routing?.DownloadClients ?? [],
-                    customFormats),
+                    customFormats,
+                    SeasonNumber: seasonNumber),
                 cancellationToken);
             var searchPlan = decisionPlan.SearchPlan;
             var bestCandidate = searchPlan.BestCandidate;

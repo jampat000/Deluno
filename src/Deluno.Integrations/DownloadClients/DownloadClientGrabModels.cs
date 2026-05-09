@@ -5,7 +5,8 @@ public sealed record DownloadClientGrabRequest(
     string DownloadUrl,
     string MediaType,
     string? Category,
-    string? IndexerName);
+    string? IndexerName,
+    string? DispatchId = null);
 
 public sealed record DownloadClientGrabResult(
     string ClientId,
