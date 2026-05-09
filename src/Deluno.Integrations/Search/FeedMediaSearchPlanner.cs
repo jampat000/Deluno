@@ -174,7 +174,7 @@ public sealed class FeedMediaSearchPlanner(
             var size = ReadLongAttr(attrs, "size") ?? ReadLong(item.Elements("enclosure").FirstOrDefault()?.Attribute("length")?.Value);
             var seeders = ReadIntAttr(attrs, "seeders");
             var quality = InferQuality(releaseName);
-            var customFormatBonus = EvaluateCustomFormats(releaseName, customFormats, out var matchedFormats);
+            var customFormatBonus = CustomFormatMatcher.Evaluate(releaseName, customFormats, out var matchedFormats);
             var decision = ReleaseDecisionEngine.Decide(new ReleaseDecisionInput(
                 releaseName,
                 quality,
@@ -285,47 +285,13 @@ public sealed class FeedMediaSearchPlanner(
         return $"{source} {resolution}";
     }
 
-    private static int EvaluateCustomFormats(string releaseName, IReadOnlyList<CustomFormatItem>? customFormats, out string[] matchedFormats)
-    {
-        if (customFormats is null || customFormats.Count == 0)
-        {
-            matchedFormats = [];
-            return 0;
-        }
-
-        var matches = new List<string>();
-        var bonus = 0;
-        foreach (var format in customFormats)
-        {
-            var token = ExtractMatchToken(format.Conditions);
-            if (string.IsNullOrWhiteSpace(token) || !releaseName.Contains(token, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            matches.Add(format.Name);
-            bonus += format.Score;
-        }
-
-        matchedFormats = matches.ToArray();
-        return bonus;
-    }
-
-    private static string ExtractMatchToken(string? conditions)
-    {
-        if (string.IsNullOrWhiteSpace(conditions)) return string.Empty;
-        var separatorIndex = conditions.IndexOf(':');
-        return separatorIndex >= 0 && separatorIndex < conditions.Length - 1
-            ? conditions[(separatorIndex + 1)..].Trim()
-            : conditions.Trim();
-    }
-
-    private static string BuildSummary(ReleaseDecision decision, IReadOnlyList<string> matchedFormats)
+    private static string BuildSummary(ReleaseDecision decision, IReadOnlyList<CustomFormatMatchResult> matchedFormats)
     {
         var parts = new List<string> { decision.Summary };
         if (matchedFormats.Count > 0 && decision.CustomFormatScore != 0)
         {
-            parts.Add($"Matched {string.Join(", ", matchedFormats)} ({decision.CustomFormatScore.ToString("+#;-#;0", CultureInfo.InvariantCulture)}).");
+            var names = string.Join(", ", matchedFormats.Select(f => f.FormatName));
+            parts.Add($"Matched {names} ({decision.CustomFormatScore.ToString("+#;-#;0", CultureInfo.InvariantCulture)}).");
         }
 
         return string.Join(" ", parts);
