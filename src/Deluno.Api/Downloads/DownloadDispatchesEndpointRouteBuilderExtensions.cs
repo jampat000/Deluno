@@ -33,6 +33,10 @@ public static class DownloadDispatchesEndpointRouteBuilderExtensions
             .WithName("Archive Dispatch")
             .WithDescription("Archive/delete a dispatch (soft delete)");
 
+        group.MapPost("/poll", PollDispatchOutcomes)
+            .WithName("Poll Dispatch Outcomes")
+            .WithDescription("Manually trigger dispatch lifecycle polling and timeout detection");
+
         var imports = endpoints.MapGroup("/api/v1/import-resolutions")
             .WithName("ImportResolutions");
 
@@ -184,6 +188,14 @@ public static class DownloadDispatchesEndpointRouteBuilderExtensions
 
         await repository.ArchiveDispatchAsync(dispatchId, reason ?? "manual_cleanup", cancellationToken);
         return Results.NoContent();
+    }
+
+    private static async Task<IResult> PollDispatchOutcomes(
+        IDownloadDispatchPollingService pollingService,
+        CancellationToken cancellationToken = default)
+    {
+        var report = await pollingService.PollAsync(cancellationToken);
+        return Results.Json(report, statusCode: StatusCodes.Status200OK);
     }
 
     private static async Task<IResult> GetImportResolutions(
