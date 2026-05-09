@@ -760,7 +760,23 @@ public sealed class SqliteJobStore(
                 DownloadClientName: reader.GetString(8),
                 Status: reader.GetString(9),
                 NotesJson: reader.IsDBNull(10) ? null : reader.GetString(10),
-                CreatedUtc: ParseTimestamp(reader.GetString(11))));
+                CreatedUtc: ParseTimestamp(reader.GetString(11)),
+                GrabStatus: null,
+                GrabAttemptedUtc: null,
+                GrabResponseCode: null,
+                GrabMessage: null,
+                GrabFailureCode: null,
+                GrabResponseJson: null,
+                DetectedUtc: null,
+                TorrentHashOrItemId: null,
+                DownloadedBytes: null,
+                ImportStatus: null,
+                ImportDetectedUtc: null,
+                ImportCompletedUtc: null,
+                ImportedFilePath: null,
+                ImportFailureCode: null,
+                ImportFailureMessage: null,
+                CircuitOpenUntilUtc: null));
         }
 
         return items;

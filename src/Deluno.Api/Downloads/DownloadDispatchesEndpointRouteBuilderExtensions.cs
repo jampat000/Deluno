@@ -11,8 +11,7 @@ public static class DownloadDispatchesEndpointRouteBuilderExtensions
     public static IEndpointRouteBuilder MapDownloadDispatchesEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/api/v1/download-dispatches")
-            .WithName("DownloadDispatches")
-            .WithOpenApi();
+            .WithName("DownloadDispatches");
 
         group.MapGet(string.Empty, GetDispatches)
             .WithName("List Download Dispatches")
@@ -35,8 +34,7 @@ public static class DownloadDispatchesEndpointRouteBuilderExtensions
             .WithDescription("Archive/delete a dispatch (soft delete)");
 
         var imports = endpoints.MapGroup("/api/v1/import-resolutions")
-            .WithName("ImportResolutions")
-            .WithOpenApi();
+            .WithName("ImportResolutions");
 
         imports.MapGet(string.Empty, GetImportResolutions)
             .WithName("List Import Resolutions")
@@ -133,7 +131,6 @@ public static class DownloadDispatchesEndpointRouteBuilderExtensions
                 minutesSinceGrab = d.GrabAttemptedUtc.HasValue
                     ? (int)(DateTimeOffset.UtcNow - d.GrabAttemptedUtc.Value).TotalMinutes
                     : 0,
-                d.DetectionStatus,
                 notes = "Grab succeeded but never appeared in client. Possible: client restarted, release name doesn't match client item, torrent was immediately removed."
             })
         });
@@ -162,13 +159,15 @@ public static class DownloadDispatchesEndpointRouteBuilderExtensions
         // TODO: Queue retry job in search retry window
         var nextRetryTime = DateTimeOffset.UtcNow.AddMinutes(30);
 
-        return Results.Accepted(new
+        var response = new
         {
             dispatchId,
             newJobId = $"job-{Guid.CreateVersion7().ToString("N")[..8]}",
             nextRetryEligibleUtc = nextRetryTime,
             message = $"Retry queued. Next eligibility window: {nextRetryTime:O}"
-        });
+        };
+
+        return Results.Json(response, statusCode: StatusCodes.Status202Accepted);
     }
 
     private static async Task<IResult> ArchiveDispatch(
