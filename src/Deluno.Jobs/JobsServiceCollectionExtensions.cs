@@ -8,24 +8,26 @@ public static class JobsServiceCollectionExtensions
 {
     public static IServiceCollection AddDelunoJobsModule(this IServiceCollection services)
     {
-        services.AddSingleton<SqliteJobStore>();
-        services.AddSingleton<IJobScheduler>(provider => provider.GetRequiredService<SqliteJobStore>());
-        services.AddSingleton<IJobQueueRepository>(provider => provider.GetRequiredService<SqliteJobStore>());
-        services.AddSingleton<IActivityFeedRepository>(provider => provider.GetRequiredService<SqliteJobStore>());
         services.AddSingleton<SqliteDownloadDispatchesRepository>();
         services.AddSingleton<IDownloadDispatchesRepository>(provider =>
             provider.GetRequiredService<SqliteDownloadDispatchesRepository>());
         services.AddSingleton<SqliteImportResolutionsRepository>();
         services.AddSingleton<IImportResolutionsRepository>(provider =>
             provider.GetRequiredService<SqliteImportResolutionsRepository>());
-        services.AddSingleton<IDispatchRecoveryHandler>(provider =>
-            new CompositeDispatchRecoveryHandler(provider.GetServices<IDispatchRecoveryHandler>().Where(h => h is not CompositeDispatchRecoveryHandler).ToList()));
         services.AddSingleton<SqliteDispatchAlertRepository>();
         services.AddSingleton<IDispatchAlertRepository>(provider =>
             provider.GetRequiredService<SqliteDispatchAlertRepository>());
         services.AddSingleton<SqliteDispatchMetricsRepository>();
         services.AddSingleton<IDispatchMetricsRepository>(provider =>
             provider.GetRequiredService<SqliteDispatchMetricsRepository>());
+
+        services.AddSingleton<SqliteJobStore>();
+        services.AddSingleton<IJobScheduler>(provider => provider.GetRequiredService<SqliteJobStore>());
+        services.AddSingleton<IJobQueueRepository>(provider => provider.GetRequiredService<SqliteJobStore>());
+        services.AddSingleton<IActivityFeedRepository>(provider => provider.GetRequiredService<SqliteJobStore>());
+
+        services.AddSingleton<CompositeDispatchRecoveryHandler>(provider =>
+            new CompositeDispatchRecoveryHandler(provider.GetServices<IDispatchRecoveryHandler>().ToList()));
         services.AddSingleton<DownloadDispatchPollingService>();
         services.AddSingleton<IDownloadDispatchPollingService>(provider =>
         {
