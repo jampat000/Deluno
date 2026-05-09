@@ -56,6 +56,13 @@ public static class DownloadDispatchesEndpointRouteBuilderExtensions
             .WithName("Acknowledge Alert")
             .WithDescription("Mark a dispatch alert as acknowledged");
 
+        var metrics = endpoints.MapGroup("/api/v1/dispatch-metrics")
+            .WithName("DispatchMetrics");
+
+        metrics.MapGet(string.Empty, GetDispatchMetrics)
+            .WithName("Get Dispatch Metrics")
+            .WithDescription("Get operational metrics for dispatch lifecycle");
+
         return endpoints;
     }
 
@@ -310,5 +317,29 @@ public static class DownloadDispatchesEndpointRouteBuilderExtensions
         }
 
         return Results.NoContent();
+    }
+
+    private static async Task<IResult> GetDispatchMetrics(
+        [FromServices] IDispatchMetricsRepository metricsRepository,
+        CancellationToken cancellationToken)
+    {
+        var metrics = await metricsRepository.GetMetricsAsync(cancellationToken);
+
+        return Results.Ok(new
+        {
+            metrics.TotalDispatchesRecorded,
+            metrics.SuccessfulGrabs,
+            metrics.FailedGrabs,
+            metrics.DetectedDownloads,
+            metrics.SuccessfulImports,
+            metrics.FailedImports,
+            metrics.ActiveDispatchesCount,
+            metrics.RecoveryCasesOpenCount,
+            metrics.AverageGrabToDetection,
+            metrics.AverageDetectionToImport,
+            metrics.GrabFailuresByClient,
+            metrics.ImportFailuresByKind,
+            metrics.ComputedUtc
+        });
     }
 }

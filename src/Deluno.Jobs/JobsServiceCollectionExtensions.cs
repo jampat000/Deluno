@@ -23,6 +23,9 @@ public static class JobsServiceCollectionExtensions
         services.AddSingleton<SqliteDispatchAlertRepository>();
         services.AddSingleton<IDispatchAlertRepository>(provider =>
             provider.GetRequiredService<SqliteDispatchAlertRepository>());
+        services.AddSingleton<SqliteDispatchMetricsRepository>();
+        services.AddSingleton<IDispatchMetricsRepository>(provider =>
+            provider.GetRequiredService<SqliteDispatchMetricsRepository>());
         services.AddSingleton<DownloadDispatchPollingService>();
         services.AddSingleton<IDownloadDispatchPollingService>(provider =>
         {
