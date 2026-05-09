@@ -17,7 +17,8 @@
       "Bash(xargs grep -l \"Grab\")",
       "Bash(git reset *)",
       "Bash(git commit -m 'test: update migration count assertion for V0003 download outcome tracking *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(dotnet clean *)"
     ]
   }
 }

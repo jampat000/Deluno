@@ -270,6 +270,11 @@ public sealed class DelunoHeartbeatWorker(
                 continue;
             }
 
+            var dispatchId = await jobQueueRepository.FindRecentDispatchIdAsync(
+                item.ClientId,
+                item.ReleaseName,
+                cancellationToken);
+
             var request = new ImportExecuteRequest(
                 Preview: new ImportPreviewRequest(
                     SourcePath: item.SourcePath,
@@ -284,7 +289,8 @@ public sealed class DelunoHeartbeatWorker(
                 TransferMode: "auto",
                 Overwrite: false,
                 AllowCopyFallback: true,
-                ForceReplacement: false);
+                ForceReplacement: false,
+                DispatchId: dispatchId);
 
             var job = await jobScheduler.EnqueueAsync(
                 new EnqueueJobRequest(

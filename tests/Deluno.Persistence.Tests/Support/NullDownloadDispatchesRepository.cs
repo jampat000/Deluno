@@ -29,7 +29,35 @@ public sealed class NullDownloadDispatchesRepository : IDownloadDispatchesReposi
         string? grabFailureCode,
         string? grabResponseJson,
         CancellationToken cancellationToken) =>
-        throw new NotImplementedException("Test only - should not be called");
+        Task.FromResult(new DownloadDispatchItem(
+            Id: dispatchId,
+            LibraryId: null!,
+            MediaType: null!,
+            EntityType: null!,
+            EntityId: null!,
+            ReleaseName: null!,
+            IndexerName: null!,
+            DownloadClientId: null!,
+            DownloadClientName: null!,
+            Status: "grabbed",
+            NotesJson: grabResponseJson,
+            CreatedUtc: DateTimeOffset.UtcNow,
+            GrabStatus: grabStatus,
+            GrabAttemptedUtc: DateTimeOffset.UtcNow,
+            GrabResponseCode: grabResponseCode,
+            GrabMessage: grabMessage,
+            GrabFailureCode: grabFailureCode,
+            GrabResponseJson: grabResponseJson,
+            DetectedUtc: null,
+            TorrentHashOrItemId: null,
+            DownloadedBytes: null,
+            ImportStatus: null,
+            ImportDetectedUtc: null,
+            ImportCompletedUtc: null,
+            ImportedFilePath: null,
+            ImportFailureCode: null,
+            ImportFailureMessage: null,
+            CircuitOpenUntilUtc: null));
 
     public Task<DownloadDispatchItem> RecordDetectionAsync(
         string dispatchId,

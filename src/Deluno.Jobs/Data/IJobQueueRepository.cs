@@ -45,7 +45,7 @@ public interface IJobQueueRepository
         IReadOnlyList<LibraryAutomationPlanItem> libraries,
         CancellationToken cancellationToken);
 
-    Task RecordDownloadDispatchAsync(
+    Task<string> RecordDownloadDispatchAsync(
         string libraryId,
         string mediaType,
         string entityType,
@@ -73,5 +73,10 @@ public interface IJobQueueRepository
         DateTimeOffset nextEligibleUtc,
         DateTimeOffset lastAttemptUtc,
         string? lastResult,
+        CancellationToken cancellationToken);
+
+    Task<string?> FindRecentDispatchIdAsync(
+        string downloadClientId,
+        string releaseName,
         CancellationToken cancellationToken);
 }

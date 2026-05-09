@@ -783,6 +783,38 @@ public sealed class SqliteJobStore(
         return items;
     }
 
+    public async Task<string?> FindRecentDispatchIdAsync(
+        string downloadClientId,
+        string releaseName,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
+            DelunoDatabaseNames.Jobs,
+            cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            SELECT id FROM download_dispatches
+            WHERE download_client_id = @downloadClientId
+              AND release_name = @releaseName
+              AND created_utc > datetime('now', '-6 hours')
+            ORDER BY created_utc DESC
+            LIMIT 1;
+            """;
+
+        AddParameter(command, "@downloadClientId", downloadClientId);
+        AddParameter(command, "@releaseName", releaseName);
+
+        using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (await reader.ReadAsync(cancellationToken))
+        {
+            return reader.GetString(0);
+        }
+
+        return null;
+    }
+
     public async Task<bool> RequestLibrarySearchAsync(
         LibraryAutomationPlanItem library,
         CancellationToken cancellationToken)
@@ -1029,7 +1061,7 @@ public sealed class SqliteJobStore(
         await transaction.CommitAsync(cancellationToken);
     }
 
-    public async Task RecordDownloadDispatchAsync(
+    public async Task<string> RecordDownloadDispatchAsync(
         string libraryId,
         string mediaType,
         string entityType,
@@ -1124,6 +1156,8 @@ public sealed class SqliteJobStore(
             SeverityForCategory("download.dispatch.recorded"),
             now.ToString("O"),
             cancellationToken);
+
+        return dispatchId;
     }
 
     public async Task RecordSearchCycleRunAsync(
