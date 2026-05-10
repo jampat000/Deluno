@@ -1144,6 +1144,9 @@ public static class PlatformEndpointRouteBuilderExtensions
                 null,
                 null,
                 null,
+                0,
+                null,
+                null,
                 now,
                 now);
 
@@ -1228,6 +1231,22 @@ public static class PlatformEndpointRouteBuilderExtensions
             }
 
             return result is null ? Results.NotFound() : Results.Ok(result);
+        });
+
+        indexers.MapPost("{id}/reset-circuit", async (
+            string id,
+            HttpContext httpContext,
+            IPlatformSettingsRepository repository,
+            CancellationToken cancellationToken) =>
+        {
+            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, repository, cancellationToken);
+            if (denied is not null)
+            {
+                return denied;
+            }
+
+            var item = await repository.ResetIndexerCircuitAsync(id, cancellationToken);
+            return item is null ? Results.NotFound() : Results.Ok(item);
         });
 
         var downloadClients = endpoints.MapGroup("/api/download-clients");

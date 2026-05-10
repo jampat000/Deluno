@@ -1745,6 +1745,7 @@ public sealed class SqlitePlatformSettingsRepository(
                 id, name, protocol, privacy, base_url, api_key, priority, categories, tags,
                 media_scope, is_enabled, health_status, last_health_message,
                 last_health_failure_category, last_health_latency_ms, last_health_test_utc,
+                consecutive_failures, rate_limited_until_utc, disabled_reason,
                 created_utc, updated_utc
             FROM indexer_sources
             ORDER BY priority ASC, name ASC;
@@ -1770,8 +1771,11 @@ public sealed class SqlitePlatformSettingsRepository(
                 LastHealthFailureCategory: reader.IsDBNull(13) ? null : reader.GetString(13),
                 LastHealthLatencyMs: reader.IsDBNull(14) ? null : reader.GetInt32(14),
                 LastHealthTestUtc: reader.IsDBNull(15) ? null : ParseTimestamp(reader.GetString(15)),
-                CreatedUtc: ParseTimestamp(reader.GetString(16)),
-                UpdatedUtc: ParseTimestamp(reader.GetString(17))));
+                ConsecutiveFailures: reader.IsDBNull(16) ? 0 : reader.GetInt32(16),
+                RateLimitedUntilUtc: reader.IsDBNull(17) ? null : ParseTimestamp(reader.GetString(17)),
+                DisabledReason: reader.IsDBNull(18) ? null : reader.GetString(18),
+                CreatedUtc: ParseTimestamp(reader.GetString(19)),
+                UpdatedUtc: ParseTimestamp(reader.GetString(20))));
         }
 
         return items;
@@ -1892,6 +1896,9 @@ public sealed class SqlitePlatformSettingsRepository(
             LastHealthFailureCategory: null,
             LastHealthLatencyMs: null,
             LastHealthTestUtc: null,
+            ConsecutiveFailures: 0,
+            RateLimitedUntilUtc: null,
+            DisabledReason: null,
             CreatedUtc: now,
             UpdatedUtc: now);
 
@@ -2211,10 +2218,34 @@ public sealed class SqlitePlatformSettingsRepository(
         CancellationToken cancellationToken)
     {
         var now = timeProvider.GetUtcNow();
+        var isFailure = healthStatus is "degraded" or "failing" or "timeout" or "unreachable";
+        var isRateLimit = failureCategory is "rateLimit" or "rateLimited" or "rate_limit";
 
         await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
             DelunoDatabaseNames.Platform,
             cancellationToken);
+
+        // Read current consecutive_failures so we can increment
+        int currentFailures = 0;
+        using (var read = connection.CreateCommand())
+        {
+            read.CommandText = "SELECT consecutive_failures FROM indexer_sources WHERE id = @id;";
+            AddParameter(read, "@id", id);
+            var scalar = await read.ExecuteScalarAsync(cancellationToken);
+            if (scalar is null) return null;
+            currentFailures = Convert.ToInt32(scalar);
+        }
+
+        var newFailures = isFailure ? currentFailures + 1 : 0;
+        DateTimeOffset? rateLimitedUntil = null;
+        if (isRateLimit)
+        {
+            rateLimitedUntil = now.AddMinutes(60);
+        }
+        else if (isFailure && newFailures >= 5)
+        {
+            rateLimitedUntil = now.AddMinutes(30);
+        }
 
         using var command = connection.CreateCommand();
         command.CommandText =
@@ -2226,6 +2257,8 @@ public sealed class SqlitePlatformSettingsRepository(
                 last_health_failure_category = @lastHealthFailureCategory,
                 last_health_latency_ms = @lastHealthLatencyMs,
                 last_health_test_utc = @lastHealthTestUtc,
+                consecutive_failures = @consecutiveFailures,
+                rate_limited_until_utc = @rateLimitedUntilUtc,
                 updated_utc = @updatedUtc
             WHERE id = @id;
             """;
@@ -2236,6 +2269,8 @@ public sealed class SqlitePlatformSettingsRepository(
         AddParameter(command, "@lastHealthFailureCategory", failureCategory);
         AddParameter(command, "@lastHealthLatencyMs", latencyMs);
         AddParameter(command, "@lastHealthTestUtc", now.ToString("O"));
+        AddParameter(command, "@consecutiveFailures", newFailures);
+        AddParameter(command, "@rateLimitedUntilUtc", rateLimitedUntil?.ToString("O"));
         AddParameter(command, "@updatedUtc", now.ToString("O"));
 
         if (await command.ExecuteNonQueryAsync(cancellationToken) == 0)
@@ -2250,6 +2285,38 @@ public sealed class SqlitePlatformSettingsRepository(
             FailureCategory: failureCategory,
             LatencyMs: latencyMs,
             TestedUtc: now);
+    }
+
+    public async Task<IndexerItem?> ResetIndexerCircuitAsync(string id, CancellationToken cancellationToken)
+    {
+        var now = timeProvider.GetUtcNow();
+
+        await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
+            DelunoDatabaseNames.Platform,
+            cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            UPDATE indexer_sources
+            SET
+                consecutive_failures = 0,
+                rate_limited_until_utc = NULL,
+                health_status = CASE WHEN is_enabled = 1 THEN 'untested' ELSE 'disabled' END,
+                last_health_message = 'Circuit reset manually.',
+                updated_utc = @updatedUtc
+            WHERE id = @id;
+            """;
+        AddParameter(command, "@id", id);
+        AddParameter(command, "@updatedUtc", now.ToString("O"));
+
+        if (await command.ExecuteNonQueryAsync(cancellationToken) == 0)
+        {
+            return null;
+        }
+
+        var items = await ListIndexersAsync(cancellationToken);
+        return items.FirstOrDefault(i => i.Id == id);
     }
 
     public async Task<IndexerTestResult?> UpdateDownloadClientHealthAsync(

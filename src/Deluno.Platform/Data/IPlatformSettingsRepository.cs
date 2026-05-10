@@ -190,6 +190,8 @@ public interface IPlatformSettingsRepository
         int? latencyMs,
         CancellationToken cancellationToken);
 
+    Task<IndexerItem?> ResetIndexerCircuitAsync(string id, CancellationToken cancellationToken);
+
     Task<IndexerTestResult?> UpdateDownloadClientHealthAsync(
         string id,
         string healthStatus,
