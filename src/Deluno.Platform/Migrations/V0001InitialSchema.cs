@@ -11,7 +11,8 @@ public static class PlatformDatabaseMigrations
         new V0003IntegrationHealth(),
         new V0004QualityProfileReplacementProtection(),
         new V0005QualityProfilePresetTracking(),
-        new V0006IndexerRateLimitTracking()
+        new V0006IndexerRateLimitTracking(),
+        new V0007LibrarySearchWindows()
     ];
 
     private sealed class V0001InitialSchema : SqliteSqlMigration

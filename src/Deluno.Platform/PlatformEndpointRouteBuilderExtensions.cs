@@ -1668,7 +1668,9 @@ public static class PlatformEndpointRouteBuilderExtensions
                     UpgradeSearchEnabled: library.UpgradeSearchEnabled,
                     SearchIntervalHours: library.SearchIntervalHours,
                     RetryDelayHours: library.RetryDelayHours,
-                    MaxItemsPerRun: library.MaxItemsPerRun), cancellationToken);
+                    MaxItemsPerRun: library.MaxItemsPerRun,
+                    SearchWindowStartHour: library.SearchWindowStartHour,
+                    SearchWindowEndHour: library.SearchWindowEndHour), cancellationToken);
             }
 
             await activityFeed.RecordActivityAsync(
@@ -2655,7 +2657,9 @@ public static class PlatformEndpointRouteBuilderExtensions
             UpgradeSearchEnabled: library.UpgradeSearchEnabled,
             SearchIntervalHours: library.SearchIntervalHours,
             RetryDelayHours: library.RetryDelayHours,
-            MaxItemsPerRun: library.MaxItemsPerRun);
+            MaxItemsPerRun: library.MaxItemsPerRun,
+            SearchWindowStartHour: library.SearchWindowStartHour,
+            SearchWindowEndHour: library.SearchWindowEndHour);
     }
 
     private static DestinationResolutionResult ResolveDestination(

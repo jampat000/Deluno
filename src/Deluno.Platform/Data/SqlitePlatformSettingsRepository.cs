@@ -140,7 +140,8 @@ public sealed class SqlitePlatformSettingsRepository(
                 l.quality_profile_id, q.name, q.cutoff_quality, q.upgrade_until_cutoff, q.upgrade_unknown_items,
                 l.import_workflow, l.processor_name, l.processor_output_path, l.processor_timeout_minutes, l.processor_failure_mode,
                 l.auto_search_enabled, l.missing_search_enabled, l.upgrade_search_enabled, l.search_interval_hours,
-                l.retry_delay_hours, l.max_items_per_run, l.created_utc, l.updated_utc
+                l.retry_delay_hours, l.max_items_per_run, l.search_window_start_hour, l.search_window_end_hour,
+                l.created_utc, l.updated_utc
             FROM libraries l
             LEFT JOIN quality_profiles q ON q.id = l.quality_profile_id
             ORDER BY l.media_type ASC, l.name ASC;
@@ -1494,6 +1495,8 @@ public sealed class SqlitePlatformSettingsRepository(
             SearchIntervalHours: NormalizePositiveValue(request.SearchIntervalHours, 6),
             RetryDelayHours: NormalizePositiveValue(request.RetryDelayHours, 24),
             MaxItemsPerRun: NormalizePositiveValue(request.MaxItemsPerRun, 25),
+            SearchWindowStartHour: null,
+            SearchWindowEndHour: null,
             AutomationStatus: "idle",
             SearchRequested: false,
             LastSearchedUtc: null,
@@ -1523,14 +1526,18 @@ public sealed class SqlitePlatformSettingsRepository(
                 import_workflow, processor_name, processor_output_path, processor_timeout_minutes, processor_failure_mode,
                 auto_search_enabled,
                 missing_search_enabled, upgrade_search_enabled, search_interval_hours,
-                retry_delay_hours, max_items_per_run, created_utc, updated_utc
+                retry_delay_hours, max_items_per_run,
+                search_window_start_hour, search_window_end_hour,
+                created_utc, updated_utc
             )
             VALUES (
                 @id, @name, @mediaType, @purpose, @rootPath, @downloadsPath, @qualityProfileId,
                 @importWorkflow, @processorName, @processorOutputPath, @processorTimeoutMinutes, @processorFailureMode,
                 @autoSearchEnabled,
                 @missingSearchEnabled, @upgradeSearchEnabled, @searchIntervalHours,
-                @retryDelayHours, @maxItemsPerRun, @createdUtc, @updatedUtc
+                @retryDelayHours, @maxItemsPerRun,
+                @searchWindowStartHour, @searchWindowEndHour,
+                @createdUtc, @updatedUtc
             );
             """;
 
@@ -1552,6 +1559,8 @@ public sealed class SqlitePlatformSettingsRepository(
         AddParameter(command, "@searchIntervalHours", item.SearchIntervalHours);
         AddParameter(command, "@retryDelayHours", item.RetryDelayHours);
         AddParameter(command, "@maxItemsPerRun", item.MaxItemsPerRun);
+        AddParameter(command, "@searchWindowStartHour", item.SearchWindowStartHour);
+        AddParameter(command, "@searchWindowEndHour", item.SearchWindowEndHour);
         AddParameter(command, "@createdUtc", item.CreatedUtc.ToString("O"));
         AddParameter(command, "@updatedUtc", item.UpdatedUtc.ToString("O"));
         await command.ExecuteNonQueryAsync(cancellationToken);
@@ -1589,6 +1598,8 @@ public sealed class SqlitePlatformSettingsRepository(
                     search_interval_hours = @searchIntervalHours,
                     retry_delay_hours = @retryDelayHours,
                     max_items_per_run = @maxItemsPerRun,
+                    search_window_start_hour = @searchWindowStartHour,
+                    search_window_end_hour = @searchWindowEndHour,
                     updated_utc = @updatedUtc
                 WHERE id = @id;
                 """;
@@ -1600,6 +1611,8 @@ public sealed class SqlitePlatformSettingsRepository(
             AddParameter(command, "@searchIntervalHours", NormalizePositiveValue(request.SearchIntervalHours, 6));
             AddParameter(command, "@retryDelayHours", NormalizePositiveValue(request.RetryDelayHours, 24));
             AddParameter(command, "@maxItemsPerRun", NormalizePositiveValue(request.MaxItemsPerRun, 25));
+            AddParameter(command, "@searchWindowStartHour", NormalizeSearchWindowHour(request.SearchWindowStartHour));
+            AddParameter(command, "@searchWindowEndHour", NormalizeSearchWindowHour(request.SearchWindowEndHour));
             AddParameter(command, "@updatedUtc", now.ToString("O"));
 
             if (await command.ExecuteNonQueryAsync(cancellationToken) == 0)
@@ -2799,6 +2812,8 @@ public sealed class SqlitePlatformSettingsRepository(
                 SearchIntervalHours: 6,
                 RetryDelayHours: 24,
                 MaxItemsPerRun: 25,
+                SearchWindowStartHour: null,
+                SearchWindowEndHour: null,
                 AutomationStatus: "idle",
                 SearchRequested: false,
                 LastSearchedUtc: null,
@@ -2833,6 +2848,8 @@ public sealed class SqlitePlatformSettingsRepository(
                 SearchIntervalHours: 6,
                 RetryDelayHours: 24,
                 MaxItemsPerRun: 25,
+                SearchWindowStartHour: null,
+                SearchWindowEndHour: null,
                 AutomationStatus: "idle",
                 SearchRequested: false,
                 LastSearchedUtc: null,
@@ -2851,14 +2868,18 @@ public sealed class SqlitePlatformSettingsRepository(
                     import_workflow, processor_name, processor_output_path, processor_timeout_minutes, processor_failure_mode,
                     auto_search_enabled,
                     missing_search_enabled, upgrade_search_enabled, search_interval_hours,
-                    retry_delay_hours, max_items_per_run, created_utc, updated_utc
+                    retry_delay_hours, max_items_per_run,
+                    search_window_start_hour, search_window_end_hour,
+                    created_utc, updated_utc
                 )
                 VALUES (
                     @id, @name, @mediaType, @purpose, @rootPath, @downloadsPath, @qualityProfileId,
                     @importWorkflow, @processorName, @processorOutputPath, @processorTimeoutMinutes, @processorFailureMode,
                     @autoSearchEnabled,
                     @missingSearchEnabled, @upgradeSearchEnabled, @searchIntervalHours,
-                    @retryDelayHours, @maxItemsPerRun, @createdUtc, @updatedUtc
+                    @retryDelayHours, @maxItemsPerRun,
+                    @searchWindowStartHour, @searchWindowEndHour,
+                    @createdUtc, @updatedUtc
                 );
                 """;
 
@@ -2880,6 +2901,8 @@ public sealed class SqlitePlatformSettingsRepository(
             AddParameter(command, "@searchIntervalHours", item.SearchIntervalHours);
             AddParameter(command, "@retryDelayHours", item.RetryDelayHours);
             AddParameter(command, "@maxItemsPerRun", item.MaxItemsPerRun);
+            AddParameter(command, "@searchWindowStartHour", item.SearchWindowStartHour);
+            AddParameter(command, "@searchWindowEndHour", item.SearchWindowEndHour);
             AddParameter(command, "@createdUtc", item.CreatedUtc.ToString("O"));
             AddParameter(command, "@updatedUtc", item.UpdatedUtc.ToString("O"));
             await command.ExecuteNonQueryAsync(cancellationToken);
@@ -2899,7 +2922,8 @@ public sealed class SqlitePlatformSettingsRepository(
                 l.quality_profile_id, q.name, q.cutoff_quality, q.upgrade_until_cutoff, q.upgrade_unknown_items,
                 l.import_workflow, l.processor_name, l.processor_output_path, l.processor_timeout_minutes, l.processor_failure_mode,
                 l.auto_search_enabled, l.missing_search_enabled, l.upgrade_search_enabled, l.search_interval_hours,
-                l.retry_delay_hours, l.max_items_per_run, l.created_utc, l.updated_utc
+                l.retry_delay_hours, l.max_items_per_run, l.search_window_start_hour, l.search_window_end_hour,
+                l.created_utc, l.updated_utc
             FROM libraries l
             LEFT JOIN quality_profiles q ON q.id = l.quality_profile_id
             WHERE l.id = @id
@@ -3533,6 +3557,9 @@ public sealed class SqlitePlatformSettingsRepository(
         }
     }
 
+    private static int? NormalizeSearchWindowHour(int? value)
+        => value is null ? null : Math.Clamp(value.Value, 0, 23);
+
     private static string NormalizeTagColor(string? value)
     {
         var normalized = value?.Trim().ToLowerInvariant();
@@ -3685,12 +3712,14 @@ public sealed class SqlitePlatformSettingsRepository(
             SearchIntervalHours: reader.GetInt32(19),
             RetryDelayHours: reader.GetInt32(20),
             MaxItemsPerRun: reader.GetInt32(21),
+            SearchWindowStartHour: reader.IsDBNull(22) ? null : reader.GetInt32(22),
+            SearchWindowEndHour: reader.IsDBNull(23) ? null : reader.GetInt32(23),
             AutomationStatus: "idle",
             SearchRequested: false,
             LastSearchedUtc: null,
             NextSearchUtc: null,
-            CreatedUtc: ParseTimestamp(reader.GetString(22)),
-            UpdatedUtc: ParseTimestamp(reader.GetString(23)));
+            CreatedUtc: ParseTimestamp(reader.GetString(24)),
+            UpdatedUtc: ParseTimestamp(reader.GetString(25)));
     }
 
     private static QualityProfileItem ReadQualityProfile(System.Data.Common.DbDataReader reader)

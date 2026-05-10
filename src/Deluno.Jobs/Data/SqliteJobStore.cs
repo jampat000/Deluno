@@ -880,6 +880,35 @@ public sealed class SqliteJobStore(
             var dueForScheduledSearch = library.AutoSearchEnabled &&
                 (state.NextSearchUtc is null || state.NextSearchUtc <= now);
 
+            // Respect time-of-day search window (manual requests bypass the window)
+            if (dueForScheduledSearch && !state.SearchRequested &&
+                library.SearchWindowStartHour.HasValue && library.SearchWindowEndHour.HasValue)
+            {
+                var currentHour = now.Hour;
+                var windowStart = library.SearchWindowStartHour.Value;
+                var windowEnd = library.SearchWindowEndHour.Value;
+                var inWindow = windowStart <= windowEnd
+                    ? currentHour >= windowStart && currentHour < windowEnd
+                    : currentHour >= windowStart || currentHour < windowEnd; // wraps midnight
+
+                if (!inWindow)
+                {
+                    // Advance next_search_utc to the next window opening
+                    var hoursUntilWindow = windowStart > currentHour
+                        ? windowStart - currentHour
+                        : 24 - currentHour + windowStart;
+                    var nextWindowOpen = now.AddHours(hoursUntilWindow);
+
+                    await UpdateAutomationIdleAsync(
+                        connection, transaction,
+                        library.LibraryId, library.LibraryName, library.MediaType,
+                        "idle", nextSearchUtc: nextWindowOpen, searchRequested: false,
+                        updatedUtc: now, cancellationToken);
+
+                    continue;
+                }
+            }
+
             var shouldQueue = state.SearchRequested || dueForScheduledSearch;
             if (!shouldQueue)
             {
