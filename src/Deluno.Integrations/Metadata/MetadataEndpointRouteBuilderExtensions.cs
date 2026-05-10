@@ -80,6 +80,23 @@ public static class MetadataEndpointRouteBuilderExtensions
                 results.Take(5).ToArray()));
         });
 
+        metadata.MapDelete("/cache", async (
+            HttpContext httpContext,
+            string? mediaType,
+            TmdbMetadataProvider provider,
+            IPlatformSettingsRepository platformRepository,
+            CancellationToken cancellationToken) =>
+        {
+            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, platformRepository, cancellationToken);
+            if (denied is not null)
+            {
+                return denied;
+            }
+
+            await provider.InvalidateCacheAsync(mediaType, cancellationToken);
+            return Results.Ok(new { cleared = true, mediaType = mediaType ?? "all" });
+        });
+
         var broker = metadata.MapGroup("/broker");
 
         broker.MapGet("/status", async (
