@@ -45,6 +45,11 @@ public interface IJobQueueRepository
         IReadOnlyList<LibraryAutomationPlanItem> libraries,
         CancellationToken cancellationToken);
 
+    Task PlanEpisodeSearchesAsync(
+        string libraryId,
+        IReadOnlyList<EpisodeSearchPlanItem> episodes,
+        CancellationToken cancellationToken);
+
     Task<string> RecordDownloadDispatchAsync(
         string libraryId,
         string mediaType,

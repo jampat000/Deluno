@@ -646,6 +646,100 @@ public sealed class DelunoHeartbeatWorker(
             return "Finished checking a library.";
         }
 
+        if (job.JobType == "episode.search")
+        {
+            var payload = ParseEpisodeSearchPayload(job.PayloadJson);
+            if (payload is not null && !string.IsNullOrWhiteSpace(payload.EpisodeId))
+            {
+                var now = timeProvider.GetUtcNow();
+                var routing = await platformSettingsRepository.GetLibraryRoutingAsync(payload.LibraryId, cancellationToken);
+                var libraries = await platformSettingsRepository.ListLibrariesAsync(cancellationToken);
+                var library = libraries.FirstOrDefault(item => item.Id == payload.LibraryId);
+                var customFormats = await ResolveCustomFormatsAsync(
+                    platformSettingsRepository,
+                    library?.QualityProfileId,
+                    cancellationToken);
+                var targetQuality = await seriesCatalogRepository.GetEpisodeTargetQualityAsync(
+                    payload.EpisodeId,
+                    payload.LibraryId,
+                    cancellationToken);
+                var currentQuality = await seriesCatalogRepository.GetEpisodeCurrentQualityAsync(
+                    payload.EpisodeId,
+                    cancellationToken);
+
+                var decisionPlan = await acquisitionPipeline.PlanAsync(
+                    new AcquisitionDecisionRequest(
+                        Title: payload.Title,
+                        Year: null,
+                        MediaType: "tv",
+                        CurrentQuality: currentQuality,
+                        TargetQuality: targetQuality,
+                        Sources: routing?.Sources ?? [],
+                        DownloadClients: routing?.DownloadClients ?? [],
+                        CustomFormats: customFormats,
+                        SeasonNumber: payload.SeasonNumber,
+                        EpisodeNumber: payload.EpisodeNumber),
+                    cancellationToken);
+
+                var searchPlan = decisionPlan.SearchPlan;
+                var bestCandidate = searchPlan.BestCandidate;
+                var outcome = decisionPlan.Outcome;
+
+                if (decisionPlan.ShouldDispatch && decisionPlan.SelectedDownloadClient is not null && decisionPlan.DispatchRequest is not null)
+                {
+                    var downloadClient = decisionPlan.SelectedDownloadClient;
+                    var grabResult = await GrabBestCandidateAsync(
+                        downloadClientGrabService,
+                        downloadClient.DownloadClientId,
+                        bestCandidate!,
+                        decisionPlan.DispatchRequest,
+                        cancellationToken);
+
+                    await jobQueueRepository.RecordDownloadDispatchAsync(
+                        payload.LibraryId,
+                        "tv",
+                        "episode",
+                        payload.EpisodeId,
+                        bestCandidate!.ReleaseName,
+                        bestCandidate.IndexerName,
+                        downloadClient.DownloadClientId,
+                        downloadClient.DownloadClientName,
+                        grabResult.Status,
+                        SerializeSearchPlan(searchPlan, grabResult),
+                        grabResponseCode: grabResult.Succeeded ? 200 : 400,
+                        grabFailureCode: null,
+                        cancellationToken: cancellationToken);
+                }
+
+                await seriesCatalogRepository.RecordSearchAttemptAsync(
+                    payload.SeriesId,
+                    payload.EpisodeId,
+                    payload.LibraryId,
+                    "automatic",
+                    outcome,
+                    now,
+                    now.AddDays(1),
+                    decisionPlan.SearchResult,
+                    bestCandidate?.ReleaseName,
+                    bestCandidate?.IndexerName,
+                    SerializeSearchPlan(searchPlan),
+                    cancellationToken);
+
+                await activityFeedRepository.RecordActivityAsync(
+                    "episode.search.executed",
+                    $"Episode search executed: S{payload.SeasonNumber:D2}E{payload.EpisodeNumber:D2} - {outcome}",
+                    null,
+                    job.Id,
+                    "episode",
+                    payload.EpisodeId,
+                    cancellationToken);
+
+                return $"Finished searching for episode S{payload.SeasonNumber:D2}E{payload.EpisodeNumber:D2}.";
+            }
+
+            return "Finished searching for episode.";
+        }
+
         return job.JobType switch
         {
             "movies.metadata.refresh" => await RefreshMovieMetadataAsync(job, metadataProvider, movieCatalogRepository, activityFeedRepository, cancellationToken),
@@ -1221,6 +1315,18 @@ public sealed class DelunoHeartbeatWorker(
         }
     }
 
+    private static EpisodeSearchPayload? ParseEpisodeSearchPayload(string? payloadJson)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<EpisodeSearchPayload>(payloadJson ?? "{}", PayloadJsonOptions);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static LibraryItem? ResolveLibraryForQueueItem(DownloadQueueItem item, IReadOnlyList<LibraryItem> libraries)
     {
         var normalizedMediaType = item.MediaType.Equals("tv", StringComparison.OrdinalIgnoreCase) ||
@@ -1349,6 +1455,14 @@ public sealed class DelunoHeartbeatWorker(
         string? CutoffQuality,
         bool UpgradeUntilCutoff,
         bool UpgradeUnknownItems);
+
+    private sealed record EpisodeSearchPayload(
+        string EpisodeId,
+        string SeriesId,
+        string LibraryId,
+        int SeasonNumber,
+        int EpisodeNumber,
+        string Title);
 
     private sealed record ProcessingWaitDetails(
         string? LibraryId,

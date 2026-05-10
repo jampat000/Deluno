@@ -1063,15 +1063,109 @@ public sealed class SqliteJobStore(
 
     public async Task PlanEpisodeSearchesAsync(
         string libraryId,
+        IReadOnlyList<EpisodeSearchPlanItem> episodes,
         CancellationToken cancellationToken)
     {
-        // TODO: Phase 3 - Implement episode-level search scheduling
-        // This should:
-        // 1. Query eligible episodes using repository.ListEligibleWantedEpisodesAsync
-        // 2. Create episode.search jobs for each episode
-        // 3. Track in job queue with episode-level deduplication
-        // For now, this is a placeholder to establish the method signature
-        await Task.CompletedTask;
+        if (episodes.Count == 0)
+        {
+            return;
+        }
+
+        var now = timeProvider.GetUtcNow();
+
+        await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
+            DelunoDatabaseNames.Jobs,
+            cancellationToken);
+
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+        foreach (var episode in episodes)
+        {
+            var payload = JsonSerializer.Serialize(new
+            {
+                episodeId = episode.EpisodeId,
+                seriesId = episode.SeriesId,
+                libraryId,
+                seasonNumber = episode.SeasonNumber,
+                episodeNumber = episode.EpisodeNumber,
+                title = episode.Title
+            });
+            var idempotencyKey = $"episode.search:{episode.EpisodeId}:schedule";
+            var dedupeKey = $"episode.search:{episode.EpisodeId}";
+
+            var job = new JobQueueItem(
+                Id: Guid.CreateVersion7().ToString("N"),
+                JobType: "episode.search",
+                Source: "series",
+                Status: "queued",
+                PayloadJson: payload,
+                Attempts: 0,
+                CreatedUtc: now,
+                ScheduledUtc: now,
+                StartedUtc: null,
+                CompletedUtc: null,
+                LeasedUntilUtc: null,
+                WorkerId: null,
+                LastError: null,
+                RelatedEntityType: "episode",
+                RelatedEntityId: episode.EpisodeId,
+                IdempotencyKey: idempotencyKey,
+                DedupeKey: dedupeKey,
+                MaxAttempts: DefaultMaxAttempts,
+                LastAttemptUtc: null,
+                NextAttemptUtc: now);
+
+            var duplicate = await FindDuplicateActiveJobAsync(
+                connection,
+                transaction,
+                idempotencyKey,
+                dedupeKey,
+                cancellationToken);
+            if (duplicate is not null)
+            {
+                continue;
+            }
+
+            await InsertJobAsync(connection, transaction, job, cancellationToken);
+
+            var nextEligibleSearchUtc = now.AddDays(1);
+            using (var update = connection.CreateCommand())
+            {
+                update.Transaction = transaction;
+                update.CommandText =
+                    """
+                    UPDATE episode_wanted_state
+                    SET
+                        last_search_utc = @lastSearchUtc,
+                        next_eligible_search_utc = @nextEligibleSearchUtc,
+                        updated_utc = @updatedUtc
+                    WHERE episode_id = @episodeId AND library_id = @libraryId;
+                    """;
+
+                AddParameter(update, "@episodeId", episode.EpisodeId);
+                AddParameter(update, "@libraryId", libraryId);
+                AddParameter(update, "@lastSearchUtc", now.ToString("O"));
+                AddParameter(update, "@nextEligibleSearchUtc", nextEligibleSearchUtc.ToString("O"));
+                AddParameter(update, "@updatedUtc", now.ToString("O"));
+                await update.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await InsertActivityAsync(
+                connection,
+                transaction,
+                category: "job.queued",
+                message: $"Episode search scheduled: S{episode.SeasonNumber:D2}E{episode.EpisodeNumber:D2} - {episode.Title}",
+                detailsJson: payload,
+                relatedJobId: job.Id,
+                relatedEntityType: job.RelatedEntityType,
+                relatedEntityId: job.RelatedEntityId,
+                createdUtc: now,
+                cancellationToken: cancellationToken);
+
+            DelunoObservability.JobsQueued.Add(1, new("job.type", "episode.search"), new("source", "series"));
+        }
+
+        await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task<string> RecordDownloadDispatchAsync(
