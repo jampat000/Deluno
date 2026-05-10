@@ -114,4 +114,20 @@ public interface ISeriesCatalogRepository
         CancellationToken cancellationToken);
 
     Task<bool> DeleteImportRecoveryCaseAsync(string id, CancellationToken cancellationToken);
+
+    Task<SeriesWantedItem?> GetSeriesWantedStateAsync(
+        string seriesId,
+        string libraryId,
+        CancellationToken cancellationToken);
+
+    Task<bool> UpdateSeriesReplacementPolicyAsync(
+        string seriesId,
+        string libraryId,
+        bool preventLowerQualityReplacements,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<SeriesEpisodeInventoryItem>> ListMonitoredMissingEpisodesAsync(
+        string seriesId,
+        string libraryId,
+        CancellationToken cancellationToken);
 }
