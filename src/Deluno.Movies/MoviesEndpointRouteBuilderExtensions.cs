@@ -880,6 +880,88 @@ public static class MoviesEndpointRouteBuilderExtensions
             return Results.Ok(duplicates);
         });
 
+        movies.MapPost("/bulk/search", async (
+            HttpContext httpContext,
+            BulkSearchRequest request,
+            IMovieCatalogRepository repository,
+            IPlatformSettingsRepository platformSettingsRepository,
+            IJobQueueRepository jobQueueRepository,
+            CancellationToken cancellationToken) =>
+        {
+            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, platformSettingsRepository, cancellationToken);
+            if (denied is not null)
+            {
+                return denied;
+            }
+
+            if (request.MovieIds is not { Count: > 0 })
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["movieIds"] = ["Choose at least one movie to search for."]
+                });
+            }
+
+            var wanted = await repository.GetWantedSummaryAsync(cancellationToken);
+            var libraryIds = wanted.RecentItems
+                .Where(item => request.MovieIds.Contains(item.MovieId, StringComparer.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(item.LibraryId))
+                .Select(item => item.LibraryId!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            var libraries = await platformSettingsRepository.ListLibrariesAsync(cancellationToken);
+            var triggered = 0;
+            foreach (var libraryId in libraryIds)
+            {
+                var library = libraries.FirstOrDefault(l => string.Equals(l.Id, libraryId, StringComparison.OrdinalIgnoreCase));
+                if (library is null)
+                {
+                    continue;
+                }
+
+                await jobQueueRepository.RequestLibrarySearchAsync(new LibraryAutomationPlanItem(
+                    LibraryId: library.Id,
+                    LibraryName: library.Name,
+                    MediaType: library.MediaType,
+                    AutoSearchEnabled: library.AutoSearchEnabled,
+                    MissingSearchEnabled: library.MissingSearchEnabled,
+                    UpgradeSearchEnabled: library.UpgradeSearchEnabled,
+                    SearchIntervalHours: library.SearchIntervalHours,
+                    RetryDelayHours: library.RetryDelayHours,
+                    MaxItemsPerRun: library.MaxItemsPerRun,
+                    SearchWindowStartHour: library.SearchWindowStartHour,
+                    SearchWindowEndHour: library.SearchWindowEndHour), cancellationToken);
+                triggered++;
+            }
+
+            return Results.Ok(new { searchesTriggered = triggered, libraryCount = libraryIds.Length });
+        });
+
+        movies.MapDelete("/bulk", async (
+            HttpContext httpContext,
+            BulkDeleteMoviesRequest request,
+            IMovieCatalogRepository repository,
+            IPlatformSettingsRepository platformSettingsRepository,
+            CancellationToken cancellationToken) =>
+        {
+            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, platformSettingsRepository, cancellationToken);
+            if (denied is not null)
+            {
+                return denied;
+            }
+
+            if (request.MovieIds is not { Count: > 0 })
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["movieIds"] = ["Choose at least one movie to remove."]
+                });
+            }
+
+            var removed = await repository.UpdateMonitoredAsync(request.MovieIds, false, cancellationToken);
+            return Results.Ok(new { unmonitored = removed });
+        });
+
         movies.MapPost("/bulk/reassign-library", async (
             HttpContext httpContext,
             BulkReassignLibraryRequest request,
@@ -1050,4 +1132,8 @@ public static class MoviesEndpointRouteBuilderExtensions
         IReadOnlyList<string>? MovieIds,
         string? FromLibraryId,
         string? ToLibraryId);
+
+    private sealed record BulkSearchRequest(IReadOnlyList<string>? MovieIds);
+
+    private sealed record BulkDeleteMoviesRequest(IReadOnlyList<string>? MovieIds);
 }
