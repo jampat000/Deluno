@@ -1075,6 +1075,43 @@ public static class PlatformEndpointRouteBuilderExtensions
             return removed ? Results.NoContent() : Results.NotFound();
         });
 
+        libraries.MapGet("export", async (
+            HttpContext httpContext,
+            IPlatformSettingsRepository repository,
+            CancellationToken cancellationToken) =>
+        {
+            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, repository, cancellationToken);
+            if (denied is not null)
+            {
+                return denied;
+            }
+
+            var items = await repository.ListLibrariesAsync(cancellationToken);
+            var export = items.Select(lib => new
+            {
+                lib.Name,
+                lib.MediaType,
+                lib.Purpose,
+                lib.RootPath,
+                lib.DownloadsPath,
+                lib.QualityProfileId,
+                lib.ImportWorkflow,
+                lib.ProcessorName,
+                lib.ProcessorOutputPath,
+                lib.ProcessorTimeoutMinutes,
+                lib.ProcessorFailureMode,
+                lib.AutoSearchEnabled,
+                lib.MissingSearchEnabled,
+                lib.UpgradeSearchEnabled,
+                lib.SearchIntervalHours,
+                lib.RetryDelayHours,
+                lib.MaxItemsPerRun,
+                lib.SearchWindowStartHour,
+                lib.SearchWindowEndHour
+            });
+            return Results.Ok(new { exportedAt = DateTimeOffset.UtcNow, libraries = export });
+        });
+
         var connections = endpoints.MapGroup("/api/connections");
 
         var indexers = endpoints.MapGroup("/api/indexers");

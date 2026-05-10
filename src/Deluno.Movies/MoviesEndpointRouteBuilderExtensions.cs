@@ -871,6 +871,49 @@ public static class MoviesEndpointRouteBuilderExtensions
             return Results.Created($"/api/movies/{movie.Id}", movie);
         });
 
+        movies.MapGet("/duplicates", async (
+            IMovieCatalogRepository repository,
+            CancellationToken cancellationToken) =>
+        {
+            var duplicates = await repository.FindCrossLibraryDuplicatesAsync(cancellationToken);
+            return Results.Ok(duplicates);
+        });
+
+        movies.MapPost("/bulk/reassign-library", async (
+            HttpContext httpContext,
+            BulkReassignLibraryRequest request,
+            IMovieCatalogRepository repository,
+            IPlatformSettingsRepository platformSettingsRepository,
+            CancellationToken cancellationToken) =>
+        {
+            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, platformSettingsRepository, cancellationToken);
+            if (denied is not null)
+            {
+                return denied;
+            }
+
+            if (request.MovieIds is null || request.MovieIds.Count == 0)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["movieIds"] = ["At least one movie ID is required."]
+                });
+            }
+
+            if (string.IsNullOrWhiteSpace(request.FromLibraryId) || string.IsNullOrWhiteSpace(request.ToLibraryId))
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["libraryId"] = ["Both fromLibraryId and toLibraryId are required."]
+                });
+            }
+
+            var count = await repository.ReassignLibraryAsync(
+                request.MovieIds, request.FromLibraryId, request.ToLibraryId, cancellationToken);
+
+            return Results.Ok(new { reassigned = count });
+        });
+
         return endpoints;
     }
 
@@ -1001,4 +1044,9 @@ public static class MoviesEndpointRouteBuilderExtensions
 
     private sealed record EvaluateCandidateRequest(
         string CandidateQuality);
+
+    private sealed record BulkReassignLibraryRequest(
+        IReadOnlyList<string>? MovieIds,
+        string? FromLibraryId,
+        string? ToLibraryId);
 }

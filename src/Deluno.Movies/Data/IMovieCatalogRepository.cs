@@ -128,4 +128,8 @@ public interface IMovieCatalogRepository
         string libraryId,
         int? qualityDelta,
         CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<CrossLibraryDuplicateItem>> FindCrossLibraryDuplicatesAsync(CancellationToken cancellationToken);
+
+    Task<int> ReassignLibraryAsync(IReadOnlyList<string> movieIds, string fromLibraryId, string toLibraryId, CancellationToken cancellationToken);
 }

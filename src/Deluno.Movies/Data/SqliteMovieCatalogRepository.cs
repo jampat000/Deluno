@@ -1479,6 +1479,99 @@ public sealed class SqliteMovieCatalogRepository(
         };
     }
 
+    public async Task<IReadOnlyList<CrossLibraryDuplicateItem>> FindCrossLibraryDuplicatesAsync(CancellationToken cancellationToken)
+    {
+        await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
+            DelunoDatabaseNames.Movies,
+            cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            SELECT
+                m.id, m.title, m.release_year, m.imdb_id,
+                w.library_id, w.wanted_status, w.has_file, w.current_quality
+            FROM movies m
+            JOIN movie_wanted_state w ON w.movie_id = m.id
+            WHERE m.id IN (
+                SELECT movie_id
+                FROM movie_wanted_state
+                GROUP BY movie_id
+                HAVING COUNT(DISTINCT library_id) > 1
+            )
+            ORDER BY m.title ASC, m.id ASC, w.library_id ASC;
+            """;
+
+        var byMovieId = new Dictionary<string, (string Title, int? Year, string? ImdbId, List<DuplicateLibraryEntry> Entries)>();
+
+        using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            var movieId = reader.GetString(0);
+            var libraryEntry = new DuplicateLibraryEntry(
+                LibraryId: reader.GetString(4),
+                LibraryName: reader.GetString(4),
+                WantedStatus: reader.GetString(5),
+                HasFile: reader.GetInt64(6) == 1,
+                CurrentQuality: reader.IsDBNull(7) ? null : reader.GetString(7));
+
+            if (!byMovieId.TryGetValue(movieId, out var existing))
+            {
+                byMovieId[movieId] = (
+                    Title: reader.GetString(1),
+                    Year: reader.IsDBNull(2) ? null : reader.GetInt32(2),
+                    ImdbId: reader.IsDBNull(3) ? null : reader.GetString(3),
+                    Entries: [libraryEntry]);
+            }
+            else
+            {
+                existing.Entries.Add(libraryEntry);
+            }
+        }
+
+        return byMovieId.Select(kvp => new CrossLibraryDuplicateItem(
+            MovieId: kvp.Key,
+            Title: kvp.Value.Title,
+            ReleaseYear: kvp.Value.Year,
+            ImdbId: kvp.Value.ImdbId,
+            Libraries: kvp.Value.Entries)).ToArray();
+    }
+
+    public async Task<int> ReassignLibraryAsync(
+        IReadOnlyList<string> movieIds,
+        string fromLibraryId,
+        string toLibraryId,
+        CancellationToken cancellationToken)
+    {
+        if (movieIds.Count == 0)
+        {
+            return 0;
+        }
+
+        await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
+            DelunoDatabaseNames.Movies,
+            cancellationToken);
+
+        var ids = string.Join(",", movieIds.Select((_, i) => $"@id{i}"));
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            $"""
+            UPDATE movie_wanted_state
+            SET library_id = @toLibraryId
+            WHERE library_id = @fromLibraryId
+              AND movie_id IN ({ids});
+            """;
+
+        AddParameter(command, "@fromLibraryId", fromLibraryId);
+        AddParameter(command, "@toLibraryId", toLibraryId);
+        for (var i = 0; i < movieIds.Count; i++)
+        {
+            AddParameter(command, $"@id{i}", movieIds[i]);
+        }
+
+        return await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     private static string NormalizeWantedStatus(string? value)
     {
         var normalized = value?.Trim().ToLowerInvariant();
