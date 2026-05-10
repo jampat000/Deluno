@@ -1061,6 +1061,19 @@ public sealed class SqliteJobStore(
         await transaction.CommitAsync(cancellationToken);
     }
 
+    public async Task PlanEpisodeSearchesAsync(
+        string libraryId,
+        CancellationToken cancellationToken)
+    {
+        // TODO: Phase 3 - Implement episode-level search scheduling
+        // This should:
+        // 1. Query eligible episodes using repository.ListEligibleWantedEpisodesAsync
+        // 2. Create episode.search jobs for each episode
+        // 3. Track in job queue with episode-level deduplication
+        // For now, this is a placeholder to establish the method signature
+        await Task.CompletedTask;
+    }
+
     public async Task<string> RecordDownloadDispatchAsync(
         string libraryId,
         string mediaType,
