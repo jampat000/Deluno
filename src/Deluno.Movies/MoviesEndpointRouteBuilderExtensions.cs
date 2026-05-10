@@ -71,6 +71,52 @@ public static class MoviesEndpointRouteBuilderExtensions
             return Results.Ok(item);
         });
 
+        movies.MapPost("/import-recovery/{id}/resolve", async (
+            string id,
+            HttpContext httpContext,
+            IMovieCatalogRepository repository,
+            IPlatformSettingsRepository platformSettingsRepository,
+            CancellationToken cancellationToken) =>
+        {
+            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, platformSettingsRepository, cancellationToken);
+            if (denied is not null)
+            {
+                return denied;
+            }
+
+            var updated = await repository.ResolveImportRecoveryCaseAsync(id, "resolved", cancellationToken);
+            if (updated is null)
+            {
+                return Results.NotFound();
+            }
+
+            await repository.AddImportRecoveryEventAsync(id, "case_resolved", "Case marked resolved by user.", null, cancellationToken);
+            return Results.Ok(updated);
+        });
+
+        movies.MapPost("/import-recovery/{id}/dismiss", async (
+            string id,
+            HttpContext httpContext,
+            IMovieCatalogRepository repository,
+            IPlatformSettingsRepository platformSettingsRepository,
+            CancellationToken cancellationToken) =>
+        {
+            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, platformSettingsRepository, cancellationToken);
+            if (denied is not null)
+            {
+                return denied;
+            }
+
+            var updated = await repository.ResolveImportRecoveryCaseAsync(id, "dismissed", cancellationToken);
+            if (updated is null)
+            {
+                return Results.NotFound();
+            }
+
+            await repository.AddImportRecoveryEventAsync(id, "case_dismissed", "Case dismissed by user.", null, cancellationToken);
+            return Results.Ok(updated);
+        });
+
         movies.MapDelete("/import-recovery/{id}", async (
             string id,
             HttpContext httpContext,

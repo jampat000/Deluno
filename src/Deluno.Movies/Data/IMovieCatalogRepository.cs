@@ -106,6 +106,12 @@ public interface IMovieCatalogRepository
 
     Task<bool> DeleteImportRecoveryCaseAsync(string id, CancellationToken cancellationToken);
 
+    Task<MovieImportRecoveryCase?> ResolveImportRecoveryCaseAsync(string id, string status, CancellationToken cancellationToken);
+
+    Task AddImportRecoveryEventAsync(string caseId, string eventKind, string message, string? metadataJson, CancellationToken cancellationToken);
+
+    Task<int> CleanupImportRecoveryCasesAsync(DateTimeOffset olderThan, CancellationToken cancellationToken);
+
     Task<MovieWantedItem?> GetMovieWantedStateAsync(
         string movieId,
         string libraryId,

@@ -956,11 +956,18 @@ public sealed class SqliteMovieCatalogRepository(
 
     public async Task<MovieImportRecoverySummary> GetImportRecoverySummaryAsync(CancellationToken cancellationToken)
     {
-        var cases = new List<MovieImportRecoveryCase>();
+        var openCases = new List<MovieImportRecoveryCase>();
+        int openCount = 0;
 
         await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
             DelunoDatabaseNames.Movies,
             cancellationToken);
+
+        using (var countCmd = connection.CreateCommand())
+        {
+            countCmd.CommandText = "SELECT COUNT(*) FROM movie_import_recovery_cases WHERE status = 'open';";
+            openCount = Convert.ToInt32(await countCmd.ExecuteScalarAsync(cancellationToken));
+        }
 
         using (var command = connection.CreateCommand())
         {
@@ -970,11 +977,14 @@ public sealed class SqliteMovieCatalogRepository(
                     id,
                     title,
                     failure_kind,
+                    status,
                     summary,
                     recommended_action,
                     details_json,
-                    detected_utc
+                    detected_utc,
+                    resolved_utc
                 FROM movie_import_recovery_cases
+                WHERE status = 'open'
                 ORDER BY detected_utc DESC
                 LIMIT 12;
                 """;
@@ -982,25 +992,18 @@ public sealed class SqliteMovieCatalogRepository(
             using var reader = await command.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
             {
-                cases.Add(new MovieImportRecoveryCase(
-                    Id: reader.GetString(0),
-                    Title: reader.GetString(1),
-                    FailureKind: reader.GetString(2),
-                    Summary: reader.GetString(3),
-                    RecommendedAction: reader.GetString(4),
-                    DetailsJson: reader.IsDBNull(5) ? null : reader.GetString(5),
-                    DetectedUtc: ParseTimestamp(reader.GetString(6))));
+                openCases.Add(ReadImportRecoveryCase(reader));
             }
         }
 
         return new MovieImportRecoverySummary(
-            OpenCount: cases.Count,
-            QualityCount: cases.Count(item => item.FailureKind == "quality"),
-            UnmatchedCount: cases.Count(item => item.FailureKind == "unmatched"),
-            CorruptCount: cases.Count(item => item.FailureKind == "corrupt"),
-            DownloadFailedCount: cases.Count(item => item.FailureKind == "downloadFailed"),
-            ImportFailedCount: cases.Count(item => item.FailureKind == "importFailed"),
-            RecentCases: cases);
+            OpenCount: openCount,
+            QualityCount: openCases.Count(item => item.FailureKind == "quality"),
+            UnmatchedCount: openCases.Count(item => item.FailureKind == "unmatched"),
+            CorruptCount: openCases.Count(item => item.FailureKind == "corrupt"),
+            DownloadFailedCount: openCases.Count(item => item.FailureKind == "downloadFailed"),
+            ImportFailedCount: openCases.Count(item => item.FailureKind == "importFailed"),
+            RecentCases: openCases);
     }
 
     public async Task<MovieImportRecoveryCase> AddImportRecoveryCaseAsync(
@@ -1012,12 +1015,14 @@ public sealed class SqliteMovieCatalogRepository(
             Id: Guid.CreateVersion7().ToString("N"),
             Title: request.Title!.Trim(),
             FailureKind: NormalizeFailureKind(request.FailureKind),
+            Status: "open",
             Summary: request.Summary!.Trim(),
             RecommendedAction: string.IsNullOrWhiteSpace(request.RecommendedAction)
                 ? "Review this import and decide whether Deluno should retry, rematch, or remove it."
                 : request.RecommendedAction.Trim(),
             DetailsJson: string.IsNullOrWhiteSpace(request.DetailsJson) ? null : request.DetailsJson.Trim(),
-            DetectedUtc: now);
+            DetectedUtc: now,
+            ResolvedUtc: null);
 
         await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
             DelunoDatabaseNames.Movies,
@@ -1030,6 +1035,7 @@ public sealed class SqliteMovieCatalogRepository(
                 id,
                 title,
                 failure_kind,
+                status,
                 summary,
                 recommended_action,
                 details_json,
@@ -1039,6 +1045,7 @@ public sealed class SqliteMovieCatalogRepository(
                 @id,
                 @title,
                 @failureKind,
+                'open',
                 @summary,
                 @recommendedAction,
                 @detailsJson,
@@ -1055,6 +1062,8 @@ public sealed class SqliteMovieCatalogRepository(
         AddParameter(command, "@detectedUtc", item.DetectedUtc.ToString("O"));
         await command.ExecuteNonQueryAsync(cancellationToken);
 
+        await AddImportRecoveryEventAsync(item.Id, "case_opened", "Import recovery case created.", null, cancellationToken);
+
         return item;
     }
 
@@ -1069,6 +1078,107 @@ public sealed class SqliteMovieCatalogRepository(
         AddParameter(command, "@id", id);
         return await command.ExecuteNonQueryAsync(cancellationToken) > 0;
     }
+
+    public async Task<MovieImportRecoveryCase?> ResolveImportRecoveryCaseAsync(
+        string id,
+        string status,
+        CancellationToken cancellationToken)
+    {
+        var now = timeProvider.GetUtcNow();
+
+        await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
+            DelunoDatabaseNames.Movies,
+            cancellationToken);
+
+        using (var update = connection.CreateCommand())
+        {
+            update.CommandText =
+                """
+                UPDATE movie_import_recovery_cases
+                SET status = @status, resolved_utc = @resolvedUtc
+                WHERE id = @id AND status = 'open';
+                """;
+            AddParameter(update, "@id", id);
+            AddParameter(update, "@status", status);
+            AddParameter(update, "@resolvedUtc", now.ToString("O"));
+            var rows = await update.ExecuteNonQueryAsync(cancellationToken);
+            if (rows == 0)
+            {
+                return null;
+            }
+        }
+
+        using var select = connection.CreateCommand();
+        select.CommandText =
+            """
+            SELECT id, title, failure_kind, status, summary, recommended_action, details_json, detected_utc, resolved_utc
+            FROM movie_import_recovery_cases
+            WHERE id = @id;
+            """;
+        AddParameter(select, "@id", id);
+        using var reader = await select.ExecuteReaderAsync(cancellationToken);
+        if (await reader.ReadAsync(cancellationToken))
+        {
+            return ReadImportRecoveryCase(reader);
+        }
+
+        return null;
+    }
+
+    public async Task AddImportRecoveryEventAsync(
+        string caseId,
+        string eventKind,
+        string message,
+        string? metadataJson,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
+            DelunoDatabaseNames.Movies,
+            cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            INSERT INTO movie_import_recovery_events (id, case_id, event_kind, message, metadata_json, created_utc)
+            VALUES (@id, @caseId, @eventKind, @message, @metadataJson, @createdUtc);
+            """;
+        AddParameter(command, "@id", Guid.CreateVersion7().ToString("N"));
+        AddParameter(command, "@caseId", caseId);
+        AddParameter(command, "@eventKind", eventKind);
+        AddParameter(command, "@message", message);
+        AddParameter(command, "@metadataJson", metadataJson);
+        AddParameter(command, "@createdUtc", timeProvider.GetUtcNow().ToString("O"));
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task<int> CleanupImportRecoveryCasesAsync(DateTimeOffset olderThan, CancellationToken cancellationToken)
+    {
+        await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
+            DelunoDatabaseNames.Movies,
+            cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            DELETE FROM movie_import_recovery_cases
+            WHERE status IN ('resolved', 'dismissed')
+              AND resolved_utc < @olderThan;
+            """;
+        AddParameter(command, "@olderThan", olderThan.ToString("O"));
+        return await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static MovieImportRecoveryCase ReadImportRecoveryCase(System.Data.Common.DbDataReader reader) =>
+        new MovieImportRecoveryCase(
+            Id: reader.GetString(0),
+            Title: reader.GetString(1),
+            FailureKind: reader.GetString(2),
+            Status: reader.GetString(3),
+            Summary: reader.GetString(4),
+            RecommendedAction: reader.GetString(5),
+            DetailsJson: reader.IsDBNull(6) ? null : reader.GetString(6),
+            DetectedUtc: ParseTimestamp(reader.GetString(7)),
+            ResolvedUtc: reader.IsDBNull(8) ? null : ParseTimestamp(reader.GetString(8)));
 
     public async Task<MovieWantedItem?> GetMovieWantedStateAsync(
         string movieId,

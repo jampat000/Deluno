@@ -31,6 +31,7 @@ builder.Services.AddDelunoIntegrationsModule();
 builder.Services.AddDelunoFilesystemModule();
 builder.Services.AddDelunoRealtimeModule();
 builder.Services.AddDelunoWorkerModule();
+builder.Services.AddHostedService<Deluno.Host.ImportRecoveryCleanupService>();
 
 var configuredDataRoot = builder.Configuration["Storage:DataRoot"];
 var dataRoot = Path.GetFullPath(

@@ -86,6 +86,52 @@ public static class SeriesEndpointRouteBuilderExtensions
             return Results.Ok(item);
         });
 
+        series.MapPost("/import-recovery/{id}/resolve", async (
+            string id,
+            HttpContext httpContext,
+            ISeriesCatalogRepository repository,
+            IPlatformSettingsRepository platformSettingsRepository,
+            CancellationToken cancellationToken) =>
+        {
+            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, platformSettingsRepository, cancellationToken);
+            if (denied is not null)
+            {
+                return denied;
+            }
+
+            var updated = await repository.ResolveImportRecoveryCaseAsync(id, "resolved", cancellationToken);
+            if (updated is null)
+            {
+                return Results.NotFound();
+            }
+
+            await repository.AddImportRecoveryEventAsync(id, "case_resolved", "Case marked resolved by user.", null, cancellationToken);
+            return Results.Ok(updated);
+        });
+
+        series.MapPost("/import-recovery/{id}/dismiss", async (
+            string id,
+            HttpContext httpContext,
+            ISeriesCatalogRepository repository,
+            IPlatformSettingsRepository platformSettingsRepository,
+            CancellationToken cancellationToken) =>
+        {
+            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, platformSettingsRepository, cancellationToken);
+            if (denied is not null)
+            {
+                return denied;
+            }
+
+            var updated = await repository.ResolveImportRecoveryCaseAsync(id, "dismissed", cancellationToken);
+            if (updated is null)
+            {
+                return Results.NotFound();
+            }
+
+            await repository.AddImportRecoveryEventAsync(id, "case_dismissed", "Case dismissed by user.", null, cancellationToken);
+            return Results.Ok(updated);
+        });
+
         series.MapDelete("/import-recovery/{id}", async (
             string id,
             HttpContext httpContext,
