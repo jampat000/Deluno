@@ -2,7 +2,7 @@ using Deluno.Series.Data;
 
 namespace Deluno.Series.Services;
 
-public sealed class EpisodeImportRecoveryService(ISeriesCatalogRepository repository) : IEpisodeImportRecoveryService
+public sealed class EpisodeImportRecoveryService : IEpisodeImportRecoveryService
 {
     public async Task<IReadOnlyList<string>> FindEpisodesNeedingRecoveryAsync(
         string libraryId,
