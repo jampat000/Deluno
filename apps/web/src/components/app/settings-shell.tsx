@@ -42,6 +42,7 @@ export const settingsNavGroups = [
     label: "System",
     items: [
       { to: "/settings/general", label: "General", end: false, tip: "Instance identity, host settings, notifications, and startup behaviour" },
+      { to: "/settings/notifications", label: "Notifications", end: false, tip: "Outbound webhook endpoints for Discord, Slack, Gotify, ntfy, and any HTTP service" },
       { to: "/settings/ui", label: "Interface", end: false, tip: "Theme, density, default views, and experience preferences" }
     ]
   }
@@ -123,6 +124,11 @@ const settingsPageMeta = [
     match: (path: string) => path.startsWith("/settings/general"),
     title: "General",
     description: "Host identity, runtime defaults, startup behaviour, and notifications."
+  },
+  {
+    match: (path: string) => path.startsWith("/settings/notifications"),
+    title: "Notifications",
+    description: "Outbound webhook events for grabs, imports, upgrades, and health alerts."
   },
   {
     match: (path: string) => path.startsWith("/settings/ui"),

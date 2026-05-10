@@ -333,6 +333,8 @@ export interface LibraryItem {
   searchIntervalHours: number;
   retryDelayHours: number;
   maxItemsPerRun: number;
+  searchWindowStartHour: number | null;
+  searchWindowEndHour: number | null;
   automationStatus: string;
   searchRequested: boolean;
   lastSearchedUtc: string | null;
@@ -578,6 +580,21 @@ export interface IndexerItem {
   lastHealthFailureCategory?: string | null;
   lastHealthLatencyMs?: number | null;
   lastHealthTestUtc?: string | null;
+  consecutiveFailures: number;
+  rateLimitedUntilUtc: string | null;
+  disabledReason: string | null;
+  createdUtc: string;
+  updatedUtc: string;
+}
+
+export interface NotificationWebhookItem {
+  id: string;
+  name: string;
+  url: string;
+  eventFilters: string;
+  isEnabled: boolean;
+  lastFiredUtc: string | null;
+  lastError: string | null;
   createdUtc: string;
   updatedUtc: string;
 }

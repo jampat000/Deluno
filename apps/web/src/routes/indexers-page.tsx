@@ -22,6 +22,7 @@ import {
   Plus,
   Radio,
   RadioTower,
+  RefreshCw,
   Route,
   ShieldAlert,
   Trash2,
@@ -1372,6 +1373,20 @@ export function IndexersPage() {
     }
   }
 
+  async function handleResetCircuit(id: string, name: string) {
+    setBusyKey(`reset:${id}`);
+    try {
+      const res = await authedFetch(`/api/indexers/${id}/reset-circuit`, { method: "POST" });
+      if (!res.ok) throw new Error("Could not reset circuit.");
+      toast.success(`Circuit reset for "${name}"`);
+      revalidator.revalidate();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Reset failed.");
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
   async function handleToggleIndexer(id: string, name: string, enabled: boolean) {
     setBusyKey(`toggle:${id}`);
     try {
@@ -1506,8 +1521,27 @@ export function IndexersPage() {
                   {idx.lastHealthMessage && idx.isEnabled && (
                     <p className="mt-0.5 text-[11px] text-muted-foreground">{idx.lastHealthMessage}</p>
                   )}
+                  {idx.consecutiveFailures > 0 && idx.isEnabled && (
+                    <p className="mt-0.5 text-[11px] text-warning">
+                      {idx.consecutiveFailures} consecutive failure{idx.consecutiveFailures !== 1 ? "s" : ""}
+                      {idx.disabledReason ? ` — ${idx.disabledReason}` : ""}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {idx.consecutiveFailures > 0 && idx.isEnabled && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void handleResetCircuit(idx.id, idx.name)}
+                      disabled={busyKey === `reset:${idx.id}`}
+                      title="Reset the circuit breaker and clear consecutive failure count"
+                      className="gap-1.5 border-warning/40 text-warning hover:bg-warning/10"
+                    >
+                      {busyKey === `reset:${idx.id}` ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                      Reset
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"

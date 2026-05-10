@@ -40,6 +40,8 @@ interface LibraryFormState {
   searchIntervalHours: number;
   retryDelayHours: number;
   maxItemsPerRun: number;
+  searchWindowStartHour: number | null;
+  searchWindowEndHour: number | null;
 }
 
 interface QualityProfileFormState {
@@ -74,6 +76,18 @@ const MAX_PER_RUN_OPTIONS = [
   { label: "Balanced (10)", value: "10" },
   { label: "Heavy (25)", value: "25" },
   { label: "Aggressive (50)", value: "50" }
+];
+
+const HOUR_OPTIONS = [
+  { label: "Midnight (0)", value: "0" },
+  { label: "1 AM", value: "1" },
+  { label: "2 AM", value: "2" },
+  { label: "6 AM", value: "6" },
+  { label: "8 AM", value: "8" },
+  { label: "Noon (12)", value: "12" },
+  { label: "6 PM (18)", value: "18" },
+  { label: "10 PM (22)", value: "22" },
+  { label: "11 PM (23)", value: "23" }
 ];
 
 const QUALITY_OPTIONS = [
@@ -232,7 +246,7 @@ export function SettingsOverviewPage() {
 
   async function handleUpdateLibraryAutomation(
     library: LibraryItem,
-    patch: Partial<Pick<LibraryItem, "autoSearchEnabled" | "missingSearchEnabled" | "upgradeSearchEnabled" | "searchIntervalHours" | "retryDelayHours" | "maxItemsPerRun">>
+    patch: Partial<Pick<LibraryItem, "autoSearchEnabled" | "missingSearchEnabled" | "upgradeSearchEnabled" | "searchIntervalHours" | "retryDelayHours" | "maxItemsPerRun" | "searchWindowStartHour" | "searchWindowEndHour">>
   ) {
     setBusyKey(`automation:${library.id}`);
     setActionMessage(null);
@@ -247,7 +261,9 @@ export function SettingsOverviewPage() {
           upgradeSearchEnabled: patch.upgradeSearchEnabled ?? library.upgradeSearchEnabled,
           searchIntervalHours: patch.searchIntervalHours ?? library.searchIntervalHours,
           retryDelayHours: patch.retryDelayHours ?? library.retryDelayHours,
-          maxItemsPerRun: patch.maxItemsPerRun ?? library.maxItemsPerRun
+          maxItemsPerRun: patch.maxItemsPerRun ?? library.maxItemsPerRun,
+          searchWindowStartHour: "searchWindowStartHour" in patch ? patch.searchWindowStartHour : library.searchWindowStartHour,
+          searchWindowEndHour: "searchWindowEndHour" in patch ? patch.searchWindowEndHour : library.searchWindowEndHour
         })
       });
 
@@ -551,6 +567,28 @@ export function SettingsOverviewPage() {
                 <Field label="Max items per run">
                   <PresetField inputType="number" value={String(libraryForm.maxItemsPerRun)} onChange={(value) => setLibraryForm((current) => ({ ...current, maxItemsPerRun: Number(value || 10) }))} options={MAX_PER_RUN_OPTIONS} customLabel="Custom max" customPlaceholder="Items per run" />
                 </Field>
+                <Field label="Search window start (hour)">
+                  <PresetField
+                    inputType="number"
+                    value={libraryForm.searchWindowStartHour !== null ? String(libraryForm.searchWindowStartHour) : ""}
+                    onChange={(value) => setLibraryForm((current) => ({ ...current, searchWindowStartHour: value === "" ? null : Number(value) }))}
+                    options={HOUR_OPTIONS}
+                    customLabel="Custom hour (0–23)"
+                    customPlaceholder="Hour 0–23"
+                  />
+                  <p className="density-help mt-1 text-muted-foreground">Earliest hour searches may run. Leave blank for anytime.</p>
+                </Field>
+                <Field label="Search window end (hour)">
+                  <PresetField
+                    inputType="number"
+                    value={libraryForm.searchWindowEndHour !== null ? String(libraryForm.searchWindowEndHour) : ""}
+                    onChange={(value) => setLibraryForm((current) => ({ ...current, searchWindowEndHour: value === "" ? null : Number(value) }))}
+                    options={HOUR_OPTIONS}
+                    customLabel="Custom hour (0–23)"
+                    customPlaceholder="Hour 0–23"
+                  />
+                  <p className="density-help mt-1 text-muted-foreground">Latest hour searches may run. Leave blank for anytime.</p>
+                </Field>
                 <div className="grid gap-3 sm:col-span-2 sm:grid-cols-3">
                   <ToggleField label="Auto search" checked={libraryForm.autoSearchEnabled} onChange={(checked) => setLibraryForm((current) => ({ ...current, autoSearchEnabled: checked }))} />
                   <ToggleField label="Missing search" checked={libraryForm.missingSearchEnabled} onChange={(checked) => setLibraryForm((current) => ({ ...current, missingSearchEnabled: checked }))} />
@@ -628,6 +666,26 @@ export function SettingsOverviewPage() {
                         options={MAX_PER_RUN_OPTIONS}
                         customLabel="Custom max"
                         customPlaceholder="Items per run"
+                      />
+                    </Field>
+                    <Field label="Window start (h)">
+                      <PresetField
+                        inputType="number"
+                        value={library.searchWindowStartHour !== null && library.searchWindowStartHour !== undefined ? String(library.searchWindowStartHour) : ""}
+                        onChange={(value) => void handleUpdateLibraryAutomation(library, { searchWindowStartHour: value === "" ? null : Number(value) })}
+                        options={HOUR_OPTIONS}
+                        customLabel="Custom hour"
+                        customPlaceholder="0–23"
+                      />
+                    </Field>
+                    <Field label="Window end (h)">
+                      <PresetField
+                        inputType="number"
+                        value={library.searchWindowEndHour !== null && library.searchWindowEndHour !== undefined ? String(library.searchWindowEndHour) : ""}
+                        onChange={(value) => void handleUpdateLibraryAutomation(library, { searchWindowEndHour: value === "" ? null : Number(value) })}
+                        options={HOUR_OPTIONS}
+                        customLabel="Custom hour"
+                        customPlaceholder="0–23"
                       />
                     </Field>
                   </div>
@@ -786,7 +844,9 @@ function createEmptyLibraryForm(defaultProfileId: string): LibraryFormState {
     upgradeSearchEnabled: false,
     searchIntervalHours: 6,
     retryDelayHours: 12,
-    maxItemsPerRun: 25
+    maxItemsPerRun: 25,
+    searchWindowStartHour: null,
+    searchWindowEndHour: null
   };
 }
 
