@@ -7,6 +7,7 @@ using Deluno.Integrations.Search;
 using Deluno.Integrations.Metadata;
 using Deluno.Movies.Contracts;
 using Deluno.Movies.Data;
+using Deluno.Movies.Services;
 using Deluno.Platform.Data;
 using Deluno.Platform.Contracts;
 using Deluno.Platform;
@@ -462,6 +463,141 @@ public static class MoviesEndpointRouteBuilderExtensions
             });
         });
 
+        movies.MapGet("/{id}/workflow-status", async (
+            string id,
+            IMovieCatalogRepository repository,
+            IPlatformSettingsRepository platformSettingsRepository,
+            IMovieWorkflowService workflowService,
+            CancellationToken cancellationToken) =>
+        {
+            var wanted = await repository.GetWantedSummaryAsync(cancellationToken);
+            var wantedItem = wanted.RecentItems.FirstOrDefault(item => item.MovieId == id);
+            if (wantedItem is null)
+            {
+                return Results.NotFound();
+            }
+
+            var libraries = await platformSettingsRepository.ListLibrariesAsync(cancellationToken);
+            var library = libraries.FirstOrDefault(item => item.Id == wantedItem.LibraryId);
+
+            QualityProfileItem? profile = null;
+            if (library?.QualityProfileId is not null)
+            {
+                var profiles = await platformSettingsRepository.ListQualityProfilesAsync(cancellationToken);
+                profile = profiles.FirstOrDefault(item => item.Id == library.QualityProfileId);
+            }
+
+            var decision = workflowService.EvaluateWantedStatus(
+                wantedItem.CurrentQuality,
+                wantedItem.TargetQuality,
+                wantedItem.QualityCutoffMet,
+                profile?.UpgradeUntilCutoff ?? true,
+                profile?.UpgradeUnknownItems ?? false);
+
+            return Results.Ok(new
+            {
+                movieId = wantedItem.MovieId,
+                title = wantedItem.Title,
+                releaseYear = wantedItem.ReleaseYear,
+                libraryId = wantedItem.LibraryId,
+                wantedStatus = decision.WantedStatus,
+                reason = decision.Reason,
+                currentQuality = decision.CurrentQuality,
+                targetQuality = decision.TargetQuality,
+                preventLowerQualityReplacements = wantedItem.PreventLowerQualityReplacements,
+                lastQualityDelta = wantedItem.LastQualityDeltaDecision
+            });
+        });
+
+        movies.MapPut("/{id}/replacement-protection", async (
+            string id,
+            UpdateReplacementProtectionRequest request,
+            HttpContext httpContext,
+            IMovieCatalogRepository repository,
+            IPlatformSettingsRepository platformSettingsRepository,
+            CancellationToken cancellationToken) =>
+        {
+            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, platformSettingsRepository, cancellationToken);
+            if (denied is not null)
+            {
+                return denied;
+            }
+
+            var wanted = await repository.GetWantedSummaryAsync(cancellationToken);
+            var wantedItem = wanted.RecentItems.FirstOrDefault(item => item.MovieId == id);
+            if (wantedItem is null)
+            {
+                return Results.NotFound();
+            }
+
+            var updated = await repository.UpdateMovieReplacementPolicyAsync(
+                id,
+                wantedItem.LibraryId,
+                request.PreventLowerQualityReplacements,
+                cancellationToken);
+
+            if (!updated)
+            {
+                return Results.NotFound();
+            }
+
+            return Results.NoContent();
+        });
+
+        movies.MapPost("/{id}/evaluate-candidate", async (
+            string id,
+            EvaluateCandidateRequest request,
+            IMovieCatalogRepository repository,
+            IPlatformSettingsRepository platformSettingsRepository,
+            IMovieWorkflowService workflowService,
+            CancellationToken cancellationToken) =>
+        {
+            if (string.IsNullOrWhiteSpace(request.CandidateQuality))
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["candidateQuality"] = ["Provide the quality of the candidate release."]
+                });
+            }
+
+            var wanted = await repository.GetWantedSummaryAsync(cancellationToken);
+            var wantedItem = wanted.RecentItems.FirstOrDefault(item => item.MovieId == id);
+            if (wantedItem is null)
+            {
+                return Results.NotFound();
+            }
+
+            var libraries = await platformSettingsRepository.ListLibrariesAsync(cancellationToken);
+            var library = libraries.FirstOrDefault(item => item.Id == wantedItem.LibraryId);
+
+            QualityProfileItem? profile = null;
+            if (library?.QualityProfileId is not null)
+            {
+                var profiles = await platformSettingsRepository.ListQualityProfilesAsync(cancellationToken);
+                profile = profiles.FirstOrDefault(item => item.Id == library.QualityProfileId);
+            }
+
+            var evaluation = workflowService.EvaluateCandidate(new MovieCandidateEvaluationInput(
+                MovieId: id,
+                CurrentQuality: wantedItem.CurrentQuality,
+                CandidateQuality: request.CandidateQuality.Trim(),
+                TargetQuality: wantedItem.TargetQuality,
+                UpgradeUntilCutoff: profile?.UpgradeUntilCutoff ?? true,
+                UpgradeUnknownItems: profile?.UpgradeUnknownItems ?? false,
+                PreventLowerQualityReplacements: wantedItem.PreventLowerQualityReplacements,
+                Profile: profile));
+
+            return Results.Ok(new
+            {
+                evaluation.WantedStatus,
+                evaluation.Reason,
+                evaluation.IsReplacementAllowed,
+                evaluation.QualityDelta,
+                evaluation.CurrentQuality,
+                evaluation.TargetQuality
+            });
+        });
+
         movies.MapPost("/{id}/metadata/refresh", async (
             string id,
             HttpContext httpContext,
@@ -813,4 +949,10 @@ public static class MoviesEndpointRouteBuilderExtensions
     private sealed record MetadataRefreshJobsResponse(
         int EnqueuedCount,
         IReadOnlyList<Deluno.Jobs.Contracts.JobQueueItem> Jobs);
+
+    private sealed record UpdateReplacementProtectionRequest(
+        bool PreventLowerQualityReplacements);
+
+    private sealed record EvaluateCandidateRequest(
+        string CandidateQuality);
 }

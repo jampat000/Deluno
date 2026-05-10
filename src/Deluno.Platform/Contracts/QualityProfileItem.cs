@@ -9,5 +9,6 @@ public sealed record QualityProfileItem(
     string CustomFormatIds,
     bool UpgradeUntilCutoff,
     bool UpgradeUnknownItems,
+    bool AllowLowerQualityReplacements,
     DateTimeOffset CreatedUtc,
     DateTimeOffset UpdatedUtc);

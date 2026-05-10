@@ -105,4 +105,21 @@ public interface IMovieCatalogRepository
         CancellationToken cancellationToken);
 
     Task<bool> DeleteImportRecoveryCaseAsync(string id, CancellationToken cancellationToken);
+
+    Task<MovieWantedItem?> GetMovieWantedStateAsync(
+        string movieId,
+        string libraryId,
+        CancellationToken cancellationToken);
+
+    Task<bool> UpdateMovieReplacementPolicyAsync(
+        string movieId,
+        string libraryId,
+        bool preventLowerQualityReplacements,
+        CancellationToken cancellationToken);
+
+    Task<bool> UpdateMovieQualityDeltaAsync(
+        string movieId,
+        string libraryId,
+        int? qualityDelta,
+        CancellationToken cancellationToken);
 }

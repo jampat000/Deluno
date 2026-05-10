@@ -405,7 +405,8 @@ public sealed class SqliteMovieCatalogRepository(
             SELECT
                 m.id, m.title, m.release_year, m.imdb_id,
                 w.library_id, w.wanted_status, w.wanted_reason, w.has_file, w.current_quality, w.target_quality, w.quality_cutoff_met,
-                w.missing_since_utc, w.last_search_utc, w.next_eligible_search_utc, w.last_search_result, w.updated_utc
+                w.missing_since_utc, w.last_search_utc, w.next_eligible_search_utc, w.last_search_result, w.updated_utc,
+                w.prevent_lower_quality_replacements, w.quality_delta_last_decision
             FROM movie_wanted_state w
             INNER JOIN movie_entries m ON m.id = w.movie_id
             ORDER BY w.updated_utc DESC, m.title ASC
@@ -482,7 +483,8 @@ public sealed class SqliteMovieCatalogRepository(
                   SELECT
                       m.id, m.title, m.release_year, m.imdb_id,
                       w.library_id, w.wanted_status, w.wanted_reason, w.has_file, w.current_quality, w.target_quality, w.quality_cutoff_met,
-                      w.missing_since_utc, w.last_search_utc, w.next_eligible_search_utc, w.last_search_result, w.updated_utc
+                      w.missing_since_utc, w.last_search_utc, w.next_eligible_search_utc, w.last_search_result, w.updated_utc,
+                      w.prevent_lower_quality_replacements, w.quality_delta_last_decision
                   FROM movie_wanted_state w
                   INNER JOIN movie_entries m ON m.id = w.movie_id
                   WHERE w.library_id = @libraryId
@@ -497,7 +499,8 @@ public sealed class SqliteMovieCatalogRepository(
                   SELECT
                       m.id, m.title, m.release_year, m.imdb_id,
                       w.library_id, w.wanted_status, w.wanted_reason, w.has_file, w.current_quality, w.target_quality, w.quality_cutoff_met,
-                      w.missing_since_utc, w.last_search_utc, w.next_eligible_search_utc, w.last_search_result, w.updated_utc
+                      w.missing_since_utc, w.last_search_utc, w.next_eligible_search_utc, w.last_search_result, w.updated_utc,
+                      w.prevent_lower_quality_replacements, w.quality_delta_last_decision
                   FROM movie_wanted_state w
                   INNER JOIN movie_entries m ON m.id = w.movie_id
                   WHERE w.library_id = @libraryId
@@ -571,11 +574,13 @@ public sealed class SqliteMovieCatalogRepository(
             """
             INSERT INTO movie_wanted_state (
                 movie_id, library_id, wanted_status, wanted_reason, has_file, quality_cutoff_met,
-                current_quality, target_quality, missing_since_utc, last_search_utc, next_eligible_search_utc, last_search_result, updated_utc
+                current_quality, target_quality, missing_since_utc, last_search_utc, next_eligible_search_utc, last_search_result, updated_utc,
+                prevent_lower_quality_replacements, quality_delta_last_decision
             )
             VALUES (
                 @movieId, @libraryId, @wantedStatus, @wantedReason, @hasFile, @qualityCutoffMet,
-                @currentQuality, @targetQuality, @missingSinceUtc, NULL, NULL, NULL, @updatedUtc
+                @currentQuality, @targetQuality, @missingSinceUtc, NULL, NULL, NULL, @updatedUtc,
+                1, 0
             )
             ON CONFLICT(movie_id, library_id) DO UPDATE SET
                 wanted_status = excluded.wanted_status,
@@ -686,12 +691,14 @@ public sealed class SqliteMovieCatalogRepository(
             INSERT INTO movie_wanted_state (
                 movie_id, library_id, wanted_status, wanted_reason, has_file, quality_cutoff_met,
                 current_quality, target_quality, file_path, file_size_bytes, imported_utc, last_verified_utc,
-                missing_since_utc, last_search_utc, next_eligible_search_utc, last_search_result, updated_utc
+                missing_since_utc, last_search_utc, next_eligible_search_utc, last_search_result, updated_utc,
+                prevent_lower_quality_replacements, quality_delta_last_decision
             )
             VALUES (
                 @movieId, @libraryId, @wantedStatus, @wantedReason, 1, @qualityCutoffMet,
                 @currentQuality, @targetQuality, @filePath, @fileSizeBytes, @importedUtc, @lastVerifiedUtc,
-                NULL, NULL, NULL, 'Imported from your existing library.', @updatedUtc
+                NULL, NULL, NULL, 'Imported from your existing library.', @updatedUtc,
+                1, 0
             )
             ON CONFLICT(movie_id, library_id) DO UPDATE SET
                 wanted_status = excluded.wanted_status,
@@ -1063,6 +1070,95 @@ public sealed class SqliteMovieCatalogRepository(
         return await command.ExecuteNonQueryAsync(cancellationToken) > 0;
     }
 
+    public async Task<MovieWantedItem?> GetMovieWantedStateAsync(
+        string movieId,
+        string libraryId,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
+            DelunoDatabaseNames.Movies,
+            cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            SELECT
+                m.id, m.title, m.release_year, m.imdb_id,
+                w.library_id, w.wanted_status, w.wanted_reason, w.has_file, w.current_quality, w.target_quality, w.quality_cutoff_met,
+                w.missing_since_utc, w.last_search_utc, w.next_eligible_search_utc, w.last_search_result, w.updated_utc,
+                w.prevent_lower_quality_replacements, w.quality_delta_last_decision
+            FROM movie_wanted_state w
+            INNER JOIN movie_entries m ON m.id = w.movie_id
+            WHERE w.movie_id = @movieId
+              AND w.library_id = @libraryId
+            LIMIT 1;
+            """;
+
+        AddParameter(command, "@movieId", movieId);
+        AddParameter(command, "@libraryId", libraryId);
+
+        using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken) ? ReadWantedMovie(reader) : null;
+    }
+
+    public async Task<bool> UpdateMovieReplacementPolicyAsync(
+        string movieId,
+        string libraryId,
+        bool preventLowerQualityReplacements,
+        CancellationToken cancellationToken)
+    {
+        var now = timeProvider.GetUtcNow();
+        await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
+            DelunoDatabaseNames.Movies,
+            cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            UPDATE movie_wanted_state
+            SET prevent_lower_quality_replacements = @preventLowerQuality,
+                updated_utc = @updatedUtc
+            WHERE movie_id = @movieId
+              AND library_id = @libraryId;
+            """;
+
+        AddParameter(command, "@movieId", movieId);
+        AddParameter(command, "@libraryId", libraryId);
+        AddParameter(command, "@preventLowerQuality", preventLowerQualityReplacements ? 1 : 0);
+        AddParameter(command, "@updatedUtc", now.ToString("O"));
+
+        return await command.ExecuteNonQueryAsync(cancellationToken) > 0;
+    }
+
+    public async Task<bool> UpdateMovieQualityDeltaAsync(
+        string movieId,
+        string libraryId,
+        int? qualityDelta,
+        CancellationToken cancellationToken)
+    {
+        var now = timeProvider.GetUtcNow();
+        await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
+            DelunoDatabaseNames.Movies,
+            cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            UPDATE movie_wanted_state
+            SET quality_delta_last_decision = @qualityDelta,
+                updated_utc = @updatedUtc
+            WHERE movie_id = @movieId
+              AND library_id = @libraryId;
+            """;
+
+        AddParameter(command, "@movieId", movieId);
+        AddParameter(command, "@libraryId", libraryId);
+        AddParameter(command, "@qualityDelta", qualityDelta);
+        AddParameter(command, "@updatedUtc", now.ToString("O"));
+
+        return await command.ExecuteNonQueryAsync(cancellationToken) > 0;
+    }
+
     private static MovieListItem ReadMovie(System.Data.Common.DbDataReader reader)
     {
         return new MovieListItem(
@@ -1105,7 +1201,9 @@ public sealed class SqliteMovieCatalogRepository(
             LastSearchUtc: reader.IsDBNull(12) ? null : ParseTimestamp(reader.GetString(12)),
             NextEligibleSearchUtc: reader.IsDBNull(13) ? null : ParseTimestamp(reader.GetString(13)),
             LastSearchResult: reader.IsDBNull(14) ? null : reader.GetString(14),
-            UpdatedUtc: ParseTimestamp(reader.GetString(15)));
+            UpdatedUtc: ParseTimestamp(reader.GetString(15)),
+            PreventLowerQualityReplacements: reader.GetInt64(16) == 1,
+            LastQualityDeltaDecision: reader.IsDBNull(17) ? null : reader.GetInt32(17));
     }
 
     private static void AddParameter(System.Data.Common.DbCommand command, string name, object? value)

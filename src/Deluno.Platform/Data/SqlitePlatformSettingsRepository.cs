@@ -170,7 +170,7 @@ public sealed class SqlitePlatformSettingsRepository(
             """
             SELECT
                 id, name, media_type, cutoff_quality, allowed_qualities, custom_format_ids,
-                upgrade_until_cutoff, upgrade_unknown_items, created_utc, updated_utc
+                upgrade_until_cutoff, upgrade_unknown_items, allow_lower_quality_replacements, created_utc, updated_utc
             FROM quality_profiles
             ORDER BY sort_order ASC, media_type ASC, name ASC;
             """;
@@ -739,6 +739,7 @@ public sealed class SqlitePlatformSettingsRepository(
             CustomFormatIds: NormalizeCsv(request.CustomFormatIds),
             UpgradeUntilCutoff: request.UpgradeUntilCutoff,
             UpgradeUnknownItems: request.UpgradeUnknownItems,
+            AllowLowerQualityReplacements: false,
             CreatedUtc: now,
             UpdatedUtc: now);
 
@@ -753,11 +754,11 @@ public sealed class SqlitePlatformSettingsRepository(
             """
             INSERT INTO quality_profiles (
                 id, name, media_type, sort_order, cutoff_quality, allowed_qualities, custom_format_ids,
-                upgrade_until_cutoff, upgrade_unknown_items, created_utc, updated_utc
+                upgrade_until_cutoff, upgrade_unknown_items, allow_lower_quality_replacements, created_utc, updated_utc
             )
             VALUES (
                 @id, @name, @mediaType, @sortOrder, @cutoffQuality, @allowedQualities, @customFormatIds,
-                @upgradeUntilCutoff, @upgradeUnknownItems, @createdUtc, @updatedUtc
+                @upgradeUntilCutoff, @upgradeUnknownItems, @allowLowerQualityReplacements, @createdUtc, @updatedUtc
             );
             """;
 
@@ -770,6 +771,7 @@ public sealed class SqlitePlatformSettingsRepository(
         AddParameter(command, "@customFormatIds", item.CustomFormatIds);
         AddParameter(command, "@upgradeUntilCutoff", item.UpgradeUntilCutoff ? 1 : 0);
         AddParameter(command, "@upgradeUnknownItems", item.UpgradeUnknownItems ? 1 : 0);
+        AddParameter(command, "@allowLowerQualityReplacements", item.AllowLowerQualityReplacements ? 1 : 0);
         AddParameter(command, "@createdUtc", item.CreatedUtc.ToString("O"));
         AddParameter(command, "@updatedUtc", item.UpdatedUtc.ToString("O"));
         await command.ExecuteNonQueryAsync(cancellationToken);
@@ -2816,10 +2818,10 @@ public sealed class SqlitePlatformSettingsRepository(
         var now = DateTimeOffset.UtcNow;
         var seeds = new[]
         {
-            new QualityProfileItem(Guid.CreateVersion7().ToString("N"), "Movies / Standard", "movies", "WEB 1080p", "WEB 1080p, Bluray 1080p, Remux 1080p", string.Empty, true, false, now, now),
-            new QualityProfileItem(Guid.CreateVersion7().ToString("N"), "Movies / Premium 4K", "movies", "Remux 2160p", "WEB 2160p, Bluray 2160p, Remux 2160p", string.Empty, true, true, now, now),
-            new QualityProfileItem(Guid.CreateVersion7().ToString("N"), "TV Shows / Standard", "tv", "WEB 1080p", "WEB 720p, WEB 1080p, HDTV 1080p", string.Empty, true, false, now, now),
-            new QualityProfileItem(Guid.CreateVersion7().ToString("N"), "TV Shows / Premium 4K", "tv", "WEB 2160p", "WEB 1080p, WEB 2160p, Bluray 2160p", string.Empty, true, true, now, now)
+            new QualityProfileItem(Guid.CreateVersion7().ToString("N"), "Movies / Standard", "movies", "WEB 1080p", "WEB 1080p, Bluray 1080p, Remux 1080p", string.Empty, true, false, false, now, now),
+            new QualityProfileItem(Guid.CreateVersion7().ToString("N"), "Movies / Premium 4K", "movies", "Remux 2160p", "WEB 2160p, Bluray 2160p, Remux 2160p", string.Empty, true, true, false, now, now),
+            new QualityProfileItem(Guid.CreateVersion7().ToString("N"), "TV Shows / Standard", "tv", "WEB 1080p", "WEB 720p, WEB 1080p, HDTV 1080p", string.Empty, true, false, false, now, now),
+            new QualityProfileItem(Guid.CreateVersion7().ToString("N"), "TV Shows / Premium 4K", "tv", "WEB 2160p", "WEB 1080p, WEB 2160p, Bluray 2160p", string.Empty, true, true, false, now, now)
         };
 
         foreach (var item in seeds)
@@ -2830,11 +2832,11 @@ public sealed class SqlitePlatformSettingsRepository(
                 """
                 INSERT INTO quality_profiles (
                     id, name, media_type, sort_order, cutoff_quality, allowed_qualities, custom_format_ids,
-                    upgrade_until_cutoff, upgrade_unknown_items, created_utc, updated_utc
+                    upgrade_until_cutoff, upgrade_unknown_items, allow_lower_quality_replacements, created_utc, updated_utc
                 )
                 VALUES (
                     @id, @name, @mediaType, @sortOrder, @cutoffQuality, @allowedQualities, @customFormatIds,
-                    @upgradeUntilCutoff, @upgradeUnknownItems, @createdUtc, @updatedUtc
+                    @upgradeUntilCutoff, @upgradeUnknownItems, @allowLowerQualityReplacements, @createdUtc, @updatedUtc
                 );
                 """;
 
@@ -2847,6 +2849,7 @@ public sealed class SqlitePlatformSettingsRepository(
             AddParameter(command, "@customFormatIds", item.CustomFormatIds);
             AddParameter(command, "@upgradeUntilCutoff", item.UpgradeUntilCutoff ? 1 : 0);
             AddParameter(command, "@upgradeUnknownItems", item.UpgradeUnknownItems ? 1 : 0);
+            AddParameter(command, "@allowLowerQualityReplacements", item.AllowLowerQualityReplacements ? 1 : 0);
             AddParameter(command, "@createdUtc", item.CreatedUtc.ToString("O"));
             AddParameter(command, "@updatedUtc", item.UpdatedUtc.ToString("O"));
             await command.ExecuteNonQueryAsync(cancellationToken);
@@ -2985,7 +2988,7 @@ public sealed class SqlitePlatformSettingsRepository(
             """
             SELECT
                 id, name, media_type, cutoff_quality, allowed_qualities, custom_format_ids,
-                upgrade_until_cutoff, upgrade_unknown_items, created_utc, updated_utc
+                upgrade_until_cutoff, upgrade_unknown_items, allow_lower_quality_replacements, created_utc, updated_utc
             FROM quality_profiles
             WHERE id = @id
             LIMIT 1;
@@ -3585,8 +3588,9 @@ public sealed class SqlitePlatformSettingsRepository(
             CustomFormatIds: reader.IsDBNull(5) ? string.Empty : reader.GetString(5),
             UpgradeUntilCutoff: reader.GetInt64(6) == 1,
             UpgradeUnknownItems: reader.GetInt64(7) == 1,
-            CreatedUtc: ParseTimestamp(reader.GetString(8)),
-            UpdatedUtc: ParseTimestamp(reader.GetString(9)));
+            AllowLowerQualityReplacements: reader.GetInt64(8) == 1,
+            CreatedUtc: ParseTimestamp(reader.GetString(9)),
+            UpdatedUtc: ParseTimestamp(reader.GetString(10)));
     }
 
     private static TagItem ReadTag(System.Data.Common.DbDataReader reader)

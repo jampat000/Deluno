@@ -8,7 +8,8 @@ public static class PlatformDatabaseMigrations
     [
         new V0001InitialSchema(),
         new V0002UserSecurityStamp(),
-        new V0003IntegrationHealth()
+        new V0003IntegrationHealth(),
+        new V0004QualityProfileReplacementProtection()
     ];
 
     private sealed class V0001InitialSchema : SqliteSqlMigration
