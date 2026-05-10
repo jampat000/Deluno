@@ -10,5 +10,8 @@ public sealed record QualityProfileItem(
     bool UpgradeUntilCutoff,
     bool UpgradeUnknownItems,
     bool AllowLowerQualityReplacements,
+    string? PresetId,
+    int? PresetVersion,
+    bool PresetDrifted,
     DateTimeOffset CreatedUtc,
     DateTimeOffset UpdatedUtc);

@@ -170,7 +170,8 @@ public sealed class SqlitePlatformSettingsRepository(
             """
             SELECT
                 id, name, media_type, cutoff_quality, allowed_qualities, custom_format_ids,
-                upgrade_until_cutoff, upgrade_unknown_items, allow_lower_quality_replacements, created_utc, updated_utc
+                upgrade_until_cutoff, upgrade_unknown_items, allow_lower_quality_replacements,
+                preset_id, preset_version, created_utc, updated_utc
             FROM quality_profiles
             ORDER BY sort_order ASC, media_type ASC, name ASC;
             """;
@@ -740,6 +741,9 @@ public sealed class SqlitePlatformSettingsRepository(
             UpgradeUntilCutoff: request.UpgradeUntilCutoff,
             UpgradeUnknownItems: request.UpgradeUnknownItems,
             AllowLowerQualityReplacements: false,
+            PresetId: null,
+            PresetVersion: null,
+            PresetDrifted: false,
             CreatedUtc: now,
             UpdatedUtc: now);
 
@@ -747,6 +751,48 @@ public sealed class SqlitePlatformSettingsRepository(
             DelunoDatabaseNames.Platform,
             cancellationToken);
 
+        await InsertQualityProfileAsync(connection, item, cancellationToken);
+        return item;
+    }
+
+    public async Task<QualityProfileItem> CreateQualityProfileFromPresetAsync(
+        string presetId,
+        string? nameOverride,
+        CancellationToken cancellationToken)
+    {
+        var preset = Presets.QualityProfilePresetCatalog.FindById(presetId)
+            ?? throw new InvalidOperationException($"Preset '{presetId}' not found.");
+
+        var now = timeProvider.GetUtcNow();
+        var item = new QualityProfileItem(
+            Id: Guid.CreateVersion7().ToString("N"),
+            Name: NormalizeName(nameOverride) ?? preset.Name,
+            MediaType: preset.MediaType,
+            CutoffQuality: preset.CutoffQuality,
+            AllowedQualities: preset.AllowedQualities,
+            CustomFormatIds: string.Empty,
+            UpgradeUntilCutoff: preset.UpgradeUntilCutoff,
+            UpgradeUnknownItems: preset.UpgradeUnknownItems,
+            AllowLowerQualityReplacements: false,
+            PresetId: preset.Id,
+            PresetVersion: preset.Version,
+            PresetDrifted: false,
+            CreatedUtc: now,
+            UpdatedUtc: now);
+
+        await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
+            DelunoDatabaseNames.Platform,
+            cancellationToken);
+
+        await InsertQualityProfileAsync(connection, item, cancellationToken);
+        return item;
+    }
+
+    private async Task InsertQualityProfileAsync(
+        System.Data.Common.DbConnection connection,
+        QualityProfileItem item,
+        CancellationToken cancellationToken)
+    {
         var sortOrder = await GetNextQualityProfileSortOrderAsync(connection, cancellationToken);
 
         using var command = connection.CreateCommand();
@@ -754,11 +800,13 @@ public sealed class SqlitePlatformSettingsRepository(
             """
             INSERT INTO quality_profiles (
                 id, name, media_type, sort_order, cutoff_quality, allowed_qualities, custom_format_ids,
-                upgrade_until_cutoff, upgrade_unknown_items, allow_lower_quality_replacements, created_utc, updated_utc
+                upgrade_until_cutoff, upgrade_unknown_items, allow_lower_quality_replacements,
+                preset_id, preset_version, created_utc, updated_utc
             )
             VALUES (
                 @id, @name, @mediaType, @sortOrder, @cutoffQuality, @allowedQualities, @customFormatIds,
-                @upgradeUntilCutoff, @upgradeUnknownItems, @allowLowerQualityReplacements, @createdUtc, @updatedUtc
+                @upgradeUntilCutoff, @upgradeUnknownItems, @allowLowerQualityReplacements,
+                @presetId, @presetVersion, @createdUtc, @updatedUtc
             );
             """;
 
@@ -772,11 +820,11 @@ public sealed class SqlitePlatformSettingsRepository(
         AddParameter(command, "@upgradeUntilCutoff", item.UpgradeUntilCutoff ? 1 : 0);
         AddParameter(command, "@upgradeUnknownItems", item.UpgradeUnknownItems ? 1 : 0);
         AddParameter(command, "@allowLowerQualityReplacements", item.AllowLowerQualityReplacements ? 1 : 0);
+        AddParameter(command, "@presetId", item.PresetId);
+        AddParameter(command, "@presetVersion", (object?)item.PresetVersion ?? DBNull.Value);
         AddParameter(command, "@createdUtc", item.CreatedUtc.ToString("O"));
         AddParameter(command, "@updatedUtc", item.UpdatedUtc.ToString("O"));
         await command.ExecuteNonQueryAsync(cancellationToken);
-
-        return item;
     }
 
     public async Task<TagItem> CreateTagAsync(
@@ -2818,10 +2866,10 @@ public sealed class SqlitePlatformSettingsRepository(
         var now = DateTimeOffset.UtcNow;
         var seeds = new[]
         {
-            new QualityProfileItem(Guid.CreateVersion7().ToString("N"), "Movies / Standard", "movies", "WEB 1080p", "WEB 1080p, Bluray 1080p, Remux 1080p", string.Empty, true, false, false, now, now),
-            new QualityProfileItem(Guid.CreateVersion7().ToString("N"), "Movies / Premium 4K", "movies", "Remux 2160p", "WEB 2160p, Bluray 2160p, Remux 2160p", string.Empty, true, true, false, now, now),
-            new QualityProfileItem(Guid.CreateVersion7().ToString("N"), "TV Shows / Standard", "tv", "WEB 1080p", "WEB 720p, WEB 1080p, HDTV 1080p", string.Empty, true, false, false, now, now),
-            new QualityProfileItem(Guid.CreateVersion7().ToString("N"), "TV Shows / Premium 4K", "tv", "WEB 2160p", "WEB 1080p, WEB 2160p, Bluray 2160p", string.Empty, true, true, false, now, now)
+            new QualityProfileItem(Guid.CreateVersion7().ToString("N"), "Movies / Standard", "movies", "WEB 1080p", "WEB 1080p, Bluray 1080p, Remux 1080p", string.Empty, true, false, false, null, null, false, now, now),
+            new QualityProfileItem(Guid.CreateVersion7().ToString("N"), "Movies / Premium 4K", "movies", "Remux 2160p", "WEB 2160p, Bluray 2160p, Remux 2160p", string.Empty, true, true, false, null, null, false, now, now),
+            new QualityProfileItem(Guid.CreateVersion7().ToString("N"), "TV Shows / Standard", "tv", "WEB 1080p", "WEB 720p, WEB 1080p, HDTV 1080p", string.Empty, true, false, false, null, null, false, now, now),
+            new QualityProfileItem(Guid.CreateVersion7().ToString("N"), "TV Shows / Premium 4K", "tv", "WEB 2160p", "WEB 1080p, WEB 2160p, Bluray 2160p", string.Empty, true, true, false, null, null, false, now, now)
         };
 
         foreach (var item in seeds)
@@ -2988,7 +3036,8 @@ public sealed class SqlitePlatformSettingsRepository(
             """
             SELECT
                 id, name, media_type, cutoff_quality, allowed_qualities, custom_format_ids,
-                upgrade_until_cutoff, upgrade_unknown_items, allow_lower_quality_replacements, created_utc, updated_utc
+                upgrade_until_cutoff, upgrade_unknown_items, allow_lower_quality_replacements,
+                preset_id, preset_version, created_utc, updated_utc
             FROM quality_profiles
             WHERE id = @id
             LIMIT 1;
@@ -3579,6 +3628,16 @@ public sealed class SqlitePlatformSettingsRepository(
 
     private static QualityProfileItem ReadQualityProfile(System.Data.Common.DbDataReader reader)
     {
+        var presetId = reader.IsDBNull(9) ? null : reader.GetString(9);
+        var presetVersion = reader.IsDBNull(10) ? (int?)null : reader.GetInt32(10);
+
+        var presetDrifted = false;
+        if (presetId is not null && presetVersion.HasValue)
+        {
+            var currentPreset = Presets.QualityProfilePresetCatalog.FindById(presetId);
+            presetDrifted = currentPreset is null || currentPreset.Version != presetVersion.Value;
+        }
+
         return new QualityProfileItem(
             Id: reader.GetString(0),
             Name: reader.GetString(1),
@@ -3589,8 +3648,11 @@ public sealed class SqlitePlatformSettingsRepository(
             UpgradeUntilCutoff: reader.GetInt64(6) == 1,
             UpgradeUnknownItems: reader.GetInt64(7) == 1,
             AllowLowerQualityReplacements: reader.GetInt64(8) == 1,
-            CreatedUtc: ParseTimestamp(reader.GetString(9)),
-            UpdatedUtc: ParseTimestamp(reader.GetString(10)));
+            PresetId: presetId,
+            PresetVersion: presetVersion,
+            PresetDrifted: presetDrifted,
+            CreatedUtc: ParseTimestamp(reader.GetString(11)),
+            UpdatedUtc: ParseTimestamp(reader.GetString(12)));
     }
 
     private static TagItem ReadTag(System.Data.Common.DbDataReader reader)

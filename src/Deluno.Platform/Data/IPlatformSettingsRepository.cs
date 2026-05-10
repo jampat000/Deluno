@@ -68,6 +68,11 @@ public interface IPlatformSettingsRepository
         CreateQualityProfileRequest request,
         CancellationToken cancellationToken);
 
+    Task<QualityProfileItem> CreateQualityProfileFromPresetAsync(
+        string presetId,
+        string? nameOverride,
+        CancellationToken cancellationToken);
+
     Task<TagItem> CreateTagAsync(
         CreateTagRequest request,
         CancellationToken cancellationToken);

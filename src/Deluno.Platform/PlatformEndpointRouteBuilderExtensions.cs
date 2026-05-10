@@ -1,4 +1,5 @@
 using Deluno.Contracts;
+using Deluno.Platform.Presets;
 using System.Diagnostics;
 using System.Globalization;
 using System.Net;
@@ -402,6 +403,38 @@ public static class PlatformEndpointRouteBuilderExtensions
 
             await repository.ReorderQualityProfilesAsync(request.Ids, cancellationToken);
             return Results.NoContent();
+        });
+
+        var qualityPresets = endpoints.MapGroup("/api/quality-profile-presets");
+
+        qualityPresets.MapGet(string.Empty, () =>
+        {
+            var items = QualityProfilePresetCatalog.All.Select(p => new QualityProfilePresetItem(
+                p.Id, p.Name, p.Description, p.MediaType, p.CutoffQuality,
+                p.AllowedQualities, p.UpgradeUntilCutoff, p.UpgradeUnknownItems, p.Version));
+            return Results.Ok(items);
+        });
+
+        qualityPresets.MapPost("{presetId}/apply", async (
+            string presetId,
+            ApplyQualityPresetRequest request,
+            HttpContext httpContext,
+            IPlatformSettingsRepository repository,
+            CancellationToken cancellationToken) =>
+        {
+            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, repository, cancellationToken);
+            if (denied is not null)
+            {
+                return denied;
+            }
+
+            if (QualityProfilePresetCatalog.FindById(presetId) is null)
+            {
+                return Results.NotFound();
+            }
+
+            var item = await repository.CreateQualityProfileFromPresetAsync(presetId, request.Name, cancellationToken);
+            return Results.Ok(item);
         });
 
         tags.MapGet(string.Empty, async (IPlatformSettingsRepository repository, CancellationToken cancellationToken) =>
