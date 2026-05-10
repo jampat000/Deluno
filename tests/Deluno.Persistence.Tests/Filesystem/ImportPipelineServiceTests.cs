@@ -300,6 +300,7 @@ public sealed class ImportPipelineServiceTests
             new SuccessfulProbeService(),
             new MediaDecisionService(new VersionedMediaPolicyEngine()),
             importResolutions,
+            null,
             NullLogger<ImportPipelineService>.Instance);
 
         var result = await service.ExecuteAsync(
@@ -373,6 +374,7 @@ public sealed class ImportPipelineServiceTests
             new SuccessfulProbeService(),
             new MediaDecisionService(new VersionedMediaPolicyEngine()),
             new NullImportResolutionsRepository(),
+            null,
             NullLogger<ImportPipelineService>.Instance);
 
     private static FilesystemReconciliationService CreateReconciliationService(

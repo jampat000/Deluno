@@ -28,7 +28,7 @@ public sealed class SqliteDownloadDispatchesRepository(
                 grab_message, grab_failure_code, grab_response_json, detected_utc,
                 torrent_hash_or_item_id, downloaded_bytes, import_status, import_detected_utc,
                 import_completed_utc, imported_file_path, import_failure_code,
-                import_failure_message, circuit_open_until_utc
+                import_failure_message, circuit_open_until_utc, next_retry_eligible_utc, attempt_count
             FROM download_dispatches
             WHERE id = @dispatchId AND status != 'archived'
             """;
@@ -316,7 +316,7 @@ public sealed class SqliteDownloadDispatchesRepository(
                 grab_message, grab_failure_code, grab_response_json, detected_utc,
                 torrent_hash_or_item_id, downloaded_bytes, import_status, import_detected_utc,
                 import_completed_utc, imported_file_path, import_failure_code,
-                import_failure_message, circuit_open_until_utc
+                import_failure_message, circuit_open_until_utc, next_retry_eligible_utc, attempt_count
             FROM download_dispatches
             WHERE {{whereClause}}
             ORDER BY grab_attempted_utc DESC, created_utc DESC
@@ -371,7 +371,7 @@ public sealed class SqliteDownloadDispatchesRepository(
                 grab_message, grab_failure_code, grab_response_json, detected_utc,
                 torrent_hash_or_item_id, downloaded_bytes, import_status, import_detected_utc,
                 import_completed_utc, imported_file_path, import_failure_code,
-                import_failure_message, circuit_open_until_utc
+                import_failure_message, circuit_open_until_utc, next_retry_eligible_utc, attempt_count
             FROM download_dispatches
             WHERE
                 grab_status = 'succeeded'
@@ -575,7 +575,7 @@ public sealed class SqliteDownloadDispatchesRepository(
                 grab_message, grab_failure_code, grab_response_json, detected_utc,
                 torrent_hash_or_item_id, downloaded_bytes, import_status, import_detected_utc,
                 import_completed_utc, imported_file_path, import_failure_code,
-                import_failure_message, circuit_open_until_utc
+                import_failure_message, circuit_open_until_utc, next_retry_eligible_utc, attempt_count
             FROM download_dispatches
             WHERE status = 'failed'
               AND grab_attempted_utc < @cutoff
@@ -615,7 +615,7 @@ public sealed class SqliteDownloadDispatchesRepository(
                 grab_message, grab_failure_code, grab_response_json, detected_utc,
                 torrent_hash_or_item_id, downloaded_bytes, import_status, import_detected_utc,
                 import_completed_utc, imported_file_path, import_failure_code,
-                import_failure_message, circuit_open_until_utc
+                import_failure_message, circuit_open_until_utc, next_retry_eligible_utc, attempt_count
             FROM download_dispatches
             WHERE download_client_id = @clientId
               AND torrent_hash_or_item_id = @hash
@@ -649,7 +649,7 @@ public sealed class SqliteDownloadDispatchesRepository(
                 grab_message, grab_failure_code, grab_response_json, detected_utc,
                 torrent_hash_or_item_id, downloaded_bytes, import_status, import_detected_utc,
                 import_completed_utc, imported_file_path, import_failure_code,
-                import_failure_message, circuit_open_until_utc
+                import_failure_message, circuit_open_until_utc, next_retry_eligible_utc, attempt_count
             FROM download_dispatches
             WHERE download_client_id = @clientId
               AND release_name = @releaseName
@@ -696,7 +696,9 @@ public sealed class SqliteDownloadDispatchesRepository(
             ImportedFilePath: reader.IsDBNull(24) ? null : reader.GetString(24),
             ImportFailureCode: reader.IsDBNull(25) ? null : reader.GetString(25),
             ImportFailureMessage: reader.IsDBNull(26) ? null : reader.GetString(26),
-            CircuitOpenUntilUtc: reader.IsDBNull(27) ? null : DateTimeOffset.Parse(reader.GetString(27)));
+            CircuitOpenUntilUtc: reader.IsDBNull(27) ? null : DateTimeOffset.Parse(reader.GetString(27)),
+            NextRetryEligibleUtc: reader.IsDBNull(28) ? null : DateTimeOffset.Parse(reader.GetString(28)),
+            AttemptCount: reader.IsDBNull(29) ? null : reader.GetInt32(29));
     }
 
     public async Task<int> IncrementAttemptCountAsync(string dispatchId, CancellationToken cancellationToken)
@@ -731,6 +733,122 @@ public sealed class SqliteDownloadDispatchesRepository(
             """;
         AddParameter(command, "@id", dispatchId);
         await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<DownloadDispatchItem>> FindOldUnresolvedDispatchesAsync(
+        TimeSpan minAge,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        var cutoff = timeProvider.GetUtcNow().Subtract(minAge);
+
+        await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
+            DelunoDatabaseNames.Jobs,
+            cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            SELECT
+                id, library_id, media_type, entity_type, entity_id, release_name,
+                indexer_name, download_client_id, download_client_name, status, notes_json,
+                created_utc, grab_status, grab_attempted_utc, grab_response_code,
+                grab_message, grab_failure_code, grab_response_json, detected_utc,
+                torrent_hash_or_item_id, downloaded_bytes, import_status, import_detected_utc,
+                import_completed_utc, imported_file_path, import_failure_code,
+                import_failure_message, circuit_open_until_utc, next_retry_eligible_utc, attempt_count
+            FROM download_dispatches
+            WHERE status != 'archived'
+              AND created_utc < @cutoff
+              AND (grab_status = 'succeeded' AND detected_utc IS NULL
+                   OR detected_utc IS NOT NULL AND import_status IS NULL)
+            ORDER BY created_utc ASC
+            LIMIT @limit
+            """;
+
+        AddParameter(command, "@cutoff", cutoff.ToString("O"));
+        AddParameter(command, "@limit", limit);
+
+        var results = new List<DownloadDispatchItem>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            results.Add(ReadDispatch(reader));
+        }
+
+        return results;
+    }
+
+    public async Task<DownloadDispatchItem> UpdateFailureRetryWindowAsync(
+        string dispatchId,
+        DateTimeOffset nextRetryEligibleUtc,
+        int retryCount,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
+            DelunoDatabaseNames.Jobs,
+            cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            UPDATE download_dispatches
+            SET
+                next_retry_eligible_utc = @nextRetryEligibleUtc,
+                attempt_count = @attemptCount
+            WHERE id = @dispatchId
+            """;
+
+        AddParameter(command, "@dispatchId", dispatchId);
+        AddParameter(command, "@nextRetryEligibleUtc", nextRetryEligibleUtc.ToString("O"));
+        AddParameter(command, "@attemptCount", retryCount);
+
+        await command.ExecuteNonQueryAsync(cancellationToken);
+
+        var result = await GetDispatchAsync(dispatchId, cancellationToken);
+        return result ?? throw new InvalidOperationException($"Dispatch {dispatchId} not found after retry window update");
+    }
+
+    public async Task<IReadOnlyList<DownloadDispatchItem>> FindDispatchesEligibleForRetryAsync(
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        var now = timeProvider.GetUtcNow();
+
+        await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
+            DelunoDatabaseNames.Jobs,
+            cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            SELECT
+                id, library_id, media_type, entity_type, entity_id, release_name,
+                indexer_name, download_client_id, download_client_name, status, notes_json,
+                created_utc, grab_status, grab_attempted_utc, grab_response_code,
+                grab_message, grab_failure_code, grab_response_json, detected_utc,
+                torrent_hash_or_item_id, downloaded_bytes, import_status, import_detected_utc,
+                import_completed_utc, imported_file_path, import_failure_code,
+                import_failure_message, circuit_open_until_utc, next_retry_eligible_utc, attempt_count
+            FROM download_dispatches
+            WHERE status != 'archived'
+              AND next_retry_eligible_utc IS NOT NULL
+              AND next_retry_eligible_utc <= @now
+            ORDER BY next_retry_eligible_utc ASC
+            LIMIT @limit
+            """;
+
+        AddParameter(command, "@now", now.ToString("O"));
+        AddParameter(command, "@limit", limit);
+
+        var results = new List<DownloadDispatchItem>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            results.Add(ReadDispatch(reader));
+        }
+
+        return results;
     }
 
     private static DispatchTimelineEvent ReadTimelineEvent(DbDataReader reader)

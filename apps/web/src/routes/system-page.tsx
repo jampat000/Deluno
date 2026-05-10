@@ -14,6 +14,7 @@ import {
   Wifi,
   WifiOff
 } from "lucide-react";
+import { JOB_STATUS, type JobStatus, isJobActive } from "../lib/job-status-constants";
 import { SystemShell } from "../components/app/settings-shell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { KpiCard } from "../components/app/kpi-card";
@@ -82,7 +83,7 @@ export function SystemPage() {
   const loaderData = useLoaderData() as SystemLoaderData | undefined;
   if (!loaderData) return <RouteSkeleton />;
   const { activity, automation, backupSettings, backups, downloadClients, indexers, jobs, retryWindows, searchCycles, settings, updateStatus } = loaderData;
-  const activeJobs = jobs.filter((job) => job.status === "running" || job.status === "queued").length;
+  const activeJobs = jobs.filter((job) => isJobActive(job.status as JobStatus)).length;
   const healthyIndexers = indexers.filter((item) => item.healthStatus === "healthy").length;
   const healthyClients = downloadClients.filter((item) => item.healthStatus === "healthy").length;
 
@@ -359,7 +360,7 @@ function AutomationCard({
   onRefresh: () => void;
 }) {
   const [busyLibraryId, setBusyLibraryId] = useState<string | null>(null);
-  const running = automation.filter((item) => item.status === "running" || item.status === "queued" || item.searchRequested).length;
+  const running = automation.filter((item) => isJobActive(item.status as JobStatus) || item.searchRequested).length;
   const latest = cycles[0] ?? null;
   const waiting = retryWindows.filter((item) => new Date(item.nextEligibleUtc).getTime() > Date.now()).length;
 
@@ -824,8 +825,8 @@ function HealthRow({ label, status }: { label: string; status: string }) {
 }
 
 function JobStatusBadge({ status }: { status: string }) {
-  const isRunning = status === "running";
-  const isQueued = status === "queued";
+  const isRunning = status === JOB_STATUS.RUNNING;
+  const isQueued = status === JOB_STATUS.QUEUED;
   const isDone = status === "completed" || status === "succeeded";
   const isFailed = status === "failed" || status === "error";
 

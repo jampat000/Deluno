@@ -13,7 +13,8 @@ public sealed class DownloadDispatchPollingService(
     IActivityFeedRepository activityFeedRepository,
     IDownloadDispatchesRepository downloadDispatchesRepository,
     IDispatchAlertRepository alertRepository,
-    IJobScheduler jobScheduler)
+    IJobScheduler jobScheduler,
+    Deluno.Realtime.IRealtimeEventPublisher realtimeEventPublisher)
     : IDownloadDispatchPollingService
 {
     private static readonly TimeSpan GrabTimeout = TimeSpan.FromHours(2);
@@ -40,6 +41,37 @@ public sealed class DownloadDispatchPollingService(
 
         foreach (var dispatch in unresolvedDispatches)
         {
+            if (dispatch.DetectedUtc is not null && dispatch.ImportStatus is null)
+            {
+                await realtimeEventPublisher.PublishDispatchDetectedAsync(
+                    dispatch.Id,
+                    dispatch.ReleaseName,
+                    null,
+                    null,
+                    cancellationToken);
+            }
+
+            if (dispatch.ImportStatus == "completed" && dispatch.ImportDetectedUtc is not null)
+            {
+                await realtimeEventPublisher.PublishDispatchImportCompletedAsync(
+                    dispatch.Id,
+                    dispatch.ReleaseName,
+                    true,
+                    null,
+                    null,
+                    cancellationToken);
+            }
+            else if (dispatch.ImportStatus == "failed" && !string.IsNullOrWhiteSpace(dispatch.ImportFailureCode))
+            {
+                await realtimeEventPublisher.PublishDispatchImportCompletedAsync(
+                    dispatch.Id,
+                    dispatch.ReleaseName,
+                    false,
+                    null,
+                    dispatch.ImportFailureMessage ?? dispatch.ImportFailureCode,
+                    cancellationToken);
+            }
+
             if (dispatch.GrabStatus == "succeeded" && dispatch.DetectedUtc is null)
             {
                 var age = now - dispatch.GrabAttemptedUtc;

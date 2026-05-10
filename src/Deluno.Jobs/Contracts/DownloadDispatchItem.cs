@@ -36,4 +36,8 @@ public sealed record DownloadDispatchItem(
     string? ImportFailureMessage,
 
     // Circuit breaker
-    DateTimeOffset? CircuitOpenUntilUtc);
+    DateTimeOffset? CircuitOpenUntilUtc,
+
+    // Retry tracking
+    DateTimeOffset? NextRetryEligibleUtc = null,
+    int? AttemptCount = null);

@@ -906,11 +906,11 @@ function PreviewFact({
 
 function ImportJobRow({ job }: { job: JobQueueItem }) {
   const payload = parseImportJobPayload(job.payloadJson);
-  const statusVariant = job.status === "completed"
+  const statusVariant = job.status === JOB_STATUS.COMPLETED
     ? "success"
-    : job.status === "failed"
+    : job.status === JOB_STATUS.FAILED
       ? "destructive"
-      : job.status === "running"
+      : job.status === JOB_STATUS.RUNNING
         ? "default"
         : "info";
 

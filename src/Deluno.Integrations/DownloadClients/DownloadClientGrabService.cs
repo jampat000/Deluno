@@ -17,6 +17,8 @@ public sealed class DownloadClientGrabService(
     IIntegrationResiliencePolicy resiliencePolicy,
     IJobScheduler jobScheduler,
     IDownloadDispatchRepository dispatchRepository,
+    IDownloadDispatchesRepository dispatchesRepository,
+    Deluno.Realtime.IRealtimeEventPublisher realtimeEventPublisher,
     TimeProvider timeProvider)
     : IDownloadClientGrabService
 {
@@ -42,6 +44,13 @@ public sealed class DownloadClientGrabService(
             return Failed(client.Id, request, "planned", "No downloadable URL was available for this release.");
         }
 
+        await realtimeEventPublisher.PublishDispatchGrabAttemptAsync(
+            request.DispatchId ?? "unknown",
+            request.ReleaseName,
+            client.Id,
+            client.Name,
+            cancellationToken);
+
         var result = await resiliencePolicy.ExecuteAsync(
             new IntegrationResilienceRequest(
                 BuildClientResilienceKey(client, "grab"),
@@ -58,6 +67,14 @@ public sealed class DownloadClientGrabService(
 
         if (result.CircuitOpen)
         {
+            await realtimeEventPublisher.PublishDispatchGrabCompletedAsync(
+                request.DispatchId ?? "unknown",
+                request.ReleaseName,
+                client.Id,
+                false,
+                "Circuit breaker open",
+                cancellationToken);
+
             return Failed(
                 client.Id,
                 request,
@@ -66,6 +83,26 @@ public sealed class DownloadClientGrabService(
         }
 
         var grabResult = result.Value ?? Failed(client.Id, request, "failed", result.FailureMessage ?? "Download client grab failed.");
+
+        if (!string.IsNullOrWhiteSpace(request.DispatchId))
+        {
+            await dispatchesRepository.RecordGrabAsync(
+                request.DispatchId,
+                grabResult.Status,
+                grabResult.ResponseCode,
+                grabResult.Message,
+                grabResult.FailureCode,
+                grabResult.ResponseJson,
+                cancellationToken);
+
+            await realtimeEventPublisher.PublishDispatchGrabCompletedAsync(
+                request.DispatchId,
+                request.ReleaseName,
+                client.Id,
+                grabResult.Succeeded,
+                grabResult.Message,
+                cancellationToken);
+        }
 
         if (!grabResult.Succeeded && !string.IsNullOrWhiteSpace(request.DispatchId))
         {

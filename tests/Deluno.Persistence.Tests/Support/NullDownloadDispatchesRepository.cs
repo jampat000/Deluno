@@ -98,4 +98,40 @@ public sealed class NullDownloadDispatchesRepository : IDownloadDispatchesReposi
         string reason,
         CancellationToken cancellationToken) =>
         Task.CompletedTask;
+
+    public Task<DownloadDispatchItem?> FindDispatchByHashAsync(
+        string clientId,
+        string hash,
+        CancellationToken cancellationToken) =>
+        Task.FromResult<DownloadDispatchItem?>(null);
+
+    public Task<DownloadDispatchItem?> FindDispatchByReleaseNameAsync(
+        string clientId,
+        string releaseName,
+        CancellationToken cancellationToken) =>
+        Task.FromResult<DownloadDispatchItem?>(null);
+
+    public Task<IReadOnlyList<DownloadDispatchItem>> FindStaleFailedDispatchesAsync(
+        TimeSpan minAge,
+        int limit,
+        CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<DownloadDispatchItem>>(new List<DownloadDispatchItem>());
+
+    public Task<IReadOnlyList<DownloadDispatchItem>> FindOldUnresolvedDispatchesAsync(
+        TimeSpan minAge,
+        int limit,
+        CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<DownloadDispatchItem>>(new List<DownloadDispatchItem>());
+
+    public Task<DownloadDispatchItem> UpdateFailureRetryWindowAsync(
+        string dispatchId,
+        DateTimeOffset nextRetryEligibleUtc,
+        int retryCount,
+        CancellationToken cancellationToken) =>
+        throw new NotImplementedException("Test only - should not be called");
+
+    public Task<IReadOnlyList<DownloadDispatchItem>> FindDispatchesEligibleForRetryAsync(
+        int limit,
+        CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<DownloadDispatchItem>>(new List<DownloadDispatchItem>());
 }

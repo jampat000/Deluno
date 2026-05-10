@@ -13,4 +13,7 @@ public sealed record DownloadClientGrabResult(
     string ReleaseName,
     bool Succeeded,
     string Status,
-    string Message);
+    string Message,
+    int? ResponseCode = null,
+    string? FailureCode = null,
+    string? ResponseJson = null);

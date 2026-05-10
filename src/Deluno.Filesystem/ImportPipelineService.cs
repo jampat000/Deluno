@@ -24,6 +24,7 @@ public sealed class ImportPipelineService(
     IMediaProbeService mediaProbeService,
     IMediaDecisionService mediaDecisionService,
     IImportResolutionsRepository? importResolutionsRepository,
+    IDownloadDispatchesRepository? downloadDispatchesRepository,
     ILogger<ImportPipelineService> logger)
     : IImportPipelineService
 {
@@ -246,6 +247,17 @@ public sealed class ImportPipelineService(
                     mediaType,
                     catalogImportResult.CatalogId,
                     mediaType == "tv" ? "series" : "movie",
+                    cancellationToken);
+            }
+
+            if (downloadDispatchesRepository is not null && !string.IsNullOrEmpty(request.DispatchId))
+            {
+                await downloadDispatchesRepository.RecordImportOutcomeAsync(
+                    request.DispatchId,
+                    "imported",
+                    preview.DestinationPath,
+                    null,
+                    null,
                     cancellationToken);
             }
 
@@ -595,6 +607,17 @@ public sealed class ImportPipelineService(
                 mediaType,
                 catalogId,
                 mediaType == "tv" ? "series" : "movie",
+                failureKind,
+                summary,
+                cancellationToken);
+        }
+
+        if (downloadDispatchesRepository is not null && !string.IsNullOrEmpty(executeRequest.DispatchId))
+        {
+            await downloadDispatchesRepository.RecordImportOutcomeAsync(
+                executeRequest.DispatchId,
+                "failed",
+                null,
                 failureKind,
                 summary,
                 cancellationToken);

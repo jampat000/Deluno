@@ -7,6 +7,7 @@ import {
   type MovieWantedSummary
 } from "../lib/api";
 import { authedFetch } from "../lib/use-auth";
+import { JOB_STATUS, type JobStatus } from "../lib/job-status-constants";
 import { cn } from "../lib/utils";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
@@ -100,12 +101,12 @@ export function MoviesWantedPage() {
                   size="sm"
                   variant="outline"
                   className="gap-2"
-                  disabled={busyId !== null || lib.status === "running"}
+                  disabled={busyId !== null || lib.status === JOB_STATUS.RUNNING}
                   onClick={() => void handleSearchNow(lib.libraryId)}
                   id={`search-now-${lib.libraryId}`}
                 >
                   <Search className="h-3.5 w-3.5" />
-                  {lib.status === "running" ? "Searching…" : `Search ${lib.libraryName}`}
+                  {lib.status === JOB_STATUS.RUNNING ? "Searching…" : `Search ${lib.libraryName}`}
                 </Button>
               ))}
               <Button size="sm" variant="ghost" className="gap-2" onClick={() => revalidator.revalidate()}>

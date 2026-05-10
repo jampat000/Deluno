@@ -31,6 +31,7 @@ public static class JobsServiceCollectionExtensions
         services.AddSingleton<CompositeDispatchRecoveryHandler>(provider =>
             new CompositeDispatchRecoveryHandler(provider.GetServices<IDispatchRecoveryHandler>().ToList()));
         services.AddSingleton<IDispatchCleanupService, DispatchCleanupService>();
+        services.AddSingleton<IDownloadRetryService, DownloadRetryService>();
         services.AddSingleton<DownloadDispatchPollingService>();
         services.AddSingleton<IDownloadDispatchPollingService>(provider =>
         {

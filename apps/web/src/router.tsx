@@ -252,6 +252,13 @@ export const router = createBrowserRouter([
         })
       },
       {
+        path: "search-cycles",
+        lazy: withSkeleton(async () => {
+          const module = await import("./routes/search-cycles-page");
+          return { loader: module.searchCyclesLoader, Component: module.SearchCyclesPage };
+        })
+      },
+      {
         path: "settings",
         element: <SettingsWorkspaceLayout />,
         children: [

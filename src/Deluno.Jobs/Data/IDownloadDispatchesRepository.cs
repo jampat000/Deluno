@@ -115,6 +115,30 @@ public interface IDownloadDispatchesRepository
         string dispatchId,
         string reason,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Find old, unresolved dispatches eligible for cleanup/archival.
+    /// </summary>
+    Task<IReadOnlyList<DownloadDispatchItem>> FindOldUnresolvedDispatchesAsync(
+        TimeSpan minAge,
+        int limit,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Update the next retry window for a failed grab (exponential backoff tracking).
+    /// </summary>
+    Task<DownloadDispatchItem> UpdateFailureRetryWindowAsync(
+        string dispatchId,
+        DateTimeOffset nextRetryEligibleUtc,
+        int retryCount,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Find dispatches eligible for retry based on their next_retry_eligible_utc.
+    /// </summary>
+    Task<IReadOnlyList<DownloadDispatchItem>> FindDispatchesEligibleForRetryAsync(
+        int limit,
+        CancellationToken cancellationToken);
 }
 
 public class DispatchQueryFilter
