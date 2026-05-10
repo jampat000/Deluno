@@ -1,5 +1,6 @@
 using Deluno.Platform.Data;
 using Deluno.Platform.Migration;
+using Deluno.Platform.Notifications;
 using Deluno.Platform.Quality;
 using Deluno.Platform.Security;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +16,8 @@ public static class PlatformServiceCollectionExtensions
         services.AddSingleton<IMediaDecisionService, MediaDecisionService>();
         services.AddSingleton<IMigrationAssistantService, MigrationAssistantService>();
         services.AddSingleton<ISecretProtector, DataProtectionSecretProtector>();
+        services.AddSingleton<IOutboundNotificationService, OutboundNotificationService>();
+        services.AddHttpClient("notifications");
         services.AddHostedService<PlatformSchemaInitializer>();
         return services;
     }

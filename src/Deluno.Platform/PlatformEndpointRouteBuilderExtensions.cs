@@ -68,6 +68,7 @@ public static class PlatformEndpointRouteBuilderExtensions
         var destinationRules = endpoints.MapGroup("/api/destination-rules");
         var policySets = endpoints.MapGroup("/api/policy-sets");
         var libraryViews = endpoints.MapGroup("/api/library-views");
+        var notificationWebhooks = endpoints.MapGroup("/api/notification-webhooks");
         var migration = endpoints.MapGroup("/api/migration");
 
         migration.MapPost("/preview", async (
@@ -435,6 +436,94 @@ public static class PlatformEndpointRouteBuilderExtensions
 
             var item = await repository.CreateQualityProfileFromPresetAsync(presetId, request.Name, cancellationToken);
             return Results.Ok(item);
+        });
+
+        notificationWebhooks.MapGet(string.Empty, async (
+            IPlatformSettingsRepository repository,
+            CancellationToken cancellationToken) =>
+        {
+            var items = await repository.ListNotificationWebhooksAsync(cancellationToken);
+            return Results.Ok(items);
+        });
+
+        notificationWebhooks.MapPost(string.Empty, async (
+            HttpContext httpContext,
+            CreateNotificationWebhookRequest request,
+            IPlatformSettingsRepository repository,
+            CancellationToken cancellationToken) =>
+        {
+            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, repository, cancellationToken);
+            if (denied is not null)
+            {
+                return denied;
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Url))
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["url"] = ["Webhook URL is required."]
+                });
+            }
+
+            var item = await repository.CreateNotificationWebhookAsync(request, cancellationToken);
+            return Results.Ok(item);
+        });
+
+        notificationWebhooks.MapPut("{id}", async (
+            string id,
+            HttpContext httpContext,
+            UpdateNotificationWebhookRequest request,
+            IPlatformSettingsRepository repository,
+            CancellationToken cancellationToken) =>
+        {
+            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, repository, cancellationToken);
+            if (denied is not null)
+            {
+                return denied;
+            }
+
+            var item = await repository.UpdateNotificationWebhookAsync(id, request, cancellationToken);
+            return item is null ? Results.NotFound() : Results.Ok(item);
+        });
+
+        notificationWebhooks.MapDelete("{id}", async (
+            string id,
+            HttpContext httpContext,
+            IPlatformSettingsRepository repository,
+            CancellationToken cancellationToken) =>
+        {
+            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, repository, cancellationToken);
+            if (denied is not null)
+            {
+                return denied;
+            }
+
+            var removed = await repository.DeleteNotificationWebhookAsync(id, cancellationToken);
+            return removed ? Results.NoContent() : Results.NotFound();
+        });
+
+        notificationWebhooks.MapPost("{id}/test", async (
+            string id,
+            HttpContext httpContext,
+            IPlatformSettingsRepository repository,
+            Deluno.Platform.Notifications.IOutboundNotificationService notificationService,
+            CancellationToken cancellationToken) =>
+        {
+            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, repository, cancellationToken);
+            if (denied is not null)
+            {
+                return denied;
+            }
+
+            await notificationService.DispatchAsync(
+                "test",
+                "Deluno Webhook Test",
+                "This is a test notification from Deluno. Your webhook is configured correctly.",
+                null,
+                cancellationToken);
+
+            return Results.Ok(new { sent = true });
         });
 
         tags.MapGet(string.Empty, async (IPlatformSettingsRepository repository, CancellationToken cancellationToken) =>
@@ -1238,6 +1327,7 @@ public static class PlatformEndpointRouteBuilderExtensions
             IPlatformSettingsRepository repository,
             IRealtimeEventPublisher realtimeEventPublisher,
             IIntegrationResiliencePolicy resiliencePolicy,
+            Deluno.Platform.Notifications.IOutboundNotificationService notificationService,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, repository, cancellationToken);
@@ -1265,6 +1355,16 @@ public static class PlatformEndpointRouteBuilderExtensions
                     health.HealthStatus == "healthy" ? "healthy" : "degraded",
                     health.Message,
                     cancellationToken);
+
+                if (health.HealthStatus != "healthy")
+                {
+                    await notificationService.DispatchAsync(
+                        "health.degraded",
+                        $"Indexer degraded: {item.Name}",
+                        health.Message,
+                        null,
+                        cancellationToken);
+                }
             }
 
             return result is null ? Results.NotFound() : Results.Ok(result);
