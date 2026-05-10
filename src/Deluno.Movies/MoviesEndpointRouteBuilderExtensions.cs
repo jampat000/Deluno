@@ -329,7 +329,8 @@ public static class MoviesEndpointRouteBuilderExtensions
                     candidate.SizeScore,
                     candidate.ReleaseGroup,
                     candidate.EstimatedBitrateMbps,
-                    candidate.PolicyVersion
+                    candidate.PolicyVersion,
+                    candidate.MatchedCustomFormats
                 }).ToArray()
             });
         });
