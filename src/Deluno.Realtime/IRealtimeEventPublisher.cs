@@ -35,4 +35,30 @@ public interface IRealtimeEventPublisher
     Task PublishQueueItemRemovedAsync(
         string id,
         CancellationToken cancellationToken);
+
+    Task PublishQueueItemStatusChangedAsync(
+        string id,
+        string status,
+        string? errorMessage,
+        CancellationToken cancellationToken);
+
+    Task PublishSearchRunCompletedAsync(
+        string libraryId,
+        string libraryName,
+        string mediaType,
+        int plannedCount,
+        int queuedCount,
+        int skippedCount,
+        string completedUtc,
+        CancellationToken cancellationToken);
+
+    Task PublishImportStateChangedAsync(
+        string jobId,
+        string state,
+        string? entityType,
+        string? entityId,
+        string? title,
+        string? errorMessage,
+        string changedUtc,
+        CancellationToken cancellationToken);
 }

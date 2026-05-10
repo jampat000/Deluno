@@ -478,6 +478,18 @@ public sealed class SqliteJobStore(
             SeverityForCategory("job.completed"),
             now.ToString("O"),
             cancellationToken);
+        if (job.JobType == "filesystem.import.execute")
+        {
+            await realtimeEventPublisher.PublishImportStateChangedAsync(
+                job.Id,
+                "completed",
+                job.RelatedEntityType,
+                job.RelatedEntityId,
+                completionMessage,
+                null,
+                now.ToString("O"),
+                cancellationToken);
+        }
         DelunoObservability.JobsCompleted.Add(1, new("job.type", job.JobType), new("source", job.Source));
     }
 
@@ -582,6 +594,11 @@ public sealed class SqliteJobStore(
 
         await transaction.CommitAsync(cancellationToken);
         await realtimeEventPublisher.PublishQueueItemRemovedAsync(job.Id, cancellationToken);
+        await realtimeEventPublisher.PublishQueueItemStatusChangedAsync(
+            job.Id,
+            nextStatus,
+            storedError,
+            cancellationToken);
         await realtimeEventPublisher.PublishActivityEventAddedAsync(
             Guid.CreateVersion7().ToString("N"),
             shouldDeadLetter
@@ -591,6 +608,18 @@ public sealed class SqliteJobStore(
             SeverityForCategory(shouldDeadLetter ? "job.dead-letter" : "job.failed"),
             now.ToString("O"),
             cancellationToken);
+        if (job.JobType == "filesystem.import.execute")
+        {
+            await realtimeEventPublisher.PublishImportStateChangedAsync(
+                job.Id,
+                shouldDeadLetter ? "failed" : "retrying",
+                job.RelatedEntityType,
+                job.RelatedEntityId,
+                null,
+                storedError,
+                now.ToString("O"),
+                cancellationToken);
+        }
         DelunoObservability.JobsFailed.Add(1, new("job.type", job.JobType), new("status", nextStatus));
         if (!shouldDeadLetter)
         {
@@ -1178,12 +1207,22 @@ public sealed class SqliteJobStore(
             cancellationToken: cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
+        var cycleTimestamp = (request.CompletedUtc ?? request.StartedUtc).ToString("O");
         await realtimeEventPublisher.PublishActivityEventAddedAsync(
             Guid.CreateVersion7().ToString("N"),
             $"Checked {request.LibraryName}: {request.PlannedCount} planned, {request.QueuedCount} sent, {request.SkippedCount} waiting.",
             "library.search.cycle",
             SeverityForCategory("library.search.cycle"),
-            (request.CompletedUtc ?? request.StartedUtc).ToString("O"),
+            cycleTimestamp,
+            cancellationToken);
+        await realtimeEventPublisher.PublishSearchRunCompletedAsync(
+            request.LibraryId,
+            request.LibraryName,
+            request.MediaType,
+            request.PlannedCount,
+            request.QueuedCount,
+            request.SkippedCount,
+            cycleTimestamp,
             cancellationToken);
     }
 
