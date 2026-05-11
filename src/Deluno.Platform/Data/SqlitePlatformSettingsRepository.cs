@@ -1974,8 +1974,8 @@ public sealed class SqlitePlatformSettingsRepository(
         if (existing is null) return null;
 
         var newName     = NormalizeName(request.Name) ?? existing.Name;
-        var newProtocol = NormalizeIndexerProtocol(request.Protocol) is { } p && p != "unknown" ? p : existing.Protocol;
-        var newPrivacy  = NormalizeIndexerPrivacy(request.Privacy) is { } pr && pr != "unknown" ? pr : existing.Privacy;
+        var newProtocol = request.Protocol is not null ? NormalizeIndexerProtocol(request.Protocol) : existing.Protocol;
+        var newPrivacy  = request.Privacy is not null ? NormalizeIndexerPrivacy(request.Privacy) : existing.Privacy;
         var newBaseUrl  = NormalizePath(request.BaseUrl) ?? existing.BaseUrl;
         var newApiKey   = request.ApiKey is not null ? NormalizeName(request.ApiKey) : existing.ApiKey;
         var newPriority = request.Priority is >= 1 ? request.Priority.Value : existing.Priority;
@@ -2138,7 +2138,7 @@ public sealed class SqlitePlatformSettingsRepository(
         if (existing is null) return null;
 
         var newName     = NormalizeName(request.Name) ?? existing.Name;
-        var newProtocol = NormalizeDownloadProtocol(request.Protocol) is { } p && p != "unknown" ? p : existing.Protocol;
+        var newProtocol = request.Protocol is not null ? NormalizeDownloadProtocol(request.Protocol) : existing.Protocol;
         var newHost     = request.Host is not null ? NormalizeName(request.Host) : existing.Host;
         var newPort     = request.Port is >= 1 ? request.Port : existing.Port;
         var newUsername = request.Username is not null ? NormalizeName(request.Username) : existing.Username;
