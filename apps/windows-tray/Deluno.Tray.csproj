@@ -32,6 +32,11 @@
     <ProjectReference Include="..\..\src\Deluno.Worker\Deluno.Worker.csproj" />
   </ItemGroup>
 
+  <!-- On non-Windows CI, skip compilation — restore is enough for dependency checks -->
+  <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('Windows'))">
+    <Compile Remove="**/*.cs" />
+  </ItemGroup>
+
   <!-- Bundle the compiled web frontend if it has been built -->
   <ItemGroup Condition="Exists('..\..\apps\web\dist')">
     <Content Include="..\..\apps\web\dist\**\*">
