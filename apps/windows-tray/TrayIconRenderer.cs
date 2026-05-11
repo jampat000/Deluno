@@ -8,7 +8,7 @@ namespace Deluno.Tray;
 public static class TrayIconRenderer
 {
     // Renders a 16×16 icon matching the Deluno brand mark:
-    // screen outline + play triangle in white on a state-coloured background.
+    // film-frame screen (outline + side tabs) with a play triangle.
     public static Icon Render(TrayState state)
     {
         const int size = 16;
@@ -17,22 +17,29 @@ public static class TrayIconRenderer
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.Clear(Color.Transparent);
 
-        // Circular background in state colour
         using var bgBrush = new SolidBrush(StateColor(state));
         g.FillEllipse(bgBrush, 0, 0, size - 1, size - 1);
 
         using var whitePen   = new Pen(Color.White, 1.2f);
         using var whiteBrush = new SolidBrush(Color.White);
 
-        // Screen outline (rounded rect scaled to 16×16)
-        DrawRoundedRect(g, whitePen, 2, 4, 12, 9, 1.5f);
+        // Screen outline
+        DrawRoundedRect(g, whitePen, 2.5f, 5f, 11f, 6f, 1.2f);
 
-        // Play triangle
+        // Film strip tabs — left edge (two small filled rects straddling left stroke)
+        g.FillRectangle(whiteBrush, 1f, 6f,   2f, 1.5f);
+        g.FillRectangle(whiteBrush, 1f, 8.5f, 2f, 1.5f);
+
+        // Film strip tabs — right edge
+        g.FillRectangle(whiteBrush, 13f, 6f,   2f, 1.5f);
+        g.FillRectangle(whiteBrush, 13f, 8.5f, 2f, 1.5f);
+
+        // Play triangle, centred in screen
         g.FillPolygon(whiteBrush, new PointF[]
         {
-            new(7f,  6.5f),
-            new(7f,  10.5f),
-            new(11f, 8.5f),
+            new(6.5f, 6.5f),
+            new(6.5f, 10.5f),
+            new(11f,  8.5f),
         });
 
         return Icon.FromHandle(bmp.GetHicon());
