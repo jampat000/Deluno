@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#FFCA6B"/>
-      <stop offset="100%" stop-color="#F5881F"/>
+      <stop offset="0%" stop-color="#FFC84A"/>
+      <stop offset="100%" stop-color="#F07820"/>
     </linearGradient>
   </defs>
   <rect width="32" height="32" rx="7" fill="url(#bg)"/>
   <!-- Screen outline -->
-  <rect x="5.5" y="8" width="21" height="16" rx="2.5" stroke="white" stroke-width="1.8" fill="none"/>
-  <!-- Play triangle -->
-  <polygon points="13.5,12.5 13.5,19.5 21,16" fill="white"/>
+  <rect x="5" y="8" width="22" height="16" rx="3" stroke="white" stroke-width="2.2" fill="none"/>
+  <!-- Play triangle, centred in screen -->
+  <polygon points="13,12 13,20 21.5,16" fill="white"/>
 </svg>
