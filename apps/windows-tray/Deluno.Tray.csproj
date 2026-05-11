@@ -9,6 +9,8 @@
     <AssemblyName>Deluno</AssemblyName>
     <Platforms>x64</Platforms>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <!-- Allows dotnet restore/build on Linux CI for the windows-targeted project -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <!-- Version injected at publish time via /p:Version -->
     <Version>0.1.0</Version>
   </PropertyGroup>
