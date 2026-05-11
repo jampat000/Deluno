@@ -1491,7 +1491,7 @@ public sealed class SqliteMovieCatalogRepository(
             SELECT
                 m.id, m.title, m.release_year, m.imdb_id,
                 w.library_id, w.wanted_status, w.has_file, w.current_quality
-            FROM movies m
+            FROM movie_entries m
             JOIN movie_wanted_state w ON w.movie_id = m.id
             WHERE m.id IN (
                 SELECT movie_id
