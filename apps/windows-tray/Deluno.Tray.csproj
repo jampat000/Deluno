@@ -32,7 +32,11 @@
     <ProjectReference Include="..\..\src\Deluno.Worker\Deluno.Worker.csproj" />
   </ItemGroup>
 
-  <!-- On non-Windows CI, skip compilation — restore is enough for dependency checks -->
+  <!-- On non-Windows CI, build as an empty library — restore validates dependencies,
+       WinExe OutputType would require an entry point even with no source files. -->
+  <PropertyGroup Condition="!$([MSBuild]::IsOSPlatform('Windows'))">
+    <OutputType>Library</OutputType>
+  </PropertyGroup>
   <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('Windows'))">
     <Compile Remove="**/*.cs" />
   </ItemGroup>
