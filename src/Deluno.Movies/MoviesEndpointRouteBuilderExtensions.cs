@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 using Deluno.Jobs.Contracts;
 using Deluno.Jobs.Data;
@@ -50,7 +51,7 @@ public static class MoviesEndpointRouteBuilderExtensions
 
         movies.MapPost("/import-recovery", async (
             HttpContext httpContext,
-            CreateMovieImportRecoveryCaseRequest request,
+            [FromBody] CreateMovieImportRecoveryCaseRequest request,
             IMovieCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
             CancellationToken cancellationToken) =>
@@ -142,7 +143,7 @@ public static class MoviesEndpointRouteBuilderExtensions
 
         movies.MapPut("/monitoring", async (
             HttpContext httpContext,
-            UpdateMovieMonitoringRequest request,
+            [FromBody] UpdateMovieMonitoringRequest request,
             IMovieCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
             CancellationToken cancellationToken) =>
@@ -337,7 +338,7 @@ public static class MoviesEndpointRouteBuilderExtensions
 
         movies.MapPost("/{id}/grab", async (
             string id,
-            ReleaseGrabRequest request,
+            [FromBody] ReleaseGrabRequest request,
             HttpContext httpContext,
             IMovieCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
@@ -552,13 +553,13 @@ public static class MoviesEndpointRouteBuilderExtensions
                 currentQuality = decision.CurrentQuality,
                 targetQuality = decision.TargetQuality,
                 preventLowerQualityReplacements = wantedItem.PreventLowerQualityReplacements,
-                lastQualityDelta = wantedItem.LastQualityDeltaDecision
+                lastQualityDeltaDecision = wantedItem.LastQualityDeltaDecision
             });
         });
 
         movies.MapPut("/{id}/replacement-protection", async (
             string id,
-            UpdateReplacementProtectionRequest request,
+            [FromBody] UpdateReplacementProtectionRequest request,
             HttpContext httpContext,
             IMovieCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
@@ -593,7 +594,7 @@ public static class MoviesEndpointRouteBuilderExtensions
 
         movies.MapPost("/{id}/evaluate-candidate", async (
             string id,
-            EvaluateCandidateRequest request,
+            [FromBody] EvaluateCandidateRequest request,
             IMovieCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
             IMovieWorkflowService workflowService,
@@ -690,7 +691,7 @@ public static class MoviesEndpointRouteBuilderExtensions
 
         movies.MapPost("/{id}/metadata/link", async (
             string id,
-            MetadataLinkRequest request,
+            [FromBody] MetadataLinkRequest request,
             HttpContext httpContext,
             IMovieCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
@@ -774,7 +775,7 @@ public static class MoviesEndpointRouteBuilderExtensions
 
         movies.MapPost("/metadata/jobs", async (
             HttpContext httpContext,
-            MetadataRefreshJobsRequest request,
+            [FromBody] MetadataRefreshJobsRequest request,
             IMovieCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
             IJobScheduler jobScheduler,
@@ -813,7 +814,7 @@ public static class MoviesEndpointRouteBuilderExtensions
 
         movies.MapPost("/", async (
             HttpContext httpContext,
-            CreateMovieRequest request,
+            [FromBody] CreateMovieRequest request,
             IMovieCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
             IMediaDecisionService mediaDecisionService,
@@ -882,7 +883,7 @@ public static class MoviesEndpointRouteBuilderExtensions
 
         movies.MapPost("/bulk/search", async (
             HttpContext httpContext,
-            BulkSearchRequest request,
+            [FromBody] BulkSearchRequest request,
             IMovieCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
             IJobQueueRepository jobQueueRepository,
@@ -939,7 +940,7 @@ public static class MoviesEndpointRouteBuilderExtensions
 
         movies.MapDelete("/bulk", async (
             HttpContext httpContext,
-            BulkDeleteMoviesRequest request,
+            [FromBody] BulkDeleteMoviesRequest request,
             IMovieCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
             CancellationToken cancellationToken) =>
@@ -964,7 +965,7 @@ public static class MoviesEndpointRouteBuilderExtensions
 
         movies.MapPost("/bulk/reassign-library", async (
             HttpContext httpContext,
-            BulkReassignLibraryRequest request,
+            [FromBody] BulkReassignLibraryRequest request,
             IMovieCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
             CancellationToken cancellationToken) =>

@@ -51,6 +51,18 @@ app.Use(async (context, next) =>
 {
     var path = context.Request.Path;
 
+    if (path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWithSegments("/hubs", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.Headers.CacheControl = "no-store";
+    }
+
+    await next();
+});
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path;
+
     var requiresAuthentication =
         (path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase) &&
          !path.Equals("/api/auth/login", StringComparison.OrdinalIgnoreCase) &&

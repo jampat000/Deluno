@@ -1050,7 +1050,7 @@ export class ApiRequestError extends Error {
 }
 
 export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await authedFetch(path, init);
+  const response = await authedFetch(path, { cache: "no-store", ...init });
   if (!response.ok) {
     const responseBody = await response.text().catch(() => "");
     let message = `Request failed for ${path} with status ${response.status}.`;

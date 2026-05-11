@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using Deluno.Platform.Contracts;
 using Deluno.Platform.Data;
 using Deluno.Platform.Quality;
@@ -14,7 +15,7 @@ public static class SearchEndpointRouteBuilderExtensions
         var customFormats = endpoints.MapGroup("/api/custom-formats");
 
         customFormats.MapPost("dry-run", async (
-            CustomFormatDryRunRequest request,
+            [FromBody] CustomFormatDryRunRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {

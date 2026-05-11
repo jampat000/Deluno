@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using Deluno.Contracts;
 using Deluno.Platform.Presets;
 using System.Diagnostics;
@@ -40,7 +41,7 @@ public static class PlatformEndpointRouteBuilderExtensions
 
         settings.MapPut(string.Empty, async (
             HttpContext httpContext,
-            UpdatePlatformSettingsRequest request,
+            [FromBody] UpdatePlatformSettingsRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -73,7 +74,7 @@ public static class PlatformEndpointRouteBuilderExtensions
 
         migration.MapPost("/preview", async (
             HttpContext httpContext,
-            MigrationImportRequest request,
+            [FromBody] MigrationImportRequest request,
             IPlatformSettingsRepository repository,
             IMigrationAssistantService migrationAssistant,
             CancellationToken cancellationToken) =>
@@ -90,7 +91,7 @@ public static class PlatformEndpointRouteBuilderExtensions
 
         migration.MapPost("/apply", async (
             HttpContext httpContext,
-            MigrationImportRequest request,
+            [FromBody] MigrationImportRequest request,
             IPlatformSettingsRepository repository,
             IMigrationAssistantService migrationAssistant,
             CancellationToken cancellationToken) =>
@@ -106,7 +107,7 @@ public static class PlatformEndpointRouteBuilderExtensions
         });
 
         auth.MapPost("/login", async (
-            LoginRequest request,
+            [FromBody] LoginRequest request,
             IDataProtectionProvider dataProtectionProvider,
             TimeProvider timeProvider,
             IPlatformSettingsRepository repository,
@@ -139,7 +140,7 @@ public static class PlatformEndpointRouteBuilderExtensions
         });
 
         auth.MapPost("/bootstrap", async (
-            BootstrapUserRequest request,
+            [FromBody] BootstrapUserRequest request,
             IDataProtectionProvider dataProtectionProvider,
             TimeProvider timeProvider,
             IPlatformSettingsRepository repository,
@@ -185,7 +186,7 @@ public static class PlatformEndpointRouteBuilderExtensions
 
         auth.MapPut("/password", async (
             HttpContext httpContext,
-            ChangePasswordRequest request,
+            [FromBody] ChangePasswordRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -240,7 +241,7 @@ public static class PlatformEndpointRouteBuilderExtensions
 
         apiKeys.MapPost(string.Empty, async (
             HttpContext httpContext,
-            CreateApiKeyRequest request,
+            [FromBody] CreateApiKeyRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -282,7 +283,7 @@ public static class PlatformEndpointRouteBuilderExtensions
 
         setup.MapPost("/completed", async (
             HttpContext httpContext,
-            SetupCompletedRequest request,
+            [FromBody] SetupCompletedRequest request,
             IPlatformSettingsRepository repository,
             IActivityFeedRepository activityFeedRepository,
             CancellationToken cancellationToken) =>
@@ -323,7 +324,7 @@ public static class PlatformEndpointRouteBuilderExtensions
 
         qualityProfiles.MapPost(string.Empty, async (
             HttpContext httpContext,
-            CreateQualityProfileRequest request,
+            [FromBody] CreateQualityProfileRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -346,7 +347,7 @@ public static class PlatformEndpointRouteBuilderExtensions
         qualityProfiles.MapPut("{id}", async (
             string id,
             HttpContext httpContext,
-            UpdateQualityProfileRequest request,
+            [FromBody] UpdateQualityProfileRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -384,7 +385,7 @@ public static class PlatformEndpointRouteBuilderExtensions
 
         qualityProfiles.MapPut("order", async (
             HttpContext httpContext,
-            ReorderQualityProfilesRequest request,
+            [FromBody] ReorderQualityProfilesRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -418,7 +419,7 @@ public static class PlatformEndpointRouteBuilderExtensions
 
         qualityPresets.MapPost("{presetId}/apply", async (
             string presetId,
-            ApplyQualityPresetRequest request,
+            [FromBody] ApplyQualityPresetRequest request,
             HttpContext httpContext,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
@@ -448,7 +449,7 @@ public static class PlatformEndpointRouteBuilderExtensions
 
         notificationWebhooks.MapPost(string.Empty, async (
             HttpContext httpContext,
-            CreateNotificationWebhookRequest request,
+            [FromBody] CreateNotificationWebhookRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -473,7 +474,7 @@ public static class PlatformEndpointRouteBuilderExtensions
         notificationWebhooks.MapPut("{id}", async (
             string id,
             HttpContext httpContext,
-            UpdateNotificationWebhookRequest request,
+            [FromBody] UpdateNotificationWebhookRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -534,7 +535,7 @@ public static class PlatformEndpointRouteBuilderExtensions
 
         tags.MapPost(string.Empty, async (
             HttpContext httpContext,
-            CreateTagRequest request,
+            [FromBody] CreateTagRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -557,7 +558,7 @@ public static class PlatformEndpointRouteBuilderExtensions
         tags.MapPut("{id}", async (
             string id,
             HttpContext httpContext,
-            UpdateTagRequest request,
+            [FromBody] UpdateTagRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -601,7 +602,7 @@ public static class PlatformEndpointRouteBuilderExtensions
 
         intakeSources.MapPost(string.Empty, async (
             HttpContext httpContext,
-            CreateIntakeSourceRequest request,
+            [FromBody] CreateIntakeSourceRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -624,7 +625,7 @@ public static class PlatformEndpointRouteBuilderExtensions
         intakeSources.MapPut("{id}", async (
             string id,
             HttpContext httpContext,
-            UpdateIntakeSourceRequest request,
+            [FromBody] UpdateIntakeSourceRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -668,7 +669,7 @@ public static class PlatformEndpointRouteBuilderExtensions
 
         customFormats.MapPost(string.Empty, async (
             HttpContext httpContext,
-            CreateCustomFormatRequest request,
+            [FromBody] CreateCustomFormatRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -691,7 +692,7 @@ public static class PlatformEndpointRouteBuilderExtensions
         customFormats.MapPut("{id}", async (
             string id,
             HttpContext httpContext,
-            UpdateCustomFormatRequest request,
+            [FromBody] UpdateCustomFormatRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -734,7 +735,7 @@ public static class PlatformEndpointRouteBuilderExtensions
         });
 
         destinationRules.MapPost("resolve", async (
-            DestinationResolutionRequest request,
+            [FromBody] DestinationResolutionRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -746,7 +747,7 @@ public static class PlatformEndpointRouteBuilderExtensions
 
         destinationRules.MapPost(string.Empty, async (
             HttpContext httpContext,
-            CreateDestinationRuleRequest request,
+            [FromBody] CreateDestinationRuleRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -769,7 +770,7 @@ public static class PlatformEndpointRouteBuilderExtensions
         destinationRules.MapPut("{id}", async (
             string id,
             HttpContext httpContext,
-            UpdateDestinationRuleRequest request,
+            [FromBody] UpdateDestinationRuleRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -813,7 +814,7 @@ public static class PlatformEndpointRouteBuilderExtensions
 
         policySets.MapPost(string.Empty, async (
             HttpContext httpContext,
-            CreatePolicySetRequest request,
+            [FromBody] CreatePolicySetRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -836,7 +837,7 @@ public static class PlatformEndpointRouteBuilderExtensions
         policySets.MapPut("{id}", async (
             string id,
             HttpContext httpContext,
-            UpdatePolicySetRequest request,
+            [FromBody] UpdatePolicySetRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -896,7 +897,7 @@ public static class PlatformEndpointRouteBuilderExtensions
 
         libraryViews.MapPost(string.Empty, async (
             HttpContext httpContext,
-            CreateLibraryViewRequest request,
+            [FromBody] CreateLibraryViewRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -925,7 +926,7 @@ public static class PlatformEndpointRouteBuilderExtensions
         libraryViews.MapPut("{id}", async (
             string id,
             HttpContext httpContext,
-            UpdateLibraryViewRequest request,
+            [FromBody] UpdateLibraryViewRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -985,7 +986,7 @@ public static class PlatformEndpointRouteBuilderExtensions
 
         libraries.MapPost(string.Empty, async (
             HttpContext httpContext,
-            CreateLibraryRequest request,
+            [FromBody] CreateLibraryRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -1008,7 +1009,7 @@ public static class PlatformEndpointRouteBuilderExtensions
         endpoints.MapPut("/api/libraries/{id}/automation", async (
             string id,
             HttpContext httpContext,
-            UpdateLibraryAutomationRequest request,
+            [FromBody] UpdateLibraryAutomationRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -1031,7 +1032,7 @@ public static class PlatformEndpointRouteBuilderExtensions
         endpoints.MapPut("/api/libraries/{id}/quality-profile", async (
             string id,
             HttpContext httpContext,
-            UpdateLibraryQualityProfileRequest request,
+            [FromBody] UpdateLibraryQualityProfileRequest request,
             IPlatformSettingsRepository repository,
             IJobScheduler jobScheduler,
             CancellationToken cancellationToken) =>
@@ -1071,7 +1072,7 @@ public static class PlatformEndpointRouteBuilderExtensions
         endpoints.MapPut("/api/libraries/{id}/workflow", async (
             string id,
             HttpContext httpContext,
-            UpdateLibraryWorkflowRequest request,
+            [FromBody] UpdateLibraryWorkflowRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -1213,7 +1214,7 @@ public static class PlatformEndpointRouteBuilderExtensions
 
         indexers.MapPost(string.Empty, async (
             HttpContext httpContext,
-            CreateIndexerRequest request,
+            [FromBody] CreateIndexerRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -1235,7 +1236,7 @@ public static class PlatformEndpointRouteBuilderExtensions
 
         indexers.MapPost("test", async (
             HttpContext httpContext,
-            CreateIndexerRequest request,
+            [FromBody] CreateIndexerRequest request,
             IPlatformSettingsRepository repository,
             IIntegrationResiliencePolicy resiliencePolicy,
             CancellationToken cancellationToken) =>
@@ -1306,7 +1307,7 @@ public static class PlatformEndpointRouteBuilderExtensions
         indexers.MapPut("{id}", async (
             string id,
             HttpContext httpContext,
-            UpdateIndexerRequest request,
+            [FromBody] UpdateIndexerRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -1396,7 +1397,7 @@ public static class PlatformEndpointRouteBuilderExtensions
 
         downloadClients.MapPost(string.Empty, async (
             HttpContext httpContext,
-            CreateDownloadClientRequest request,
+            [FromBody] CreateDownloadClientRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -1418,7 +1419,7 @@ public static class PlatformEndpointRouteBuilderExtensions
 
         downloadClients.MapPost("test", async (
             HttpContext httpContext,
-            CreateDownloadClientRequest request,
+            [FromBody] CreateDownloadClientRequest request,
             IPlatformSettingsRepository repository,
             IIntegrationResiliencePolicy resiliencePolicy,
             CancellationToken cancellationToken) =>
@@ -1488,7 +1489,7 @@ public static class PlatformEndpointRouteBuilderExtensions
         downloadClients.MapPut("{id}", async (
             string id,
             HttpContext httpContext,
-            UpdateDownloadClientRequest request,
+            [FromBody] UpdateDownloadClientRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -1552,7 +1553,7 @@ public static class PlatformEndpointRouteBuilderExtensions
         endpoints.MapPut("/api/libraries/{id}/routing", async (
             string id,
             HttpContext httpContext,
-            UpdateLibraryRoutingRequest request,
+            [FromBody] UpdateLibraryRoutingRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -1580,7 +1581,7 @@ public static class PlatformEndpointRouteBuilderExtensions
 
         connections.MapPost(string.Empty, async (
             HttpContext httpContext,
-            CreateConnectionRequest request,
+            [FromBody] CreateConnectionRequest request,
             IPlatformSettingsRepository repository,
             CancellationToken cancellationToken) =>
         {
@@ -1855,7 +1856,7 @@ public static class PlatformEndpointRouteBuilderExtensions
 
         integrations.MapPost("/external/trigger-refresh", async (
             HttpContext httpContext,
-            ExternalTriggerRefreshRequest request,
+            [FromBody] ExternalTriggerRefreshRequest request,
             IPlatformSettingsRepository repository,
             IJobQueueRepository jobs,
             IActivityFeedRepository activityFeed,
@@ -1904,7 +1905,7 @@ public static class PlatformEndpointRouteBuilderExtensions
 
         integrations.MapPost("/processors/events", async (
             HttpContext httpContext,
-            ProcessorEventRequest request,
+            [FromBody] ProcessorEventRequest request,
             IPlatformSettingsRepository repository,
             IActivityFeedRepository activityFeed,
             IJobScheduler jobScheduler,
@@ -2880,7 +2881,7 @@ public static class PlatformEndpointRouteBuilderExtensions
     }
 
     private static DestinationResolutionResult ResolveDestination(
-        DestinationResolutionRequest request,
+        [FromBody] DestinationResolutionRequest request,
         PlatformSettingsSnapshot settings,
         IReadOnlyList<DestinationRuleItem> rules)
     {

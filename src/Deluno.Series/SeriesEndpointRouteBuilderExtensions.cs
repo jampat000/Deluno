@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 using Deluno.Jobs.Contracts;
 using Deluno.Jobs.Data;
@@ -65,7 +66,7 @@ public static class SeriesEndpointRouteBuilderExtensions
 
         series.MapPost("/import-recovery", async (
             HttpContext httpContext,
-            CreateSeriesImportRecoveryCaseRequest request,
+            [FromBody] CreateSeriesImportRecoveryCaseRequest request,
             ISeriesCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
             CancellationToken cancellationToken) =>
@@ -157,7 +158,7 @@ public static class SeriesEndpointRouteBuilderExtensions
 
         series.MapPut("/monitoring", async (
             HttpContext httpContext,
-            UpdateSeriesMonitoringRequest request,
+            [FromBody] UpdateSeriesMonitoringRequest request,
             ISeriesCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
             CancellationToken cancellationToken) =>
@@ -186,7 +187,7 @@ public static class SeriesEndpointRouteBuilderExtensions
 
         series.MapPut("/episodes/monitoring", async (
             HttpContext httpContext,
-            UpdateEpisodeMonitoringRequest request,
+            [FromBody] UpdateEpisodeMonitoringRequest request,
             ISeriesCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
             CancellationToken cancellationToken) =>
@@ -424,7 +425,7 @@ public static class SeriesEndpointRouteBuilderExtensions
 
         series.MapPost("/{id}/metadata/link", async (
             string id,
-            MetadataLinkRequest request,
+            [FromBody] MetadataLinkRequest request,
             HttpContext httpContext,
             ISeriesCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
@@ -508,7 +509,7 @@ public static class SeriesEndpointRouteBuilderExtensions
 
         series.MapPost("/metadata/jobs", async (
             HttpContext httpContext,
-            MetadataRefreshJobsRequest request,
+            [FromBody] MetadataRefreshJobsRequest request,
             ISeriesCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
             IJobScheduler jobScheduler,
@@ -548,7 +549,7 @@ public static class SeriesEndpointRouteBuilderExtensions
         series.MapPost("/{id}/episodes/search", async (
             string id,
             HttpContext httpContext,
-            SearchSeriesEpisodesRequest request,
+            [FromBody] SearchSeriesEpisodesRequest request,
             ISeriesCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
             IJobQueueRepository jobQueueRepository,
@@ -815,7 +816,7 @@ public static class SeriesEndpointRouteBuilderExtensions
 
         series.MapPost("/{id}/grab", async (
             string id,
-            ReleaseGrabRequest request,
+            [FromBody] ReleaseGrabRequest request,
             HttpContext httpContext,
             ISeriesCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
@@ -1274,7 +1275,7 @@ public static class SeriesEndpointRouteBuilderExtensions
 
         series.MapPut("/{id}/replacement-protection", async (
             string id,
-            UpdateSeriesReplacementProtectionRequest request,
+            [FromBody] UpdateSeriesReplacementProtectionRequest request,
             HttpContext httpContext,
             ISeriesCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
@@ -1370,7 +1371,7 @@ public static class SeriesEndpointRouteBuilderExtensions
 
         series.MapPost("/", async (
             HttpContext httpContext,
-            CreateSeriesRequest request,
+            [FromBody] CreateSeriesRequest request,
             ISeriesCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
             IMediaDecisionService mediaDecisionService,

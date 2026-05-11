@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -50,7 +51,7 @@ public static class MetadataEndpointRouteBuilderExtensions
 
         metadata.MapPost("/test", async (
             HttpContext httpContext,
-            MetadataTestRequest request,
+            [FromBody] MetadataTestRequest request,
             IMetadataProvider provider,
             IPlatformSettingsRepository platformRepository,
             CancellationToken cancellationToken) =>
