@@ -29,6 +29,7 @@ import {
 } from "../lib/api";
 import { adaptIndexerHealth, adaptMovieItems, adaptSeriesItems, adaptTelemetryDownloads } from "../lib/ui-adapters";
 import { downloadQueueStatuses } from "../lib/download-telemetry";
+import { JOB_STATUS, isJobActive, type JobStatus } from "../lib/job-status-constants";
 import { cn } from "../lib/utils";
 import { OnboardingBanner } from "../components/shell/onboarding-banner";
 import { AreaChart } from "../components/shell/area-chart";
@@ -133,7 +134,7 @@ export function DashboardPage() {
   const librarySparkline = buildSparkline(data.totalCount);
   const healthSparkline = buildSparkline(data.indexerHealthPercent);
   const queueLoad = Math.min(100, data.activeDownloadCount * 12 + data.waitingCount * 3);
-  const runningAutomation = data.automation.filter((item) => item.status === "running" || item.status === "queued" || item.searchRequested).length;
+  const runningAutomation = data.automation.filter((item) => isJobActive(item.status as JobStatus) || item.searchRequested).length;
   const latestCycle = data.searchCycles[0] ?? null;
 
   return (

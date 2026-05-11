@@ -13,6 +13,11 @@ public sealed class SqlitePlatformSettingsRepository(
     ISecretProtector secretProtector)
     : IPlatformSettingsRepository
 {
+    // Pre-computed hash used to ensure constant-time response when a username is not found,
+    // preventing timing-based username enumeration attacks.
+    private static readonly string DummyPasswordHash =
+        "100000.AAAAAAAAAAAAAAAAAAAAAA==.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+
     public async Task<PlatformSettingsSnapshot> GetAsync(CancellationToken cancellationToken)
     {
         await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
@@ -427,6 +432,7 @@ public sealed class SqlitePlatformSettingsRepository(
         using var reader = await command.ExecuteReaderAsync(cancellationToken);
         if (!await reader.ReadAsync(cancellationToken))
         {
+            VerifyPassword(password, DummyPasswordHash);
             return null;
         }
 

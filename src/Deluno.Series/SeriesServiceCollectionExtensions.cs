@@ -1,3 +1,4 @@
+using Deluno.Jobs.Contracts;
 using Deluno.Series.Data;
 using Deluno.Series.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,6 +11,7 @@ public static class SeriesServiceCollectionExtensions
     {
         services.AddSingleton<ISeriesCatalogRepository, SqliteSeriesCatalogRepository>();
         services.AddSingleton<ISeriesWorkflowService, SeriesWorkflowService>();
+        services.AddSingleton<IDispatchRecoveryHandler, SeriesDispatchRecoveryHandler>();
         services.AddHostedService<SeriesSchemaInitializer>();
         return services;
     }

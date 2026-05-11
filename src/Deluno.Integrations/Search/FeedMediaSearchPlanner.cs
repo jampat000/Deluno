@@ -22,6 +22,8 @@ public sealed class FeedMediaSearchPlanner(
         string? targetQuality,
         IReadOnlyList<LibrarySourceLinkItem> sources,
         IReadOnlyList<CustomFormatItem>? customFormats = null,
+        int? seasonNumber = null,
+        int? episodeNumber = null,
         CancellationToken cancellationToken = default)
     {
         var indexers = await platformRepository.ListIndexersAsync(cancellationToken);
@@ -45,7 +47,7 @@ public sealed class FeedMediaSearchPlanner(
         var liveCandidates = new List<MediaSearchCandidate>();
         foreach (var (source, indexer) in sourceIndexers)
         {
-            var candidates = await TrySearchIndexerAsync(indexer, source, title, year, mediaType, currentQuality, targetQuality, customFormats, neverGrabPatterns, cancellationToken);
+            var candidates = await TrySearchIndexerAsync(indexer, source, title, year, mediaType, currentQuality, targetQuality, customFormats, neverGrabPatterns, seasonNumber, episodeNumber, cancellationToken);
             liveCandidates.AddRange(candidates);
         }
 
@@ -93,9 +95,11 @@ public sealed class FeedMediaSearchPlanner(
         string? targetQuality,
         IReadOnlyList<CustomFormatItem>? customFormats,
         IReadOnlyList<string> neverGrabPatterns,
+        int? seasonNumber,
+        int? episodeNumber,
         CancellationToken cancellationToken)
     {
-        if (!Uri.TryCreate(BuildSearchUrl(indexer, title, year, mediaType), UriKind.Absolute, out var uri))
+        if (!Uri.TryCreate(BuildSearchUrl(indexer, title, year, mediaType, seasonNumber, episodeNumber), UriKind.Absolute, out var uri))
         {
             return [];
         }
@@ -214,14 +218,30 @@ public sealed class FeedMediaSearchPlanner(
         return results;
     }
 
-    private static string BuildSearchUrl(IndexerItem indexer, string title, int? year, string mediaType)
+    private static string BuildSearchUrl(IndexerItem indexer, string title, int? year, string mediaType, int? seasonNumber, int? episodeNumber)
     {
         var builder = new UriBuilder(EnsureApiEndpoint(indexer.BaseUrl));
         var query = ParseQuery(builder.Query);
-        query["t"] = "search";
-        query["q"] = year is null ? title : $"{title} {year}";
+
+        var isTv = string.Equals(mediaType, "tv", StringComparison.OrdinalIgnoreCase);
+        if (isTv && seasonNumber is not null)
+        {
+            query["t"] = "tvsearch";
+            query["q"] = title;
+            query["season"] = seasonNumber.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (episodeNumber is not null)
+            {
+                query["ep"] = episodeNumber.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+        }
+        else
+        {
+            query["t"] = "search";
+            query["q"] = year is null ? title : $"{title} {year}";
+        }
+
         query["cat"] = string.IsNullOrWhiteSpace(indexer.Categories)
-            ? mediaType == "tv" ? "5000" : "2000"
+            ? isTv ? "5000" : "2000"
             : indexer.Categories.Replace(" ", string.Empty, StringComparison.Ordinal);
 
         if (!string.IsNullOrWhiteSpace(indexer.ApiKey) && !query.ContainsKey("apikey"))

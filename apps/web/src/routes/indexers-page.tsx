@@ -1387,6 +1387,7 @@ export function IndexersPage() {
     }
   }
 
+
   async function handleToggleIndexer(id: string, name: string, enabled: boolean) {
     setBusyKey(`toggle:${id}`);
     try {

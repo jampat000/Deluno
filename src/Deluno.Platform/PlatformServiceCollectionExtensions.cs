@@ -19,6 +19,7 @@ public static class PlatformServiceCollectionExtensions
         services.AddSingleton<IOutboundNotificationService, OutboundNotificationService>();
         services.AddHttpClient("notifications");
         services.AddHostedService<PlatformSchemaInitializer>();
+        services.AddHostedService<NotificationEventPublisher>();
         return services;
     }
 }

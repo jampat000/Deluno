@@ -197,6 +197,13 @@ export const router = createBrowserRouter([
             })
           },
           {
+            path: "episodes",
+            lazy: withSkeleton(async () => {
+              const module = await import("./routes/episode-search-page");
+              return { loader: module.episodeSearchLoader, Component: module.EpisodeSearchPage };
+            })
+          },
+          {
             path: "upgrades",
             lazy: withSkeleton(async () => {
               const module = await import("./routes/tv-wanted-page");
@@ -249,6 +256,13 @@ export const router = createBrowserRouter([
         lazy: withSkeleton(async () => {
           const module = await import("./routes/indexers-page");
           return { loader: module.indexersLoader, Component: module.IndexersPage };
+        })
+      },
+      {
+        path: "search-cycles",
+        lazy: withSkeleton(async () => {
+          const module = await import("./routes/search-cycles-page");
+          return { loader: module.searchCyclesLoader, Component: module.SearchCyclesPage };
         })
       },
       {

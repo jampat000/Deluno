@@ -10,6 +10,12 @@ namespace Deluno.Integrations.Search;
 
 public static class SearchEndpointRouteBuilderExtensions
 {
+    /// <summary>
+    /// Registers the <c>POST /api/custom-formats/dry-run</c> endpoint.
+    /// This lives in <c>Deluno.Integrations</c> so it can reference
+    /// <see cref="CustomFormatMatcher"/> while reading formats from
+    /// <see cref="IPlatformSettingsRepository"/>.
+    /// </summary>
     public static IEndpointRouteBuilder MapDelunoSearchEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var customFormats = endpoints.MapGroup("/api/custom-formats");

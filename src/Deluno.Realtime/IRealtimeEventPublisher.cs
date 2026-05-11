@@ -61,4 +61,40 @@ public interface IRealtimeEventPublisher
         string? errorMessage,
         string changedUtc,
         CancellationToken cancellationToken);
+
+    Task PublishDispatchGrabAttemptAsync(
+        string dispatchId,
+        string releaseName,
+        string clientId,
+        string clientName,
+        CancellationToken cancellationToken);
+
+    Task PublishDispatchGrabCompletedAsync(
+        string dispatchId,
+        string releaseName,
+        string clientId,
+        bool succeeded,
+        string? message,
+        CancellationToken cancellationToken);
+
+    Task PublishDispatchDetectedAsync(
+        string dispatchId,
+        string releaseName,
+        string? torrentHash,
+        long? downloadedBytes,
+        CancellationToken cancellationToken);
+
+    Task PublishDispatchImportStartedAsync(
+        string dispatchId,
+        string releaseName,
+        string mediaType,
+        CancellationToken cancellationToken);
+
+    Task PublishDispatchImportCompletedAsync(
+        string dispatchId,
+        string releaseName,
+        bool succeeded,
+        string? importedPath,
+        string? failureReason,
+        CancellationToken cancellationToken);
 }

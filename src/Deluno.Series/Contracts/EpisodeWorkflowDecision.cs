@@ -1,8 +1,10 @@
 namespace Deluno.Series.Contracts;
 
 public sealed record EpisodeWorkflowDecision(
-    string WantedStatus,
-    string Reason,
+    string EpisodeId,
+    string Decision,
+    string? Reason,
+    string? WantedStatus,
     bool IsReplacementAllowed,
     int? QualityDelta,
     string? CurrentQuality,

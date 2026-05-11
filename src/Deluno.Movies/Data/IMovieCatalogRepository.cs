@@ -132,4 +132,10 @@ public interface IMovieCatalogRepository
     Task<IReadOnlyList<CrossLibraryDuplicateItem>> FindCrossLibraryDuplicatesAsync(CancellationToken cancellationToken);
 
     Task<int> ReassignLibraryAsync(IReadOnlyList<string> movieIds, string fromLibraryId, string toLibraryId, CancellationToken cancellationToken);
+
+    /// <summary>Delete a movie and all its related data</summary>
+    Task<bool> DeleteAsync(string movieId, CancellationToken cancellationToken);
+
+    /// <summary>Update quality profile for a movie</summary>
+    Task<bool> UpdateQualityProfileAsync(string movieId, string qualityProfileId, CancellationToken cancellationToken);
 }

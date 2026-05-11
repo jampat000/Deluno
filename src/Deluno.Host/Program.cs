@@ -21,6 +21,12 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
     WebRootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot")
 });
 
+// Explicitly configure Kestrel to listen on port 5099 (matches start-local-app.ps1)
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(5099);
+});
+
 builder.Services.AddDelunoInfrastructure(builder.Configuration);
 builder.Services.AddDelunoApi();
 builder.Services.AddDelunoPlatformModule();
@@ -43,6 +49,29 @@ builder.Services
     .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(dataRoot, "protection-keys")));
 
 var app = builder.Build();
+
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsync("{\"error\":\"An unexpected error occurred.\"}");
+    });
+});
+
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
+    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    if (!app.Environment.IsDevelopment())
+    {
+        context.Response.Headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+    }
+    await next();
+});
 
 app.UseDefaultFiles();
 app.UseStaticFiles();

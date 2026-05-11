@@ -1,3 +1,4 @@
+using Deluno.Jobs.Contracts;
 using Deluno.Movies.Data;
 using Deluno.Movies.Services;
 using Deluno.Platform.Quality;
@@ -11,6 +12,7 @@ public static class MoviesServiceCollectionExtensions
     {
         services.AddSingleton<IMovieCatalogRepository, SqliteMovieCatalogRepository>();
         services.AddSingleton<IMovieWorkflowService, MovieWorkflowService>();
+        services.AddSingleton<IDispatchRecoveryHandler, MovieDispatchRecoveryHandler>();
         services.AddHostedService<MoviesSchemaInitializer>();
         return services;
     }
