@@ -1981,9 +1981,7 @@ public sealed class SqlitePlatformSettingsRepository(
         var newPriority = request.Priority is >= 1 ? request.Priority.Value : existing.Priority;
         var newCats     = request.Categories is not null ? NormalizeCsv(request.Categories) : existing.Categories;
         var newTags     = request.Tags is not null ? NormalizeCsv(request.Tags) : existing.Tags;
-        var newScope    = NormalizeMediaScope(request.MediaScope) is { } s && s != "both" || request.MediaScope is not null
-                          ? NormalizeMediaScope(request.MediaScope)
-                          : existing.MediaScope;
+        var newScope    = request.MediaScope is not null ? NormalizeMediaScope(request.MediaScope) : existing.MediaScope;
         var newEnabled  = request.IsEnabled ?? existing.IsEnabled;
 
         // If enabling a previously-disabled indexer, reset health status so the UI prompts a test

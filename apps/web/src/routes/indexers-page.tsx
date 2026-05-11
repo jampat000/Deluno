@@ -1182,7 +1182,7 @@ export function IndexersPage() {
   const { clients, indexers, libraries, routing, settings, tags, telemetry } = loaderData;
   const isRouteLoading = navigation.state !== "idle";
 
-  useSignalREvent("DownloadTelemetryChanged", () => {
+  useSignalREvent("DownloadProgress", () => {
     const now = Date.now();
     if (revalidator.state === "idle" && now - lastTelemetryEventRefresh.current > 5000) {
       lastTelemetryEventRefresh.current = now;
