@@ -608,7 +608,7 @@ export function SettingsOverviewPage() {
             <CardHeader>
               <CardTitle>Libraries</CardTitle>
               <CardDescription>
-                Current library containers, automation posture, and live operations.
+                Your libraries and their current automation settings.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-[calc(var(--field-group-pad)*0.9)]">
@@ -738,7 +738,7 @@ export function SettingsOverviewPage() {
           <Card>
             <CardHeader>
               <CardTitle>Create quality profile</CardTitle>
-              <CardDescription>Define cutoff and allowed quality policy.</CardDescription>
+              <CardDescription>Set the minimum quality and which versions are allowed.</CardDescription>
             </CardHeader>
             <CardContent>
               <form className="grid gap-[var(--grid-gap)]" onSubmit={handleCreateProfile}>
@@ -755,7 +755,7 @@ export function SettingsOverviewPage() {
                     <option value="tv">TV</option>
                   </select>
                 </Field>
-                <Field label="Cutoff quality">
+                <Field label="Upgrade stops at">
                   <PresetField value={profileForm.cutoffQuality} onChange={(value) => setProfileForm((current) => ({ ...current, cutoffQuality: value }))} options={QUALITY_OPTIONS} customLabel="Custom quality" customPlaceholder="Quality name" />
                 </Field>
                 <Field label="Allowed qualities">
@@ -772,7 +772,7 @@ export function SettingsOverviewPage() {
                     customPlaceholder="Comma-separated quality names"
                   />
                 </Field>
-                <ToggleField label="Upgrade until cutoff" checked={profileForm.upgradeUntilCutoff} onChange={(checked) => setProfileForm((current) => ({ ...current, upgradeUntilCutoff: checked }))} />
+                <ToggleField label="Keep upgrading until target quality" checked={profileForm.upgradeUntilCutoff} onChange={(checked) => setProfileForm((current) => ({ ...current, upgradeUntilCutoff: checked }))} />
                 <ToggleField label="Upgrade unknown items" checked={profileForm.upgradeUnknownItems} onChange={(checked) => setProfileForm((current) => ({ ...current, upgradeUnknownItems: checked }))} />
                 <Button type="submit" disabled={busyKey === "create-profile"}>
                   {busyKey === "create-profile" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
@@ -786,7 +786,7 @@ export function SettingsOverviewPage() {
             <CardHeader>
               <CardTitle>Quality profiles</CardTitle>
               <CardDescription>
-                Cutoff and allowed quality policy currently available to libraries.
+                Quality settings available to your libraries.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-[calc(var(--field-group-pad)*0.9)]">
@@ -796,7 +796,7 @@ export function SettingsOverviewPage() {
                     <p className="font-display text-base font-semibold text-foreground">{profile.name}</p>
                     <Badge variant="info">{profile.mediaType === "tv" ? "TV" : "Movies"}</Badge>
                   </div>
-                  <p className="mt-2 text-sm text-muted-foreground">Cutoff {profile.cutoffQuality}</p>
+                  <p className="mt-2 text-sm text-muted-foreground">Stops at {profile.cutoffQuality}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{profile.allowedQualities}</p>
                 </div>
               ))}
@@ -805,9 +805,9 @@ export function SettingsOverviewPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Operational split</CardTitle>
+              <CardTitle>Movies vs TV</CardTitle>
               <CardDescription>
-                How Deluno is currently divided between movie and TV management.
+                How your libraries are split between movies and TV shows.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-4">

@@ -143,7 +143,7 @@ function SortableProfileRow({
           </span>
         </div>
         <p className="mt-0.5 text-[12px] text-muted-foreground">
-          Cutoff: <strong className="text-foreground">{profile.cutoffQuality}</strong>
+          Stops at: <strong className="text-foreground">{profile.cutoffQuality}</strong>
           {allowedCount > 0 && ` · ${allowedCount} allowed`}
           {cfCount > 0 && ` · ${cfCount} custom formats`}
         </p>

@@ -10,7 +10,7 @@ export const settingsNavGroups = [
   {
     label: "Overview",
     items: [
-      { to: "/settings", label: "Settings Home", end: true, tip: "Configuration health, quick actions, and setup posture" }
+      { to: "/settings", label: "Settings Home", end: true, tip: "Overview of all settings and quick actions" }
     ]
   },
   {
@@ -55,7 +55,7 @@ const SettingsWorkspaceContext = createContext(false);
 const SystemWorkspaceContext = createContext(false);
 
 const systemNavItems = [
-  { to: "/system", label: "Health", end: true, tip: "Runtime health, jobs, providers, and current posture" },
+  { to: "/system", label: "Health", end: true, tip: "Provider health, background jobs, and system status" },
   { to: "/system/audit", label: "Audit", end: false, tip: "Searchable event timeline and live activity stream" },
   { to: "/system/api", label: "API", end: false, tip: "Generate and revoke API keys for integrations and automation" },
   { to: "/system/docs", label: "Guide", end: false, tip: "Plain-English workflow guide for setup, routing, scoring, imports, and integrations" },
@@ -88,7 +88,7 @@ const settingsPageMeta = [
   {
     match: (path: string) => path.startsWith("/settings/profiles"),
     title: "Profiles",
-    description: "Quality targets, cutoffs, and upgrade behaviour for each library intent."
+    description: "Quality targets and upgrade settings for each library."
   },
   {
     match: (path: string) => path.startsWith("/settings/quality"),
@@ -141,7 +141,7 @@ const systemPageMeta = [
   {
     match: (path: string) => path === "/system",
     title: "System Health",
-    description: "Runtime health, background jobs, provider posture, and operational state."
+    description: "Provider health, background jobs, and current system state."
   },
   {
     match: (path: string) => path.startsWith("/system/audit"),
