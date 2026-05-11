@@ -94,7 +94,7 @@ test.describe("indexer and download client CRUD", () => {
 
     try {
       await page.goto("/indexers");
-      await expect(page.getByText(uniqueName)).toBeVisible();
+      await expect(page.getByText(uniqueName).first()).toBeVisible();
     } finally {
       // Cleanup
       await page.request.delete(`/api/indexers/${indexer.id}`, { headers: authHeaders() });
@@ -124,7 +124,7 @@ test.describe("indexer and download client CRUD", () => {
 
     // Verify it shows
     await page.goto("/indexers");
-    await expect(page.getByText(uniqueName)).toBeVisible();
+    await expect(page.getByText(uniqueName).first()).toBeVisible();
 
     // Delete via API
     const deleteResp = await page.request.delete(`/api/indexers/${indexer.id}`, { headers: authHeaders() });
@@ -234,7 +234,7 @@ test.describe("indexer and download client CRUD", () => {
 
     try {
       await page.goto("/indexers");
-      await expect(page.getByText(uniqueName)).toBeVisible();
+      await expect(page.getByText(uniqueName).first()).toBeVisible();
     } finally {
       await page.request.delete(`/api/download-clients/${client.id}`, { headers: authHeaders() });
     }
@@ -264,7 +264,7 @@ test.describe("indexer and download client CRUD", () => {
     const client = await createResp.json() as { id: string };
 
     await page.goto("/indexers");
-    await expect(page.getByText(uniqueName)).toBeVisible();
+    await expect(page.getByText(uniqueName).first()).toBeVisible();
 
     await page.request.delete(`/api/download-clients/${client.id}`, { headers: authHeaders() });
 
