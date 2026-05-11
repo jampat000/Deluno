@@ -4,11 +4,13 @@ using System.Runtime.Versioning;
 
 namespace Deluno.Tray;
 
+// All geometry mirrors favicon.svg (100×100 viewBox) scaled to 16×16 (factor 0.16).
+// Screen : x=2.5 y=4 w=11 h=8  (70%×50% of icon, centred)
+// Tabs   : w=2 h=1.5, straddling left (x=2.5) and right (x=13.5) screen edges
+// Play ▶ : vertices (6.5,6.5) (6.5,9.5) (9.5,8)  — ~40% of screen height
 [SupportedOSPlatform("windows")]
 public static class TrayIconRenderer
 {
-    // Renders a 16×16 icon matching the Deluno brand mark:
-    // film-frame screen (outline + side tabs) with a play triangle.
     public static Icon Render(TrayState state)
     {
         const int size = 16;
@@ -20,26 +22,26 @@ public static class TrayIconRenderer
         using var bgBrush = new SolidBrush(StateColor(state));
         g.FillEllipse(bgBrush, 0, 0, size - 1, size - 1);
 
-        using var whitePen   = new Pen(Color.White, 1.2f);
-        using var whiteBrush = new SolidBrush(Color.White);
+        using var pen   = new Pen(Color.White, 1.1f);
+        using var brush = new SolidBrush(Color.White);
 
         // Screen outline
-        DrawRoundedRect(g, whitePen, 2.5f, 5f, 11f, 6f, 1.2f);
+        DrawRoundedRect(g, pen, 2.5f, 4f, 11f, 8f, 1.1f);
 
-        // Film strip tabs — left edge (two small filled rects straddling left stroke)
-        g.FillRectangle(whiteBrush, 1f, 6f,   2f, 1.5f);
-        g.FillRectangle(whiteBrush, 1f, 8.5f, 2f, 1.5f);
+        // Film strip tabs — left edge (straddle x=2.5)
+        g.FillRectangle(brush, 1.5f, 5.8f, 2f, 1.4f);
+        g.FillRectangle(brush, 1.5f, 8.8f, 2f, 1.4f);
 
-        // Film strip tabs — right edge
-        g.FillRectangle(whiteBrush, 13f, 6f,   2f, 1.5f);
-        g.FillRectangle(whiteBrush, 13f, 8.5f, 2f, 1.5f);
+        // Film strip tabs — right edge (straddle x=13.5)
+        g.FillRectangle(brush, 12.5f, 5.8f, 2f, 1.4f);
+        g.FillRectangle(brush, 12.5f, 8.8f, 2f, 1.4f);
 
-        // Play triangle, centred in screen
-        g.FillPolygon(whiteBrush, new PointF[]
+        // Play triangle
+        g.FillPolygon(brush, new PointF[]
         {
             new(6.5f, 6.5f),
-            new(6.5f, 10.5f),
-            new(11f,  8.5f),
+            new(6.5f, 9.5f),
+            new(9.5f, 8f),
         });
 
         return Icon.FromHandle(bmp.GetHicon());
