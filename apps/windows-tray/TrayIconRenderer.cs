@@ -1,4 +1,5 @@
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Runtime.Versioning;
 
 namespace Deluno.Tray;
@@ -6,79 +7,48 @@ namespace Deluno.Tray;
 [SupportedOSPlatform("windows")]
 public static class TrayIconRenderer
 {
-    // Renders a 16×16 icon for the given state using GDI+.
-    // Avoids shipping binary .ico files that would need updating with each brand change.
+    // Renders a 16×16 icon using the Deluno crescent-moon mark.
+    // Background colour changes per state; the crescent shape is always white.
     public static Icon Render(TrayState state)
     {
         const int size = 16;
-        using var bmp = new Bitmap(size, size);
-        using var g = Graphics.FromImage(bmp);
+        using var bmp = new Bitmap(size, size, PixelFormat.Format32bppArgb);
+        using var g   = Graphics.FromImage(bmp);
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.Clear(Color.Transparent);
 
-        // Background circle
-        var bg = BackgroundColor(state);
-        using var bgBrush = new SolidBrush(bg);
-        g.FillEllipse(bgBrush, 1, 1, size - 2, size - 2);
+        using var bgBrush = new SolidBrush(StateColor(state));
+        g.FillEllipse(bgBrush, 0, 0, size - 1, size - 1);
 
-        // State glyph
-        DrawGlyph(g, state, size);
+        DrawCrescent(g, Color.White);
 
         return Icon.FromHandle(bmp.GetHicon());
     }
 
-    private static Color BackgroundColor(TrayState state) => state switch
+    // Crescent geometry mirrors the favicon.svg (scaled to 16×16):
+    //   full moon  → ellipse at (2, 3, 11, 11)
+    //   bite circle → ellipse at (6, 0, 10, 10)  [offset upper-right]
+    private static void DrawCrescent(Graphics g, Color color)
     {
-        TrayState.Starting  => Color.FromArgb(100, 150, 220),   // blue-grey
-        TrayState.Running   => Color.FromArgb(52,  168, 83),    // green
-        TrayState.Degraded  => Color.FromArgb(251, 188, 5),     // amber
-        TrayState.Error     => Color.FromArgb(234, 67,  53),    // red
-        TrayState.Updating  => Color.FromArgb(66,  133, 244),   // blue
-        TrayState.Stopped   => Color.FromArgb(158, 158, 158),   // grey
-        _                   => Color.FromArgb(52,  168, 83)
-    };
+        using var fullPath = new GraphicsPath();
+        fullPath.AddEllipse(2f, 3f, 11f, 11f);
 
-    private static void DrawGlyph(Graphics g, TrayState state, int size)
-    {
-        using var pen   = new Pen(Color.White, 1.5f);
-        using var brush = new SolidBrush(Color.White);
-        int cx = size / 2, cy = size / 2;
+        using var region  = new Region(fullPath);
+        using var cutPath = new GraphicsPath();
+        cutPath.AddEllipse(6f, 0f, 10f, 10f);
+        region.Exclude(cutPath);
 
-        switch (state)
-        {
-            case TrayState.Running:
-                // Play-style "D" letterform (Deluno initial)
-                g.DrawString("D", new Font("Arial", 7f, FontStyle.Bold),
-                    brush, new PointF(4f, 3f));
-                break;
-
-            case TrayState.Starting:
-            case TrayState.Updating:
-                // Arc suggesting motion / loading
-                g.DrawArc(pen, 4, 4, size - 8, size - 8, -90, 270);
-                break;
-
-            case TrayState.Stopped:
-                // Square / stop symbol
-                g.FillRectangle(brush, cx - 3, cy - 3, 6, 6);
-                break;
-
-            case TrayState.Error:
-                // Exclamation mark
-                g.FillRectangle(brush, cx - 1, 4, 2, 5);
-                g.FillEllipse(brush, cx - 1, 11, 2, 2);
-                break;
-
-            case TrayState.Degraded:
-                // Warning triangle outline
-                var tri = new PointF[]
-                {
-                    new(cx, 4), new(cx + 4, 12), new(cx - 4, 12)
-                };
-                g.DrawPolygon(pen, tri);
-                g.FillRectangle(brush, cx - 1, 6, 2, 3);
-                g.FillEllipse(brush, cx - 1, 10, 2, 2);
-                break;
-        }
+        using var brush = new SolidBrush(color);
+        g.FillRegion(brush, region);
     }
+
+    private static Color StateColor(TrayState state) => state switch
+    {
+        TrayState.Running  => Color.FromArgb(0x22, 0xC5, 0x5E),  // green-500
+        TrayState.Degraded => Color.FromArgb(0xF5, 0x9E, 0x0B),  // amber-500
+        TrayState.Error    => Color.FromArgb(0xEF, 0x44, 0x44),  // red-500
+        TrayState.Starting => Color.FromArgb(0x63, 0x66, 0xF1),  // indigo-500 (brand)
+        TrayState.Updating => Color.FromArgb(0x63, 0x66, 0xF1),  // indigo-500 (brand)
+        _                  => Color.FromArgb(0x6B, 0x72, 0x80),  // gray-500
+    };
 }
