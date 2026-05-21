@@ -5,12 +5,12 @@
     "apps/web"
   ],
   "scripts": {
-    "dev:web": "node apps/web/node_modules/vite/bin/vite.js --config apps/web/vite.config.ts --root apps/web",
-    "build:web": "node apps/web/node_modules/typescript/bin/tsc -b apps/web/tsconfig.json && node apps/web/node_modules/vite/bin/vite.js build --config apps/web/vite.config.ts --root apps/web",
-    "test:web": "node apps/web/node_modules/@playwright/test/cli.js test --config apps/web/playwright.config.ts",
-    "preview:web": "node apps/web/node_modules/vite/bin/vite.js preview --config apps/web/vite.config.ts --root apps/web",
-    "ci:check": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/ci-check.ps1",
-    "ga:regression": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/run-ga-regression.ps1",
-    "validate:agents": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/validate-agent-readiness.ps1"
+    "dev:web": "npm --workspace apps/web run dev",
+    "build:web": "npm --workspace apps/web run build",
+    "test:web": "npm --workspace apps/web run test:smoke",
+    "preview:web": "npm --workspace apps/web run preview",
+    "ci:check": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/ci-check.ps1",
+    "ga:regression": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run-ga-regression.ps1",
+    "validate:agents": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/validate-agent-readiness.ps1"
   }
 }
