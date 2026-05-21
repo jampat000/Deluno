@@ -23,4 +23,11 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <!-- Mirror the tray project: on non-Windows the tray assembly is an empty library
+       (all its .cs files are excluded), so test code that references its types won't
+       compile. Exclude test sources on non-Windows for the same reason. -->
+  <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('Windows')) or '$(SimulateLinuxCI)' == 'true'">
+    <Compile Remove="**/*.cs" />
+  </ItemGroup>
+
 </Project>
