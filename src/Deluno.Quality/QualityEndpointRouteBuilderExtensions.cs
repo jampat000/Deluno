@@ -1,6 +1,7 @@
 using Deluno.Quality.Contracts;
 using Deluno.Quality.Data;
 using Deluno.Quality.Presets;
+using Deluno.Realtime;
 using Deluno.Security;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -37,6 +38,7 @@ public static class QualityEndpointRouteBuilderExtensions
             HttpContext httpContext,
             [FromBody] CreateQualityProfileRequest request,
             [FromServices] IQualityRepository repository,
+            [FromServices] IRealtimeEventPublisher realtimeEventPublisher,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -52,6 +54,7 @@ public static class QualityEndpointRouteBuilderExtensions
             }
 
             var item = await repository.CreateQualityProfileAsync(request, cancellationToken);
+            await realtimeEventPublisher.PublishEntityChangedAsync("QualityProfile", item.Id, cancellationToken);
             return Results.Ok(item);
         });
 
@@ -60,6 +63,7 @@ public static class QualityEndpointRouteBuilderExtensions
             HttpContext httpContext,
             [FromBody] UpdateQualityProfileRequest request,
             [FromServices] IQualityRepository repository,
+            [FromServices] IRealtimeEventPublisher realtimeEventPublisher,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -75,6 +79,10 @@ public static class QualityEndpointRouteBuilderExtensions
             }
 
             var item = await repository.UpdateQualityProfileAsync(id, request, cancellationToken);
+            if (item is not null)
+            {
+                await realtimeEventPublisher.PublishEntityChangedAsync("QualityProfile", item.Id, cancellationToken);
+            }
             return item is null ? Results.NotFound() : Results.Ok(item);
         });
 
@@ -82,6 +90,7 @@ public static class QualityEndpointRouteBuilderExtensions
             string id,
             HttpContext httpContext,
             [FromServices] IQualityRepository repository,
+            [FromServices] IRealtimeEventPublisher realtimeEventPublisher,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -91,6 +100,10 @@ public static class QualityEndpointRouteBuilderExtensions
             }
 
             var removed = await repository.DeleteQualityProfileAsync(id, cancellationToken);
+            if (removed)
+            {
+                await realtimeEventPublisher.PublishEntityChangedAsync("QualityProfile", id, cancellationToken);
+            }
             return removed ? Results.NoContent() : Results.NotFound();
         });
 
@@ -98,6 +111,7 @@ public static class QualityEndpointRouteBuilderExtensions
             HttpContext httpContext,
             [FromBody] ReorderQualityProfilesRequest request,
             [FromServices] IQualityRepository repository,
+            [FromServices] IRealtimeEventPublisher realtimeEventPublisher,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -115,6 +129,10 @@ public static class QualityEndpointRouteBuilderExtensions
             }
 
             await repository.ReorderQualityProfilesAsync(request.Ids, cancellationToken);
+            foreach (var id in request.Ids)
+            {
+                await realtimeEventPublisher.PublishEntityChangedAsync("QualityProfile", id, cancellationToken);
+            }
             return Results.NoContent();
         });
 
@@ -167,6 +185,7 @@ public static class QualityEndpointRouteBuilderExtensions
             [FromBody] ApplyQualityPresetRequest request,
             HttpContext httpContext,
             [FromServices] IQualityRepository repository,
+            [FromServices] IRealtimeEventPublisher realtimeEventPublisher,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -181,6 +200,7 @@ public static class QualityEndpointRouteBuilderExtensions
             }
 
             var item = await repository.CreateQualityProfileFromPresetAsync(presetId, request.Name, cancellationToken);
+            await realtimeEventPublisher.PublishEntityChangedAsync("QualityProfile", item.Id, cancellationToken);
             return Results.Ok(item);
         });
 
@@ -262,6 +282,7 @@ public static class QualityEndpointRouteBuilderExtensions
             [FromBody] CreatePolicySetRequest request,
             [FromServices] IQualityRepository repository,
             [FromServices] IPolicySetLibraryApplier libraryApplier,
+            [FromServices] IRealtimeEventPublisher realtimeEventPublisher,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -278,6 +299,7 @@ public static class QualityEndpointRouteBuilderExtensions
 
             var item = await repository.CreatePolicySetAsync(request, cancellationToken);
             await libraryApplier.ApplyToAssignedLibrariesAsync(item.Id, cancellationToken);
+            await realtimeEventPublisher.PublishEntityChangedAsync("PolicySet", item.Id, cancellationToken);
             return Results.Ok(item);
         });
 
@@ -287,6 +309,7 @@ public static class QualityEndpointRouteBuilderExtensions
             [FromBody] UpdatePolicySetRequest request,
             [FromServices] IQualityRepository repository,
             [FromServices] IPolicySetLibraryApplier libraryApplier,
+            [FromServices] IRealtimeEventPublisher realtimeEventPublisher,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -305,6 +328,7 @@ public static class QualityEndpointRouteBuilderExtensions
             if (item is not null)
             {
                 await libraryApplier.ApplyToAssignedLibrariesAsync(item.Id, cancellationToken);
+                await realtimeEventPublisher.PublishEntityChangedAsync("PolicySet", item.Id, cancellationToken);
             }
             return item is null ? Results.NotFound() : Results.Ok(item);
         });
@@ -313,6 +337,7 @@ public static class QualityEndpointRouteBuilderExtensions
             string id,
             HttpContext httpContext,
             [FromServices] IQualityRepository repository,
+            [FromServices] IRealtimeEventPublisher realtimeEventPublisher,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -322,6 +347,10 @@ public static class QualityEndpointRouteBuilderExtensions
             }
 
             var removed = await repository.DeletePolicySetAsync(id, cancellationToken);
+            if (removed)
+            {
+                await realtimeEventPublisher.PublishEntityChangedAsync("PolicySet", id, cancellationToken);
+            }
             return removed ? Results.NoContent() : Results.NotFound();
         });
 
