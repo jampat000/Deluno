@@ -45,6 +45,7 @@ public static class ConnectionsEndpointRouteBuilderExtensions
             HttpContext httpContext,
             [FromBody] CreateIndexerRequest request,
             [FromServices] IConnectionsRepository repository,
+            [FromServices] IRealtimeEventPublisher realtimeEventPublisher,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -60,6 +61,7 @@ public static class ConnectionsEndpointRouteBuilderExtensions
             }
 
             var item = await repository.CreateIndexerAsync(request, cancellationToken);
+            await realtimeEventPublisher.PublishEntityChangedAsync("Indexer", item.Id, cancellationToken);
             return Results.Ok(item);
         });
 
@@ -120,6 +122,7 @@ public static class ConnectionsEndpointRouteBuilderExtensions
             string id,
             HttpContext httpContext,
             [FromServices] IConnectionsRepository repository,
+            [FromServices] IRealtimeEventPublisher realtimeEventPublisher,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -129,6 +132,10 @@ public static class ConnectionsEndpointRouteBuilderExtensions
             }
 
             var removed = await repository.DeleteIndexerAsync(id, cancellationToken);
+            if (removed)
+            {
+                await realtimeEventPublisher.PublishEntityChangedAsync("Indexer", id, cancellationToken);
+            }
             return removed ? Results.NoContent() : Results.NotFound();
         });
 
@@ -137,6 +144,7 @@ public static class ConnectionsEndpointRouteBuilderExtensions
             HttpContext httpContext,
             [FromBody] UpdateIndexerRequest request,
             [FromServices] IConnectionsRepository repository,
+            [FromServices] IRealtimeEventPublisher realtimeEventPublisher,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -146,6 +154,10 @@ public static class ConnectionsEndpointRouteBuilderExtensions
             }
 
             var item = await repository.UpdateIndexerAsync(id, request, cancellationToken);
+            if (item is not null)
+            {
+                await realtimeEventPublisher.PublishEntityChangedAsync("Indexer", item.Id, cancellationToken);
+            }
             return item is null ? Results.NotFound() : Results.Ok(item);
         });
 
@@ -184,6 +196,7 @@ public static class ConnectionsEndpointRouteBuilderExtensions
                     health.HealthStatus == "healthy" ? "healthy" : "degraded",
                     health.Message,
                     cancellationToken);
+                await realtimeEventPublisher.PublishEntityChangedAsync("Indexer", id, cancellationToken);
 
                 if (health.HealthStatus != "healthy")
                 {
@@ -203,6 +216,7 @@ public static class ConnectionsEndpointRouteBuilderExtensions
             string id,
             HttpContext httpContext,
             [FromServices] IConnectionsRepository repository,
+            [FromServices] IRealtimeEventPublisher realtimeEventPublisher,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -212,6 +226,10 @@ public static class ConnectionsEndpointRouteBuilderExtensions
             }
 
             var item = await repository.ResetIndexerCircuitAsync(id, cancellationToken);
+            if (item is not null)
+            {
+                await realtimeEventPublisher.PublishEntityChangedAsync("Indexer", item.Id, cancellationToken);
+            }
             return item is null ? Results.NotFound() : Results.Ok(item);
         });
 
@@ -227,6 +245,7 @@ public static class ConnectionsEndpointRouteBuilderExtensions
             HttpContext httpContext,
             [FromBody] CreateDownloadClientRequest request,
             [FromServices] IConnectionsRepository repository,
+            [FromServices] IRealtimeEventPublisher realtimeEventPublisher,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -242,6 +261,7 @@ public static class ConnectionsEndpointRouteBuilderExtensions
             }
 
             var item = await repository.CreateDownloadClientAsync(request, cancellationToken);
+            await realtimeEventPublisher.PublishEntityChangedAsync("DownloadClient", item.Id, cancellationToken);
             return Results.Ok(item);
         });
 
@@ -367,6 +387,7 @@ public static class ConnectionsEndpointRouteBuilderExtensions
             string id,
             HttpContext httpContext,
             [FromServices] IConnectionsRepository repository,
+            [FromServices] IRealtimeEventPublisher realtimeEventPublisher,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -376,6 +397,10 @@ public static class ConnectionsEndpointRouteBuilderExtensions
             }
 
             var removed = await repository.DeleteDownloadClientAsync(id, cancellationToken);
+            if (removed)
+            {
+                await realtimeEventPublisher.PublishEntityChangedAsync("DownloadClient", id, cancellationToken);
+            }
             return removed ? Results.NoContent() : Results.NotFound();
         });
 
@@ -384,6 +409,7 @@ public static class ConnectionsEndpointRouteBuilderExtensions
             HttpContext httpContext,
             [FromBody] UpdateDownloadClientRequest request,
             [FromServices] IConnectionsRepository repository,
+            [FromServices] IRealtimeEventPublisher realtimeEventPublisher,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -393,6 +419,10 @@ public static class ConnectionsEndpointRouteBuilderExtensions
             }
 
             var item = await repository.UpdateDownloadClientAsync(id, request, cancellationToken);
+            if (item is not null)
+            {
+                await realtimeEventPublisher.PublishEntityChangedAsync("DownloadClient", item.Id, cancellationToken);
+            }
             return item is null ? Results.NotFound() : Results.Ok(item);
         });
 
@@ -429,6 +459,7 @@ public static class ConnectionsEndpointRouteBuilderExtensions
                     health.HealthStatus == "healthy" ? "healthy" : "degraded",
                     health.Message,
                     cancellationToken);
+                await realtimeEventPublisher.PublishEntityChangedAsync("DownloadClient", id, cancellationToken);
             }
 
             return result is null ? Results.NotFound() : Results.Ok(result);
