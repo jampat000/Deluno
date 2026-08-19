@@ -5,6 +5,7 @@ using Deluno.Quality;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Deluno.Quality.Contracts;
 
 namespace Deluno.Integrations.Search;
 

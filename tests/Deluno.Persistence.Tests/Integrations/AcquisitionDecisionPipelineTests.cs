@@ -4,6 +4,7 @@ using Deluno.Persistence.Tests.Support;
 using Deluno.Platform.Contracts;
 using Deluno.Platform.Data;
 using Microsoft.Extensions.Logging.Abstractions;
+using Deluno.Quality.Contracts;
 
 namespace Deluno.Persistence.Tests.Integrations;
 

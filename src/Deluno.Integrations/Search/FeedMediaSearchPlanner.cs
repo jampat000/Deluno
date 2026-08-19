@@ -5,6 +5,7 @@ using Deluno.Infrastructure.Resilience;
 using Deluno.Platform.Contracts;
 using Deluno.Platform.Data;
 using Deluno.Quality;
+using Deluno.Quality.Contracts;
 
 namespace Deluno.Integrations.Search;
 

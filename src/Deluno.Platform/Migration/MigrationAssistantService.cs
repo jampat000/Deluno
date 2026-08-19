@@ -4,6 +4,7 @@ using Deluno.Platform.Contracts;
 using Deluno.Intake.Contracts;
 using Deluno.Intake.Data;
 using Deluno.Platform.Data;
+using Deluno.Quality.Contracts;
 
 namespace Deluno.Platform.Migration;
 

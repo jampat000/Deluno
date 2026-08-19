@@ -2,6 +2,7 @@ using Deluno.Integrations.DownloadClients;
 using Deluno.Jobs.Decisions;
 using Deluno.Platform.Contracts;
 using Deluno.Platform.Data;
+using Deluno.Quality.Contracts;
 
 namespace Deluno.Integrations.Search;
 

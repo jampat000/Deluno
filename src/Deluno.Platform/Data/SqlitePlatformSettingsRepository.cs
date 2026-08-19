@@ -9,6 +9,7 @@ using Deluno.Security.Contracts;
 using static Deluno.Infrastructure.Storage.SqliteRecordHelpers;
 using Deluno.Quality.Presets;
 using static Deluno.Contracts.DelunoValueNormalizers;
+using Deluno.Quality.Contracts;
 
 namespace Deluno.Platform.Data;
 

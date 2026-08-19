@@ -1,6 +1,6 @@
-namespace Deluno.Platform.Contracts;
+namespace Deluno.Quality.Contracts;
 
-public sealed record CreatePolicySetRequest(
+public sealed record UpdatePolicySetRequest(
     string Name,
     string? MediaType,
     string? QualityProfileId,

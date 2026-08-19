@@ -1,6 +1,6 @@
-namespace Deluno.Platform.Contracts;
+namespace Deluno.Quality.Contracts;
 
-public sealed record CreateCustomFormatRequest(
+public sealed record UpdateCustomFormatRequest(
     string Name,
     string? MediaType,
     int Score,

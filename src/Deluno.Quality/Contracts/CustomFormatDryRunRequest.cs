@@ -1,3 +1,3 @@
-namespace Deluno.Platform.Contracts;
+namespace Deluno.Quality.Contracts;
 
 public sealed record CustomFormatDryRunRequest(string ReleaseName, string? MediaType = null);
