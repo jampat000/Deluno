@@ -1,5 +1,6 @@
 using Deluno.Integrations.Search;
 using Deluno.Infrastructure.Storage.Migrations;
+using Deluno.Libraries.Contracts;
 using Deluno.Persistence.Tests.Support;
 using Deluno.Platform.Contracts;
 using Deluno.Platform.Data;

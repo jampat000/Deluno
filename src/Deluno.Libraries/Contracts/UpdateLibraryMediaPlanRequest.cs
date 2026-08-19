@@ -1,4 +1,4 @@
-namespace Deluno.Platform.Contracts;
+namespace Deluno.Libraries.Contracts;
 
 /// <summary>
 /// Assigns the default Media Plan for a library. The plan remains the source of

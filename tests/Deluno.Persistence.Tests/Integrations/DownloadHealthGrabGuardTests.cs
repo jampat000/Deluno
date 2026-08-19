@@ -8,6 +8,8 @@ using Deluno.Platform.Data;
 using Microsoft.Extensions.Logging.Abstractions;
 using Deluno.Connections.Contracts;
 using Deluno.Connections.Data;
+using Deluno.Libraries.Contracts;
+using Deluno.Libraries.Data;
 
 namespace Deluno.Persistence.Tests.Integrations;
 
@@ -23,8 +25,9 @@ public sealed class DownloadHealthGrabGuardTests
         var connectionsRepository = new SqliteConnectionsRepository(storage.Factory, time, TestSecretProtection.Create(storage));
         var client = await connectionsRepository.CreateDownloadClientAsync(new CreateDownloadClientRequest(
             "External qBittorrent", "qbittorrent", "localhost", 8080, null, null, null, "movies", "tv", null, 1, true), CancellationToken.None);
+        var librariesRepository = new SqliteLibrariesRepository(storage.Factory, time);
         var service = new DownloadClientTelemetryService(
-            repository, connectionsRepository, null!, null!, time, null!, null!, null!, null!);
+            repository, librariesRepository, connectionsRepository, null!, null!, time, null!, null!, null!, null!);
 
         var result = await service.ExecuteActionAsync(
             client.Id,
@@ -75,7 +78,8 @@ public sealed class DownloadHealthGrabGuardTests
         await new JobsSchemaInitializer(storage.Factory, migrator, NullLogger<JobsSchemaInitializer>.Instance).StartAsync(CancellationToken.None);
         var repository = new SqlitePlatformSettingsRepository(storage.Factory, time, TestSecretProtection.Create(storage));
         var connectionsRepository = new SqliteConnectionsRepository(storage.Factory, time, TestSecretProtection.Create(storage));
-        var library = await repository.CreateLibraryAsync(new CreateLibraryRequest(
+        var librariesRepository = new SqliteLibrariesRepository(storage.Factory, time);
+        var library = await librariesRepository.CreateLibraryAsync(new CreateLibraryRequest(
             "Movies", "movies", "library", Path.Combine(storage.DataRoot, "movies"), Path.Combine(storage.DataRoot, "downloads"), null,
             "direct-import", null, null, null, null, true, true, true, 12, 24, 25), CancellationToken.None);
         var client = await connectionsRepository.CreateDownloadClientAsync(new CreateDownloadClientRequest(
@@ -88,7 +92,7 @@ public sealed class DownloadHealthGrabGuardTests
         await dispatches.RecordDetectionAsync(dispatchId, "queue-arrival", 1024, CancellationToken.None);
 
         var service = new DownloadClientTelemetryService(
-            repository, connectionsRepository, null!, null!, time, null!, jobs, dispatches, jobs);
+            repository, librariesRepository, connectionsRepository, null!, null!, time, null!, jobs, dispatches, jobs);
         var finding = new DownloadHealthFinding("critical", "client-stalled", "Stalled", "No progress", "Review", false, false, StrikeCount: 3);
         var item = new DownloadQueueItem("queue-arrival", client.Id, client.Name, client.Protocol, "movies", "Arrival", "Arrival.2016.1080p.WEB",
             "deluno-movies", DownloadQueueStatuses.Stalled, 15, 0, 0, 1024, 128, 0, "Fixture", null, time.GetUtcNow(), HealthFindings: [finding]);

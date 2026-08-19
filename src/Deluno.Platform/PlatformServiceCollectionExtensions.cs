@@ -1,6 +1,5 @@
 using Deluno.Platform.Data;
 using Deluno.Platform.Migration;
-using Deluno.Quality;
 using Deluno.Security;
 using Deluno.Security.Hardening;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,7 +11,6 @@ public static class PlatformServiceCollectionExtensions
     public static IServiceCollection AddDelunoPlatformModule(this IServiceCollection services)
     {
         services.AddSingleton<IPlatformSettingsRepository, SqlitePlatformSettingsRepository>();
-        services.AddSingleton<IPolicySetLibraryApplier, PolicySetLibraryApplier>();
         services.AddSingleton<IMigrationAssistantService, MigrationAssistantService>();
         services.AddHostedService<PlatformSchemaInitializer>();
         return services;

@@ -1,6 +1,7 @@
 using Deluno.Infrastructure.Storage.Migrations;
+using Deluno.Libraries.Contracts;
+using Deluno.Libraries.Data;
 using Deluno.Persistence.Tests.Support;
-using Deluno.Platform.Contracts;
 using Deluno.Platform.Data;
 using Microsoft.Extensions.Logging.Abstractions;
 using Deluno.Connections.Contracts;
@@ -12,14 +13,14 @@ public sealed class LibraryRoutingPersistenceTests
 {
     // ── helpers ──────────────────────────────────────────────────────────────
 
-    private static async Task<SqlitePlatformSettingsRepository> CreateRepositoryAsync(TestStorage storage)
+    private static async Task<SqliteLibrariesRepository> CreateRepositoryAsync(TestStorage storage)
     {
         var timeProvider = new FixedTimeProvider(DateTimeOffset.Parse("2026-01-01T00:00:00Z"));
         await new PlatformSchemaInitializer(
             storage.Factory,
             new SqliteDatabaseMigrator(storage.Factory, timeProvider),
             NullLogger<PlatformSchemaInitializer>.Instance).StartAsync(CancellationToken.None);
-        return new SqlitePlatformSettingsRepository(storage.Factory, timeProvider, TestSecretProtection.Create(storage));
+        return new SqliteLibrariesRepository(storage.Factory, timeProvider);
     }
 
     private static SqliteConnectionsRepository CreateConnectionsRepository(TestStorage storage)
@@ -28,7 +29,7 @@ public sealed class LibraryRoutingPersistenceTests
             new FixedTimeProvider(DateTimeOffset.Parse("2026-01-01T00:00:00Z")),
             TestSecretProtection.Create(storage));
 
-    private static Task<LibraryItem> CreateMovieLibraryAsync(SqlitePlatformSettingsRepository repo)
+    private static Task<LibraryItem> CreateMovieLibraryAsync(SqliteLibrariesRepository repo)
         => repo.CreateLibraryAsync(
             new CreateLibraryRequest(
                 Name: "Test Movies",

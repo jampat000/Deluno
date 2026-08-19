@@ -3,6 +3,8 @@ using System.Text.Json;
 using Deluno.Platform.Contracts;
 using Deluno.Intake.Contracts;
 using Deluno.Intake.Data;
+using Deluno.Libraries.Contracts;
+using Deluno.Libraries.Data;
 using Deluno.Platform.Data;
 using Deluno.Quality.Contracts;
 using Deluno.Quality.Data;
@@ -13,6 +15,7 @@ namespace Deluno.Platform.Migration;
 
 public sealed class MigrationAssistantService(
     IPlatformSettingsRepository repository,
+    ILibrariesRepository librariesRepository,
     IQualityRepository qualityRepository,
     IConnectionsRepository connectionsRepository,
     IIntakeRepository intakeRepository,
@@ -56,7 +59,7 @@ public sealed class MigrationAssistantService(
 
         using (document)
         {
-            var existing = await ExistingState.LoadAsync(repository, qualityRepository, connectionsRepository, intakeRepository, cancellationToken);
+            var existing = await ExistingState.LoadAsync(librariesRepository, qualityRepository, connectionsRepository, intakeRepository, cancellationToken);
             var operations = new List<MigrationReportOperation>();
             var contexts = ResolveContexts(document.RootElement, sourceKind).ToArray();
 
@@ -141,7 +144,7 @@ public sealed class MigrationAssistantService(
                     var matchingProfiles = await qualityRepository.ListQualityProfilesAsync(cancellationToken);
                     var profileId = matchingProfiles.FirstOrDefault(profile =>
                         string.Equals(profile.MediaType, mediaType, StringComparison.OrdinalIgnoreCase))?.Id;
-                    var created = await repository.CreateLibraryAsync(
+                    var created = await librariesRepository.CreateLibraryAsync(
                         new CreateLibraryRequest(
                             GetData(operation, "name"),
                             mediaType,
@@ -245,7 +248,7 @@ public sealed class MigrationAssistantService(
             operation.Category == "catalog" && operation.TargetType == "monitored-state");
         if (stageFailure is null && catalogTitles.Count > 0 && (catalogOperation is null || isSelected(catalogOperation)))
         {
-            var libraries = await repository.ListLibrariesAsync(cancellationToken);
+            var libraries = await librariesRepository.ListLibrariesAsync(cancellationToken);
             var catalogRequest = new MigrationCatalogImportRequest(
                 report.SourceKind,
                 report.SourceName,
@@ -1174,7 +1177,7 @@ public sealed class MigrationAssistantService(
         IReadOnlyDictionary<string, string> IntakeSourcesByName)
     {
         public static async Task<ExistingState> LoadAsync(
-            IPlatformSettingsRepository repository,
+            ILibrariesRepository repository,
             IQualityRepository qualityRepository,
             IConnectionsRepository connectionsRepository,
             IIntakeRepository intakeRepository,

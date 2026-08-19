@@ -4,6 +4,8 @@ using Deluno.Integrations.DownloadClients;
 using Deluno.Integrations.Metadata;
 using Deluno.Integrations.Search;
 using Deluno.Jobs.Contracts;
+using Deluno.Libraries.Contracts;
+using Deluno.Libraries.Data;
 using Deluno.Movies.Data;
 using Deluno.Movies.Contracts;
 using Deluno.Platform.Contracts;
@@ -165,6 +167,7 @@ public sealed class DelunoHeartbeatWorker(
             // ticks on an idle install get no further than the next few lines.
             var jobQueueRepository = services.GetRequiredService<IJobQueueRepository>();
             var platformSettingsRepository = services.GetRequiredService<IPlatformSettingsRepository>();
+            var librariesRepository = services.GetRequiredService<ILibrariesRepository>();
             var qualityRepository = services.GetRequiredService<IQualityRepository>();
 
             // The gate goes first. It used to be the fourth thing that
@@ -190,7 +193,7 @@ public sealed class DelunoHeartbeatWorker(
 
             if (lane.PlanAutomation)
             {
-                var libraries = await platformSettingsRepository.ListLibrariesAsync(stoppingToken);
+                var libraries = await librariesRepository.ListLibrariesAsync(stoppingToken);
                 var automationPlans = libraries
                     .Select(library => new Deluno.Jobs.Contracts.LibraryAutomationPlanItem(
                         LibraryId: library.Id,
@@ -216,6 +219,7 @@ public sealed class DelunoHeartbeatWorker(
                     jobScheduler,
                     jobQueueRepository,
                     platformSettingsRepository,
+                    librariesRepository,
                     qualityRepository,
                     downloadClientTelemetryService,
                     processorConnectionService,
@@ -290,6 +294,7 @@ public sealed class DelunoHeartbeatWorker(
                             job,
                             jobQueueRepository,
                             platformSettingsRepository,
+                            librariesRepository,
                             qualityRepository,
                             acquisitionPipeline,
                             downloadClientGrabService,
@@ -449,6 +454,7 @@ public sealed class DelunoHeartbeatWorker(
         IJobScheduler jobScheduler,
         IJobQueueRepository jobQueueRepository,
         IPlatformSettingsRepository platformSettingsRepository,
+        ILibrariesRepository librariesRepository,
         IQualityRepository qualityRepository,
         IDownloadClientTelemetryService downloadClientTelemetryService,
         IProcessorConnectionService processorConnectionService,
@@ -466,7 +472,7 @@ public sealed class DelunoHeartbeatWorker(
 
         _lastImportAutomationUtc = now;
 
-        var libraries = await platformSettingsRepository.ListLibrariesAsync(cancellationToken);
+        var libraries = await librariesRepository.ListLibrariesAsync(cancellationToken);
         if (libraries.Count == 0)
         {
             return;
@@ -675,6 +681,7 @@ public sealed class DelunoHeartbeatWorker(
         Deluno.Jobs.Contracts.JobQueueItem job,
         IJobQueueRepository jobQueueRepository,
         IPlatformSettingsRepository platformSettingsRepository,
+        ILibrariesRepository librariesRepository,
         IQualityRepository qualityRepository,
         IAcquisitionDecisionPipeline acquisitionPipeline,
         IDownloadClientGrabService downloadClientGrabService,
@@ -693,10 +700,10 @@ public sealed class DelunoHeartbeatWorker(
             if (payload is not null && !string.IsNullOrWhiteSpace(payload.LibraryName))
             {
                 var now = timeProvider.GetUtcNow();
-                var routing = await platformSettingsRepository.GetLibraryRoutingAsync(payload.LibraryId, cancellationToken);
+                var routing = await librariesRepository.GetLibraryRoutingAsync(payload.LibraryId, cancellationToken);
                 var configuredSources = routing?.Sources.Count ?? 0;
                 var configuredClients = routing?.DownloadClients.Count ?? 0;
-                var libraries = await platformSettingsRepository.ListLibrariesAsync(cancellationToken);
+                var libraries = await librariesRepository.ListLibrariesAsync(cancellationToken);
                 var library = libraries.FirstOrDefault(item => item.Id == payload.LibraryId);
                 var customFormats = await ResolveCustomFormatsAsync(
                     qualityRepository,
@@ -1060,8 +1067,8 @@ public sealed class DelunoHeartbeatWorker(
             if (payload is not null && !string.IsNullOrWhiteSpace(payload.EpisodeId))
             {
                 var now = timeProvider.GetUtcNow();
-                var routing = await platformSettingsRepository.GetLibraryRoutingAsync(payload.LibraryId, cancellationToken);
-                var libraries = await platformSettingsRepository.ListLibrariesAsync(cancellationToken);
+                var routing = await librariesRepository.GetLibraryRoutingAsync(payload.LibraryId, cancellationToken);
+                var libraries = await librariesRepository.ListLibrariesAsync(cancellationToken);
                 var library = libraries.FirstOrDefault(item => item.Id == payload.LibraryId);
                 var customFormats = await ResolveCustomFormatsAsync(
                     qualityRepository,

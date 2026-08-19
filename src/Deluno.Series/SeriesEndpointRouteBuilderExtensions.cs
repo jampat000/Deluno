@@ -8,6 +8,8 @@ using Deluno.Intake.Data;
 using Deluno.Integrations.DownloadClients;
 using Deluno.Integrations.Search;
 using Deluno.Integrations.Metadata;
+using Deluno.Libraries.Contracts;
+using Deluno.Libraries.Data;
 using Deluno.Platform.Data;
 using Deluno.Platform.Contracts;
 using Deluno.Platform;
@@ -131,7 +133,7 @@ public static class SeriesEndpointRouteBuilderExtensions
             string id,
             HttpContext httpContext,
             ISeriesCatalogRepository repository,
-            IPlatformSettingsRepository platformSettingsRepository,
+            ILibrariesRepository platformSettingsRepository,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -337,7 +339,7 @@ public static class SeriesEndpointRouteBuilderExtensions
             string? mode,
             HttpContext httpContext,
             ISeriesCatalogRepository repository,
-            IPlatformSettingsRepository platformSettingsRepository,
+            ILibrariesRepository platformSettingsRepository,
             IQualityRepository qualityRepository,
             IJobQueueRepository jobQueueRepository,
             IAcquisitionDecisionPipeline acquisitionPipeline,
@@ -739,7 +741,7 @@ public static class SeriesEndpointRouteBuilderExtensions
             HttpContext httpContext,
             [FromBody] SearchSeriesEpisodesRequest request,
             ISeriesCatalogRepository repository,
-            IPlatformSettingsRepository platformSettingsRepository,
+            ILibrariesRepository platformSettingsRepository,
             IQualityRepository qualityRepository,
             IJobQueueRepository jobQueueRepository,
             IAcquisitionDecisionPipeline acquisitionPipeline,
@@ -1011,7 +1013,7 @@ public static class SeriesEndpointRouteBuilderExtensions
             HttpContext httpContext,
             BulkSeriesRequest request,
             ISeriesCatalogRepository repository,
-            IPlatformSettingsRepository platformSettingsRepository,
+            ILibrariesRepository platformSettingsRepository,
             [FromServices] IIntakeRepository intakeRepository,
             IJobScheduler jobScheduler,
             IJobQueueRepository jobQueueRepository,
@@ -1180,7 +1182,7 @@ public static class SeriesEndpointRouteBuilderExtensions
             HttpContext httpContext,
             [FromBody] BulkSearchRequest request,
             ISeriesCatalogRepository repository,
-            IPlatformSettingsRepository platformSettingsRepository,
+            ILibrariesRepository platformSettingsRepository,
             IJobQueueRepository jobQueueRepository,
             CancellationToken cancellationToken) =>
         {
@@ -1373,6 +1375,7 @@ public static class SeriesEndpointRouteBuilderExtensions
             HttpContext httpContext,
             ISeriesCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
+            ILibrariesRepository librariesRepository,
             IQualityRepository qualityRepository,
             IJobQueueRepository jobQueueRepository,
             IAcquisitionDecisionPipeline acquisitionPipeline,
@@ -1409,7 +1412,7 @@ public static class SeriesEndpointRouteBuilderExtensions
                 });
             }
 
-            var libraries = await platformSettingsRepository.ListLibrariesAsync(cancellationToken);
+            var libraries = await librariesRepository.ListLibrariesAsync(cancellationToken);
             var library = libraries.FirstOrDefault(item => item.Id == wantedItem.LibraryId);
             if (library is null)
             {
@@ -1419,7 +1422,7 @@ public static class SeriesEndpointRouteBuilderExtensions
                 });
             }
 
-            var routing = await platformSettingsRepository.GetLibraryRoutingAsync(library.Id, cancellationToken);
+            var routing = await librariesRepository.GetLibraryRoutingAsync(library.Id, cancellationToken);
             var downloadClient = routing?.DownloadClients.OrderBy(item => item.Priority).FirstOrDefault();
             if (downloadClient is null)
             {
@@ -1566,7 +1569,7 @@ public static class SeriesEndpointRouteBuilderExtensions
             int seasonNumber,
             HttpContext httpContext,
             ISeriesCatalogRepository repository,
-            IPlatformSettingsRepository platformSettingsRepository,
+            ILibrariesRepository platformSettingsRepository,
             IQualityRepository qualityRepository,
             IJobQueueRepository jobQueueRepository,
             IAcquisitionDecisionPipeline acquisitionPipeline,
@@ -1796,7 +1799,7 @@ public static class SeriesEndpointRouteBuilderExtensions
         series.MapGet("/{id}/workflow-status", async (
             string id,
             ISeriesCatalogRepository repository,
-            IPlatformSettingsRepository platformSettingsRepository,
+            ILibrariesRepository platformSettingsRepository,
             ISeriesWorkflowService workflowService,
             CancellationToken cancellationToken) =>
         {
@@ -1948,7 +1951,7 @@ public static class SeriesEndpointRouteBuilderExtensions
             HttpContext httpContext,
             [FromBody] CreateSeriesRequest request,
             ISeriesCatalogRepository repository,
-            IPlatformSettingsRepository platformSettingsRepository,
+            ILibrariesRepository platformSettingsRepository,
             IMediaDecisionService mediaDecisionService,
             IJobScheduler jobScheduler,
             CancellationToken cancellationToken) =>
@@ -2178,7 +2181,7 @@ public static class SeriesEndpointRouteBuilderExtensions
         SeriesListItem series,
         BulkSeriesRequest request,
         ISeriesCatalogRepository repository,
-        IPlatformSettingsRepository platformSettingsRepository,
+        ILibrariesRepository platformSettingsRepository,
         IIntakeRepository intakeRepository,
         IJobQueueRepository jobQueueRepository,
         IActivityFeedRepository activityFeedRepository,

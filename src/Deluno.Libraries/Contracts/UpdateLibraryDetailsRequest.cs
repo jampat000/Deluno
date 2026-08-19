@@ -1,4 +1,4 @@
-namespace Deluno.Platform.Contracts;
+namespace Deluno.Libraries.Contracts;
 
 /// <summary>
 /// Rename a library or move its folders. Media type is fixed after creation;

@@ -1,6 +1,7 @@
-namespace Deluno.Platform.Contracts;
+namespace Deluno.Libraries.Contracts;
 
-public sealed record UpdateLibraryViewRequest(
+public sealed record CreateLibraryViewRequest(
+    string Variant,
     string Name,
     string QuickFilter,
     string SortField,
