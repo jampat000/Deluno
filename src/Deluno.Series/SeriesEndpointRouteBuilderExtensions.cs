@@ -11,7 +11,7 @@ using Deluno.Integrations.Metadata;
 using Deluno.Platform.Data;
 using Deluno.Platform.Contracts;
 using Deluno.Platform;
-using Deluno.Platform.Quality;
+using Deluno.Quality;
 using Deluno.Security;
 using Deluno.Series.Contracts;
 using Deluno.Series.Data;
@@ -982,7 +982,7 @@ public static class SeriesEndpointRouteBuilderExtensions
                         ["episodeCount"] = targetEpisodes.Count.ToString(),
                         ["sourceCount"] = configuredSources.ToString(),
                         ["downloadClientCount"] = configuredClients.ToString(),
-                        ["policyVersion"] = Deluno.Platform.Quality.MediaPolicyCatalog.CurrentVersion
+                        ["policyVersion"] = Deluno.Quality.MediaPolicyCatalog.CurrentVersion
                     },
                     Outcome: $"{sentCount} sent, {plannedCount} planned, {failedCount} failed.",
                     Alternatives: []),

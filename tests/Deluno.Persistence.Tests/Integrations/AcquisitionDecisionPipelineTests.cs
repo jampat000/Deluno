@@ -51,7 +51,7 @@ public sealed class AcquisitionDecisionPipelineTests
 
         Assert.Equal("matched", automatic.Outcome);
         Assert.Equal(automatic.Outcome, preview.Outcome);
-        Assert.Equal(Deluno.Platform.Quality.MediaPolicyCatalog.CurrentVersion, automatic.PolicyVersion);
+        Assert.Equal(Deluno.Quality.MediaPolicyCatalog.CurrentVersion, automatic.PolicyVersion);
         Assert.True(automatic.ShouldDispatch);
         Assert.False(preview.ShouldDispatch);
         Assert.NotNull(automatic.DispatchRequest);
@@ -106,7 +106,7 @@ public sealed class AcquisitionDecisionPipelineTests
 
         Assert.False(blocked.CanDispatch);
         Assert.True(blocked.RequiresOverride);
-        Assert.Equal(Deluno.Platform.Quality.MediaPolicyCatalog.CurrentVersion, blocked.PolicyVersion);
+        Assert.Equal(Deluno.Quality.MediaPolicyCatalog.CurrentVersion, blocked.PolicyVersion);
         Assert.True(forced.CanDispatch);
         Assert.True(forced.RequiresOverride);
     }

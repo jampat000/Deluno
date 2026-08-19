@@ -10,7 +10,7 @@ using Deluno.Movies.Data;
 using Deluno.Platform.Contracts;
 using Deluno.Platform.Data;
 using Deluno.Notifications;
-using Deluno.Platform.Quality;
+using Deluno.Quality;
 using Deluno.Series.Contracts;
 using Deluno.Series.Data;
 using Microsoft.AspNetCore.Http;

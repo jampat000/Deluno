@@ -1,5 +1,5 @@
 using Deluno.Platform.Contracts;
-using Deluno.Platform.Quality;
+using Deluno.Quality;
 using Deluno.Series.Contracts;
 
 namespace Deluno.Series.Services;

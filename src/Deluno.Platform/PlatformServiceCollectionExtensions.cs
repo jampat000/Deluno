@@ -1,6 +1,6 @@
 using Deluno.Platform.Data;
 using Deluno.Platform.Migration;
-using Deluno.Platform.Quality;
+using Deluno.Quality;
 using Deluno.Security;
 using Deluno.Security.Hardening;
 using Microsoft.Extensions.DependencyInjection;

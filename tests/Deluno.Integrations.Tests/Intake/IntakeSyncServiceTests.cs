@@ -8,7 +8,7 @@ using Deluno.Intake.Contracts;
 using Deluno.Intake.Data;
 using Deluno.Platform.Contracts;
 using Deluno.Platform.Data;
-using Deluno.Platform.Quality;
+using Deluno.Quality;
 using Deluno.Series.Data;
 using Deluno.Worker.Intake;
 using Microsoft.Extensions.Configuration;

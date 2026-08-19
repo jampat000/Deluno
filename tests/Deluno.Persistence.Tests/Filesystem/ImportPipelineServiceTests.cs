@@ -5,7 +5,7 @@ using Deluno.Movies.Data;
 using Deluno.Persistence.Tests.Support;
 using Deluno.Platform.Contracts;
 using Deluno.Platform.Data;
-using Deluno.Platform.Quality;
+using Deluno.Quality;
 using Deluno.Series.Data;
 using Microsoft.Extensions.Logging.Abstractions;
 

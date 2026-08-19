@@ -4,7 +4,7 @@ using System.Xml.Linq;
 using Deluno.Infrastructure.Resilience;
 using Deluno.Platform.Contracts;
 using Deluno.Platform.Data;
-using Deluno.Platform.Quality;
+using Deluno.Quality;
 
 namespace Deluno.Integrations.Search;
 

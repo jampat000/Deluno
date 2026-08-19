@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Deluno.Infrastructure.Storage;
 
-namespace Deluno.Platform.Quality;
+namespace Deluno.Quality;
 
 public sealed class QualityModelService(
     IDelunoDatabaseConnectionFactory databaseConnectionFactory,

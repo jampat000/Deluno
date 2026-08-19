@@ -1,6 +1,6 @@
 using Deluno.Movies.Contracts;
 using Deluno.Platform.Contracts;
-using Deluno.Platform.Quality;
+using Deluno.Quality;
 
 namespace Deluno.Movies.Services;
 

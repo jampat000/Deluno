@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 
-namespace Deluno.Platform.Quality;
+namespace Deluno.Quality;
 
 public interface IVersionedMediaPolicyEngine
 {

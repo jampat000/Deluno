@@ -1,4 +1,4 @@
-namespace Deluno.Platform.Quality;
+namespace Deluno.Quality;
 
 public sealed record QualityTierDefinition(
     string Name,

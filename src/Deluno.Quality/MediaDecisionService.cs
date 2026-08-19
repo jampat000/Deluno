@@ -1,6 +1,6 @@
 using Deluno.Infrastructure.Observability;
 
-namespace Deluno.Platform.Quality;
+namespace Deluno.Quality;
 
 public interface IMediaDecisionService
 {

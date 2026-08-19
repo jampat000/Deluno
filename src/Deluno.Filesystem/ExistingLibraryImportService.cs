@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 using Deluno.Contracts;
 using Deluno.Movies.Data;
 using Deluno.Platform.Data;
-using Deluno.Platform.Quality;
+using Deluno.Quality;
 using Deluno.Series.Data;
 
 namespace Deluno.Filesystem;

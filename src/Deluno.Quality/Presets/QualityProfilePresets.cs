@@ -1,4 +1,4 @@
-namespace Deluno.Platform.Presets;
+namespace Deluno.Quality.Presets;
 
 public sealed record QualityProfilePreset(
     string Id,

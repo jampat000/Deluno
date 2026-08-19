@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Deluno.Contracts;
-using Deluno.Platform.Presets;
+using Deluno.Quality.Presets;
 using System.Diagnostics;
 using System.Globalization;
 using System.Net;
@@ -15,7 +15,7 @@ using Deluno.Platform.Contracts;
 using Deluno.Platform.Data;
 using Deluno.Platform.Migration;
 using Deluno.Platform.Processing;
-using Deluno.Platform.Quality;
+using Deluno.Quality;
 using Deluno.Notifications;
 using Deluno.Jobs.Contracts;
 using Deluno.Jobs.Data;

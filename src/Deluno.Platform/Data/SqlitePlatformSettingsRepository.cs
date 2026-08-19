@@ -7,6 +7,7 @@ using Deluno.Platform.Contracts;
 using Deluno.Security;
 using Deluno.Security.Contracts;
 using static Deluno.Infrastructure.Storage.SqliteRecordHelpers;
+using Deluno.Quality.Presets;
 using static Deluno.Contracts.DelunoValueNormalizers;
 
 namespace Deluno.Platform.Data;
@@ -648,7 +649,7 @@ public sealed class SqlitePlatformSettingsRepository(
         string? nameOverride,
         CancellationToken cancellationToken)
     {
-        var preset = Presets.QualityProfilePresetCatalog.FindById(presetId)
+        var preset = QualityProfilePresetCatalog.FindById(presetId)
             ?? throw new InvalidOperationException($"Preset '{presetId}' not found.");
 
         var now = timeProvider.GetUtcNow();
@@ -3649,7 +3650,7 @@ public sealed class SqlitePlatformSettingsRepository(
         var presetDrifted = false;
         if (presetId is not null && presetVersion.HasValue)
         {
-            var currentPreset = Presets.QualityProfilePresetCatalog.FindById(presetId);
+            var currentPreset = QualityProfilePresetCatalog.FindById(presetId);
             presetDrifted = currentPreset is null || currentPreset.Version != presetVersion.Value;
         }
 

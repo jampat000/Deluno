@@ -77,7 +77,7 @@ public sealed class AcquisitionDecisionPipeline : IAcquisitionDecisionPipeline
 
         return new AcquisitionDecisionPlan(
             SearchPlan: searchPlan,
-            PolicyVersion: bestCandidate?.PolicyVersion ?? Deluno.Platform.Quality.MediaPolicyCatalog.CurrentVersion,
+            PolicyVersion: bestCandidate?.PolicyVersion ?? Deluno.Quality.MediaPolicyCatalog.CurrentVersion,
             Outcome: outcome,
             SearchResult: BuildSearchResult(searchPlan, clientCount),
             SourceCount: sourceCount,
@@ -93,7 +93,7 @@ public sealed class AcquisitionDecisionPipeline : IAcquisitionDecisionPipeline
     public AcquisitionSelectedReleaseDecision EvaluateSelectedRelease(AcquisitionSelectedReleaseRequest request)
     {
         var quality = request.CandidateQuality
-            ?? Deluno.Platform.Quality.LibraryQualityDecider.DetectQuality(request.ReleaseName)
+            ?? Deluno.Quality.LibraryQualityDecider.DetectQuality(request.ReleaseName)
             ?? "WEB 1080p";
         var customFormatScore = CustomFormatMatcher.Evaluate(
             request.ReleaseName,

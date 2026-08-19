@@ -14,7 +14,7 @@ using Deluno.Movies.Services;
 using Deluno.Platform.Data;
 using Deluno.Platform.Contracts;
 using Deluno.Platform;
-using Deluno.Platform.Quality;
+using Deluno.Quality;
 using Deluno.Security;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
