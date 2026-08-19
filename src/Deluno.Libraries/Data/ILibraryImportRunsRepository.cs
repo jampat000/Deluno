@@ -24,11 +24,22 @@ public interface ILibraryImportRunsRepository
         string rootPath,
         CancellationToken cancellationToken);
 
-    Task<LibraryImportRunItem?> GetAsync(string runId, string libraryName, CancellationToken cancellationToken);
+    Task<LibraryImportRunItem?> GetAsync(string runId, CancellationToken cancellationToken);
 
-    Task<LibraryImportRunItem?> GetActiveForLibraryAsync(string libraryId, string libraryName, CancellationToken cancellationToken);
+    Task<LibraryImportRunItem?> GetActiveForLibraryAsync(string libraryId, CancellationToken cancellationToken);
 
-    Task<LibraryImportRunItem?> GetLatestForLibraryAsync(string libraryId, string libraryName, CancellationToken cancellationToken);
+    Task<LibraryImportRunItem?> GetLatestForLibraryAsync(string libraryId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Runs that still have work to do but have had nothing happen to them
+    /// since <paramref name="idleBeforeUtc"/> — the worker died mid-slice, or
+    /// the process restarted. Paused runs are deliberately excluded: they are
+    /// idle because somebody asked them to be.
+    /// </summary>
+    Task<IReadOnlyList<LibraryImportResumeCandidate>> ListResumableRunsAsync(
+        DateTimeOffset idleBeforeUtc,
+        int take,
+        CancellationToken cancellationToken);
 
     /// <summary>
     /// Moves a queued or paused run to running and records the estimated total
@@ -40,7 +51,8 @@ public interface ILibraryImportRunsRepository
     /// <summary>
     /// Advances the position marker and the counters in one statement, so a
     /// crash between two slices can only ever replay a batch that was already
-    /// written — never skip one.
+    /// written — never skip one. Replaying is safe because every import write
+    /// is an upsert.
     /// </summary>
     Task RecordSliceAsync(
         string runId,
@@ -51,6 +63,13 @@ public interface ILibraryImportRunsRepository
         int deferredDelta,
         IReadOnlyList<string> sampleTitles,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Records why a slice failed without changing the run's status, so a run
+    /// that is being retried says so instead of looking like it silently
+    /// stopped.
+    /// </summary>
+    Task RecordErrorAsync(string runId, string error, CancellationToken cancellationToken);
 
     Task<bool> TrySetStatusAsync(
         string runId,

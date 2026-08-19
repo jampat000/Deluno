@@ -18,6 +18,7 @@ public sealed class V0019LibraryImportRuns : SqliteSqlMigration
         CREATE TABLE IF NOT EXISTS library_import_runs (
             id TEXT PRIMARY KEY,
             library_id TEXT NOT NULL,
+            library_name TEXT NOT NULL,
             media_type TEXT NOT NULL,
             root_path TEXT NOT NULL,
             status TEXT NOT NULL,
@@ -54,5 +55,11 @@ public sealed class V0019LibraryImportRuns : SqliteSqlMigration
 
         CREATE INDEX IF NOT EXISTS ix_library_import_issues_run
             ON library_import_issues (run_id, created_utc);
+
+        -- A slice that dies after recording an issue but before committing its
+        -- position replays those entries. The issue is the same issue, so it
+        -- must not be recorded twice.
+        CREATE UNIQUE INDEX IF NOT EXISTS ux_library_import_issues_entry
+            ON library_import_issues (run_id, source_path, kind);
         """;
 }

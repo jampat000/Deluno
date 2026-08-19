@@ -17,7 +17,7 @@ public sealed class SqliteLibraryImportRunsRepository(
     private const string SelectColumns =
         """
         SELECT
-            id, library_id, media_type, root_path, status, estimated_total,
+            id, library_id, library_name, media_type, root_path, status, estimated_total,
             processed_count, imported_count, skipped_count, deferred_count,
             cursor_key, sample_titles, last_error,
             created_utc, started_utc, updated_utc, completed_utc
@@ -42,7 +42,6 @@ public sealed class SqliteLibraryImportRunsRepository(
             connection,
             SelectColumns + ActiveRunPredicate,
             command => AddParameter(command, "@libraryId", libraryId),
-            libraryName,
             cancellationToken);
 
         if (existing is not null)
@@ -58,18 +57,19 @@ public sealed class SqliteLibraryImportRunsRepository(
             insert.CommandText =
                 """
                 INSERT INTO library_import_runs (
-                    id, library_id, media_type, root_path, status, estimated_total,
+                    id, library_id, library_name, media_type, root_path, status, estimated_total,
                     processed_count, imported_count, skipped_count, deferred_count,
                     cursor_key, sample_titles, last_error, created_utc, started_utc, updated_utc, completed_utc
                 )
                 VALUES (
-                    @id, @libraryId, @mediaType, @rootPath, 'queued', 0,
+                    @id, @libraryId, @libraryName, @mediaType, @rootPath, 'queued', 0,
                     0, 0, 0, 0,
                     NULL, NULL, NULL, @createdUtc, NULL, @updatedUtc, NULL
                 );
                 """;
             AddParameter(insert, "@id", id);
             AddParameter(insert, "@libraryId", libraryId);
+            AddParameter(insert, "@libraryName", libraryName);
             AddParameter(insert, "@mediaType", mediaType);
             AddParameter(insert, "@rootPath", rootPath);
             AddParameter(insert, "@createdUtc", now.ToString("O"));
@@ -87,7 +87,6 @@ public sealed class SqliteLibraryImportRunsRepository(
                     connection,
                     SelectColumns + ActiveRunPredicate,
                     command => AddParameter(command, "@libraryId", libraryId),
-                    libraryName,
                     cancellationToken);
 
                 if (raced is not null)
@@ -103,11 +102,10 @@ public sealed class SqliteLibraryImportRunsRepository(
             connection,
             SelectColumns + " WHERE id = @id;",
             command => AddParameter(command, "@id", id),
-            libraryName,
             cancellationToken))!;
     }
 
-    public async Task<LibraryImportRunItem?> GetAsync(string runId, string libraryName, CancellationToken cancellationToken)
+    public async Task<LibraryImportRunItem?> GetAsync(string runId, CancellationToken cancellationToken)
     {
         await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
             DelunoDatabaseNames.Platform,
@@ -117,13 +115,11 @@ public sealed class SqliteLibraryImportRunsRepository(
             connection,
             SelectColumns + " WHERE id = @id;",
             command => AddParameter(command, "@id", runId),
-            libraryName,
             cancellationToken);
     }
 
     public async Task<LibraryImportRunItem?> GetActiveForLibraryAsync(
         string libraryId,
-        string libraryName,
         CancellationToken cancellationToken)
     {
         await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
@@ -134,13 +130,11 @@ public sealed class SqliteLibraryImportRunsRepository(
             connection,
             SelectColumns + ActiveRunPredicate,
             command => AddParameter(command, "@libraryId", libraryId),
-            libraryName,
             cancellationToken);
     }
 
     public async Task<LibraryImportRunItem?> GetLatestForLibraryAsync(
         string libraryId,
-        string libraryName,
         CancellationToken cancellationToken)
     {
         await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
@@ -149,10 +143,45 @@ public sealed class SqliteLibraryImportRunsRepository(
 
         return await ReadOneAsync(
             connection,
-            SelectColumns + " WHERE library_id = @libraryId ORDER BY created_utc DESC LIMIT 1;",
+            SelectColumns + " WHERE library_id = @libraryId ORDER BY created_utc DESC, id DESC LIMIT 1;",
             command => AddParameter(command, "@libraryId", libraryId),
-            libraryName,
             cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<LibraryImportResumeCandidate>> ListResumableRunsAsync(
+        DateTimeOffset idleBeforeUtc,
+        int take,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
+            DelunoDatabaseNames.Platform,
+            cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            SELECT id, library_id, library_name, processed_count
+            FROM library_import_runs
+            WHERE status IN ('queued', 'running')
+              AND updated_utc < @idleBefore
+            ORDER BY updated_utc ASC
+            LIMIT @take;
+            """;
+        AddParameter(command, "@idleBefore", idleBeforeUtc.ToString("O"));
+        AddParameter(command, "@take", Math.Clamp(take, 1, 100));
+
+        var items = new List<LibraryImportResumeCandidate>();
+        using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            items.Add(new LibraryImportResumeCandidate(
+                RunId: reader.GetString(0),
+                LibraryId: reader.GetString(1),
+                LibraryName: reader.GetString(2),
+                ProcessedCount: reader.GetInt32(3)));
+        }
+
+        return items;
     }
 
     public async Task<bool> MarkRunningAsync(string runId, int estimatedTotal, CancellationToken cancellationToken)
@@ -173,7 +202,7 @@ public sealed class SqliteLibraryImportRunsRepository(
                 updated_utc = @now,
                 last_error = NULL
             WHERE id = @id
-              AND status IN ('queued', 'running', 'paused');
+              AND status IN ('queued', 'running');
             """;
         AddParameter(command, "@id", runId);
         AddParameter(command, "@estimatedTotal", estimatedTotal);
@@ -220,7 +249,7 @@ public sealed class SqliteLibraryImportRunsRepository(
         command.CommandText =
             """
             UPDATE library_import_runs
-            SET cursor_key = @cursor,
+            SET cursor_key = COALESCE(@cursor, cursor_key),
                 processed_count = processed_count + @processedDelta,
                 imported_count = imported_count + @importedDelta,
                 skipped_count = skipped_count + @skippedDelta,
@@ -236,6 +265,30 @@ public sealed class SqliteLibraryImportRunsRepository(
         AddParameter(command, "@skippedDelta", skippedDelta);
         AddParameter(command, "@deferredDelta", deferredDelta);
         AddParameter(command, "@sampleTitles", mergedSamples);
+        AddParameter(command, "@now", now.ToString("O"));
+
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task RecordErrorAsync(string runId, string error, CancellationToken cancellationToken)
+    {
+        var now = timeProvider.GetUtcNow();
+
+        await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
+            DelunoDatabaseNames.Platform,
+            cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            UPDATE library_import_runs
+            SET last_error = @error,
+                updated_utc = @now
+            WHERE id = @id
+              AND status IN ('queued', 'running');
+            """;
+        AddParameter(command, "@id", runId);
+        AddParameter(command, "@error", error);
         AddParameter(command, "@now", now.ToString("O"));
 
         await command.ExecuteNonQueryAsync(cancellationToken);
@@ -298,7 +351,7 @@ public sealed class SqliteLibraryImportRunsRepository(
         using var command = connection.CreateCommand();
         command.CommandText =
             """
-            INSERT INTO library_import_issues (
+            INSERT OR IGNORE INTO library_import_issues (
                 id, run_id, library_id, source_path, kind, detail, created_utc
             )
             VALUES (
@@ -358,7 +411,6 @@ public sealed class SqliteLibraryImportRunsRepository(
         DbConnection connection,
         string sql,
         Action<DbCommand> bind,
-        string libraryName,
         CancellationToken cancellationToken)
     {
         using var command = connection.CreateCommand();
@@ -374,22 +426,22 @@ public sealed class SqliteLibraryImportRunsRepository(
         return new LibraryImportRunItem(
             Id: reader.GetString(0),
             LibraryId: reader.GetString(1),
-            LibraryName: libraryName,
-            MediaType: reader.GetString(2),
-            RootPath: reader.GetString(3),
-            Status: reader.GetString(4),
-            EstimatedTotal: reader.GetInt32(5),
-            ProcessedCount: reader.GetInt32(6),
-            ImportedCount: reader.GetInt32(7),
-            SkippedCount: reader.GetInt32(8),
-            DeferredCount: reader.GetInt32(9),
-            Cursor: reader.IsDBNull(10) ? null : reader.GetString(10),
-            SampleTitles: ParseSamples(reader.IsDBNull(11) ? null : reader.GetString(11)),
-            LastError: reader.IsDBNull(12) ? null : reader.GetString(12),
-            CreatedUtc: ParseTimestamp(reader.GetString(13)),
-            StartedUtc: reader.IsDBNull(14) ? null : ParseTimestamp(reader.GetString(14)),
-            UpdatedUtc: ParseTimestamp(reader.GetString(15)),
-            CompletedUtc: reader.IsDBNull(16) ? null : ParseTimestamp(reader.GetString(16)));
+            LibraryName: reader.GetString(2),
+            MediaType: reader.GetString(3),
+            RootPath: reader.GetString(4),
+            Status: reader.GetString(5),
+            EstimatedTotal: reader.GetInt32(6),
+            ProcessedCount: reader.GetInt32(7),
+            ImportedCount: reader.GetInt32(8),
+            SkippedCount: reader.GetInt32(9),
+            DeferredCount: reader.GetInt32(10),
+            Cursor: reader.IsDBNull(11) ? null : reader.GetString(11),
+            SampleTitles: ParseSamples(reader.IsDBNull(12) ? null : reader.GetString(12)),
+            LastError: reader.IsDBNull(13) ? null : reader.GetString(13),
+            CreatedUtc: ParseTimestamp(reader.GetString(14)),
+            StartedUtc: reader.IsDBNull(15) ? null : ParseTimestamp(reader.GetString(15)),
+            UpdatedUtc: ParseTimestamp(reader.GetString(16)),
+            CompletedUtc: reader.IsDBNull(17) ? null : ParseTimestamp(reader.GetString(17)));
     }
 
     private static IReadOnlyList<string> ParseSamples(string? json)
