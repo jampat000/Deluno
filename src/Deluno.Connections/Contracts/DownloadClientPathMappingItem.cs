@@ -1,4 +1,4 @@
-namespace Deluno.Platform.Contracts;
+namespace Deluno.Connections.Contracts;
 
 /// <summary>
 /// Translates the completed-download path reported by one download client into

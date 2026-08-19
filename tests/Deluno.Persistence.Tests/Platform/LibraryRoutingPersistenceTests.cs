@@ -3,6 +3,8 @@ using Deluno.Persistence.Tests.Support;
 using Deluno.Platform.Contracts;
 using Deluno.Platform.Data;
 using Microsoft.Extensions.Logging.Abstractions;
+using Deluno.Connections.Contracts;
+using Deluno.Connections.Data;
 
 namespace Deluno.Persistence.Tests.Platform;
 
@@ -19,6 +21,12 @@ public sealed class LibraryRoutingPersistenceTests
             NullLogger<PlatformSchemaInitializer>.Instance).StartAsync(CancellationToken.None);
         return new SqlitePlatformSettingsRepository(storage.Factory, timeProvider, TestSecretProtection.Create(storage));
     }
+
+    private static SqliteConnectionsRepository CreateConnectionsRepository(TestStorage storage)
+        => new(
+            storage.Factory,
+            new FixedTimeProvider(DateTimeOffset.Parse("2026-01-01T00:00:00Z")),
+            TestSecretProtection.Create(storage));
 
     private static Task<LibraryItem> CreateMovieLibraryAsync(SqlitePlatformSettingsRepository repo)
         => repo.CreateLibraryAsync(
@@ -42,7 +50,7 @@ public sealed class LibraryRoutingPersistenceTests
                 MaxItemsPerRun: null),
             CancellationToken.None);
 
-    private static Task<IndexerItem> CreateIndexerAsync(SqlitePlatformSettingsRepository repo)
+    private static Task<IndexerItem> CreateIndexerAsync(SqliteConnectionsRepository repo)
         => repo.CreateIndexerAsync(
             new CreateIndexerRequest(
                 Name: "Prowlarr",
@@ -57,7 +65,7 @@ public sealed class LibraryRoutingPersistenceTests
                 IsEnabled: true),
             CancellationToken.None);
 
-    private static Task<DownloadClientItem> CreateDownloadClientAsync(SqlitePlatformSettingsRepository repo)
+    private static Task<DownloadClientItem> CreateDownloadClientAsync(SqliteConnectionsRepository repo)
         => repo.CreateDownloadClientAsync(
             new CreateDownloadClientRequest(
                 Name: "qBittorrent",
@@ -110,8 +118,9 @@ public sealed class LibraryRoutingPersistenceTests
     {
         using var storage = TestStorage.Create();
         var repo = await CreateRepositoryAsync(storage);
+        var connectionsRepo = CreateConnectionsRepository(storage);
         var library = await CreateMovieLibraryAsync(repo);
-        var indexer = await CreateIndexerAsync(repo);
+        var indexer = await CreateIndexerAsync(connectionsRepo);
 
         var routing = await repo.SaveLibraryRoutingAsync(
             library.Id,
@@ -132,8 +141,9 @@ public sealed class LibraryRoutingPersistenceTests
     {
         using var storage = TestStorage.Create();
         var repo = await CreateRepositoryAsync(storage);
+        var connectionsRepo = CreateConnectionsRepository(storage);
         var library = await CreateMovieLibraryAsync(repo);
-        var client = await CreateDownloadClientAsync(repo);
+        var client = await CreateDownloadClientAsync(connectionsRepo);
 
         var routing = await repo.SaveLibraryRoutingAsync(
             library.Id,
@@ -154,9 +164,10 @@ public sealed class LibraryRoutingPersistenceTests
     {
         using var storage = TestStorage.Create();
         var repo = await CreateRepositoryAsync(storage);
+        var connectionsRepo = CreateConnectionsRepository(storage);
         var library = await CreateMovieLibraryAsync(repo);
-        var indexer = await CreateIndexerAsync(repo);
-        var client = await CreateDownloadClientAsync(repo);
+        var indexer = await CreateIndexerAsync(connectionsRepo);
+        var client = await CreateDownloadClientAsync(connectionsRepo);
 
         var routing = await repo.SaveLibraryRoutingAsync(
             library.Id,
@@ -175,9 +186,10 @@ public sealed class LibraryRoutingPersistenceTests
     {
         using var storage = TestStorage.Create();
         var repo = await CreateRepositoryAsync(storage);
+        var connectionsRepo = CreateConnectionsRepository(storage);
         var library = await CreateMovieLibraryAsync(repo);
-        var indexer1 = await CreateIndexerAsync(repo);
-        var indexer2 = await repo.CreateIndexerAsync(
+        var indexer1 = await CreateIndexerAsync(connectionsRepo);
+        var indexer2 = await connectionsRepo.CreateIndexerAsync(
             new CreateIndexerRequest("Second", "torznab", "public",
                 "https://second.example.test", null, 2, "2000", "", "both", true),
             CancellationToken.None);
@@ -208,9 +220,10 @@ public sealed class LibraryRoutingPersistenceTests
     {
         using var storage = TestStorage.Create();
         var repo = await CreateRepositoryAsync(storage);
+        var connectionsRepo = CreateConnectionsRepository(storage);
         var library = await CreateMovieLibraryAsync(repo);
-        var indexer = await CreateIndexerAsync(repo);
-        var client = await CreateDownloadClientAsync(repo);
+        var indexer = await CreateIndexerAsync(connectionsRepo);
+        var client = await CreateDownloadClientAsync(connectionsRepo);
 
         // Link both first
         await repo.SaveLibraryRoutingAsync(
@@ -250,9 +263,10 @@ public sealed class LibraryRoutingPersistenceTests
     {
         using var storage = TestStorage.Create();
         var repo = await CreateRepositoryAsync(storage);
+        var connectionsRepo = CreateConnectionsRepository(storage);
         var library = await CreateMovieLibraryAsync(repo);
-        var indexer = await CreateIndexerAsync(repo);
-        var client = await CreateDownloadClientAsync(repo);
+        var indexer = await CreateIndexerAsync(connectionsRepo);
+        var client = await CreateDownloadClientAsync(connectionsRepo);
 
         await repo.SaveLibraryRoutingAsync(
             library.Id,

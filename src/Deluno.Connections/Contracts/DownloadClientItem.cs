@@ -1,4 +1,4 @@
-namespace Deluno.Platform.Contracts;
+namespace Deluno.Connections.Contracts;
 
 using System.Text.Json.Serialization;
 

@@ -1,4 +1,4 @@
-namespace Deluno.Platform.Contracts;
+namespace Deluno.Connections.Contracts;
 
 public sealed record CreateIndexerRequest(
     string? Name,

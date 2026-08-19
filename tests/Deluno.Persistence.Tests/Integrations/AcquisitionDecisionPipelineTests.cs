@@ -5,6 +5,8 @@ using Deluno.Platform.Contracts;
 using Deluno.Platform.Data;
 using Microsoft.Extensions.Logging.Abstractions;
 using Deluno.Quality.Contracts;
+using Deluno.Connections.Contracts;
+using Deluno.Connections.Data;
 
 namespace Deluno.Persistence.Tests.Integrations;
 
@@ -153,7 +155,7 @@ public sealed class AcquisitionDecisionPipelineTests
             storage.Factory,
             new SqliteDatabaseMigrator(storage.Factory, time),
             NullLogger<PlatformSchemaInitializer>.Instance).StartAsync(CancellationToken.None);
-        var repository = new SqlitePlatformSettingsRepository(storage.Factory, time, TestSecretProtection.Create(storage));
+        var repository = new SqliteConnectionsRepository(storage.Factory, time, TestSecretProtection.Create(storage));
         var indexer = await repository.CreateIndexerAsync(new CreateIndexerRequest(
             "Untested source", "torznab", "public", "https://fixture.invalid/api", null, 1, "2000", null, "movies", true), CancellationToken.None);
         var client = await repository.CreateDownloadClientAsync(new CreateDownloadClientRequest(
@@ -162,7 +164,7 @@ public sealed class AcquisitionDecisionPipelineTests
             "Dune Part Two", 2024, "movies", null, "WEB 1080p",
             [new LibrarySourceLinkItem("source-link", "library", indexer.Id, indexer.Name, 1, "", "", time.GetUtcNow(), time.GetUtcNow())],
             [new LibraryDownloadClientLinkItem("client-link", "library", client.Id, client.Name, 1, time.GetUtcNow(), time.GetUtcNow())]);
-        var pipeline = new AcquisitionDecisionPipeline(new ThrowingPlanner(), platformRepository: repository);
+        var pipeline = new AcquisitionDecisionPipeline(new ThrowingPlanner(), connectionsRepository: repository);
 
         var sourceBlocked = await pipeline.PlanAsync(request);
 

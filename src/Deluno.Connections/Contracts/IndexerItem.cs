@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Deluno.Platform.Contracts;
+namespace Deluno.Connections.Contracts;
 
 public sealed record IndexerItem(
     string Id,

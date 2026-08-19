@@ -6,12 +6,15 @@ using Deluno.Intake.Data;
 using Deluno.Platform.Data;
 using Deluno.Quality.Contracts;
 using Deluno.Quality.Data;
+using Deluno.Connections.Contracts;
+using Deluno.Connections.Data;
 
 namespace Deluno.Platform.Migration;
 
 public sealed class MigrationAssistantService(
     IPlatformSettingsRepository repository,
     IQualityRepository qualityRepository,
+    IConnectionsRepository connectionsRepository,
     IIntakeRepository intakeRepository,
     IEnumerable<IMigrationCatalogImporter>? catalogImporters = null) : IMigrationAssistantService
 {
@@ -53,7 +56,7 @@ public sealed class MigrationAssistantService(
 
         using (document)
         {
-            var existing = await ExistingState.LoadAsync(repository, qualityRepository, intakeRepository, cancellationToken);
+            var existing = await ExistingState.LoadAsync(repository, qualityRepository, connectionsRepository, intakeRepository, cancellationToken);
             var operations = new List<MigrationReportOperation>();
             var contexts = ResolveContexts(document.RootElement, sourceKind).ToArray();
 
@@ -163,7 +166,7 @@ public sealed class MigrationAssistantService(
                 }
                 case "indexer":
                 {
-                    var created = await repository.CreateIndexerAsync(
+                    var created = await connectionsRepository.CreateIndexerAsync(
                         new CreateIndexerRequest(
                             GetData(operation, "name"),
                             GetData(operation, "protocol"),
@@ -181,7 +184,7 @@ public sealed class MigrationAssistantService(
                 }
                 case "download-client":
                 {
-                    var created = await repository.CreateDownloadClientAsync(
+                    var created = await connectionsRepository.CreateDownloadClientAsync(
                         new CreateDownloadClientRequest(
                             GetData(operation, "name"),
                             GetData(operation, "protocol"),
@@ -1173,13 +1176,14 @@ public sealed class MigrationAssistantService(
         public static async Task<ExistingState> LoadAsync(
             IPlatformSettingsRepository repository,
             IQualityRepository qualityRepository,
+            IConnectionsRepository connectionsRepository,
             IIntakeRepository intakeRepository,
             CancellationToken cancellationToken)
         {
             var profiles = await qualityRepository.ListQualityProfilesAsync(cancellationToken);
             var libraries = await repository.ListLibrariesAsync(cancellationToken);
-            var indexers = await repository.ListIndexersAsync(cancellationToken);
-            var clients = await repository.ListDownloadClientsAsync(cancellationToken);
+            var indexers = await connectionsRepository.ListIndexersAsync(cancellationToken);
+            var clients = await connectionsRepository.ListDownloadClientsAsync(cancellationToken);
             var intakeSources = await intakeRepository.ListIntakeSourcesAsync(cancellationToken);
 
             return new ExistingState(

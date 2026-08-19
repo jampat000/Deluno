@@ -1,4 +1,4 @@
-namespace Deluno.Platform.Contracts;
+namespace Deluno.Connections.Contracts;
 
 /// <summary>
 /// Patch-style request — null values mean "leave unchanged".

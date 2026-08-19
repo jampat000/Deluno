@@ -58,4 +58,10 @@ public static class DelunoValueNormalizers
 
     public static int NormalizeSyncIntervalHours(int value)
         => Math.Clamp(value <= 0 ? 24 : value, 1, 168);
+
+    public static string? NormalizePath(string? value)
+    {
+        var normalized = value?.Trim();
+        return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
+    }
 }
