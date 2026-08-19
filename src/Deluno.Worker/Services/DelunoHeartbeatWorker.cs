@@ -16,6 +16,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using Deluno.Quality.Contracts;
+using Deluno.Quality.Data;
 
 namespace Deluno.Worker.Services;
 
@@ -164,6 +165,7 @@ public sealed class DelunoHeartbeatWorker(
             // ticks on an idle install get no further than the next few lines.
             var jobQueueRepository = services.GetRequiredService<IJobQueueRepository>();
             var platformSettingsRepository = services.GetRequiredService<IPlatformSettingsRepository>();
+            var qualityRepository = services.GetRequiredService<IQualityRepository>();
 
             // The gate goes first. It used to be the fourth thing that
             // happened, after a heartbeat write and a settings read, so an
@@ -214,6 +216,7 @@ public sealed class DelunoHeartbeatWorker(
                     jobScheduler,
                     jobQueueRepository,
                     platformSettingsRepository,
+                    qualityRepository,
                     downloadClientTelemetryService,
                     processorConnectionService,
                     activityFeedRepository,
@@ -287,6 +290,7 @@ public sealed class DelunoHeartbeatWorker(
                             job,
                             jobQueueRepository,
                             platformSettingsRepository,
+                            qualityRepository,
                             acquisitionPipeline,
                             downloadClientGrabService,
                             metadataProvider,
@@ -445,6 +449,7 @@ public sealed class DelunoHeartbeatWorker(
         IJobScheduler jobScheduler,
         IJobQueueRepository jobQueueRepository,
         IPlatformSettingsRepository platformSettingsRepository,
+        IQualityRepository qualityRepository,
         IDownloadClientTelemetryService downloadClientTelemetryService,
         IProcessorConnectionService processorConnectionService,
         IActivityFeedRepository activityFeedRepository,
@@ -670,6 +675,7 @@ public sealed class DelunoHeartbeatWorker(
         Deluno.Jobs.Contracts.JobQueueItem job,
         IJobQueueRepository jobQueueRepository,
         IPlatformSettingsRepository platformSettingsRepository,
+        IQualityRepository qualityRepository,
         IAcquisitionDecisionPipeline acquisitionPipeline,
         IDownloadClientGrabService downloadClientGrabService,
         IMetadataProvider metadataProvider,
@@ -693,7 +699,7 @@ public sealed class DelunoHeartbeatWorker(
                 var libraries = await platformSettingsRepository.ListLibrariesAsync(cancellationToken);
                 var library = libraries.FirstOrDefault(item => item.Id == payload.LibraryId);
                 var customFormats = await ResolveCustomFormatsAsync(
-                    platformSettingsRepository,
+                    qualityRepository,
                     library?.QualityProfileId,
                     cancellationToken);
 
@@ -1058,7 +1064,7 @@ public sealed class DelunoHeartbeatWorker(
                 var libraries = await platformSettingsRepository.ListLibrariesAsync(cancellationToken);
                 var library = libraries.FirstOrDefault(item => item.Id == payload.LibraryId);
                 var customFormats = await ResolveCustomFormatsAsync(
-                    platformSettingsRepository,
+                    qualityRepository,
                     library?.QualityProfileId,
                     cancellationToken);
                 var targetQuality = await seriesCatalogRepository.GetEpisodeTargetQualityAsync(
@@ -1901,7 +1907,7 @@ public sealed class DelunoHeartbeatWorker(
             : "missing";
 
     private static async Task<IReadOnlyList<CustomFormatItem>> ResolveCustomFormatsAsync(
-        IPlatformSettingsRepository repository,
+        IQualityRepository repository,
         string? qualityProfileId,
         CancellationToken cancellationToken)
     {

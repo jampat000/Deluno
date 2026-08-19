@@ -3,6 +3,7 @@ using Deluno.Intake.Contracts;
 using Deluno.Intake.Data;
 using Deluno.Platform.Contracts;
 using Deluno.Platform.Data;
+using Deluno.Quality.Data;
 using Deluno.Infrastructure.Storage.Migrations;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -129,9 +130,10 @@ public sealed class PlatformSettingsPersistenceTests
             NullLogger<PlatformSchemaInitializer>.Instance).StartAsync(CancellationToken.None);
 
         var repository = new SqlitePlatformSettingsRepository(storage.Factory, timeProvider, TestSecretProtection.Create(storage));
+        var qualityRepository = new SqliteQualityRepository(storage.Factory, timeProvider);
 
         Assert.Empty(await repository.ListLibrariesAsync(CancellationToken.None));
-        Assert.Empty(await repository.ListQualityProfilesAsync(CancellationToken.None));
+        Assert.Empty(await qualityRepository.ListQualityProfilesAsync(CancellationToken.None));
     }
 
     [Fact]

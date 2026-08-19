@@ -8,6 +8,7 @@ using Deluno.Movies.Data;
 using Deluno.Movies.Migration;
 using Deluno.Series.Data;
 using Deluno.Series.Migration;
+using Deluno.Quality.Data;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Deluno.Persistence.Tests.Platform;
@@ -65,7 +66,7 @@ public sealed class MigrationAssistantServiceTests
 
         var repository = CreateRepository(storage);
         var libraries = await repository.ListLibrariesAsync(CancellationToken.None);
-        var profiles = await repository.ListQualityProfilesAsync(CancellationToken.None);
+        var profiles = await CreateQualityRepository(storage).ListQualityProfilesAsync(CancellationToken.None);
         var indexers = await repository.ListIndexersAsync(CancellationToken.None);
         var clients = await repository.ListDownloadClientsAsync(CancellationToken.None);
 
@@ -117,7 +118,7 @@ public sealed class MigrationAssistantServiceTests
         var repository = CreateRepository(storage);
         Assert.Single(await repository.ListIndexersAsync(CancellationToken.None));
         Assert.Empty(await repository.ListLibrariesAsync(CancellationToken.None));
-        Assert.DoesNotContain(await repository.ListQualityProfilesAsync(CancellationToken.None), profile => profile.Name == "Migrated UHD");
+        Assert.DoesNotContain(await CreateQualityRepository(storage).ListQualityProfilesAsync(CancellationToken.None), profile => profile.Name == "Migrated UHD");
         Assert.Empty(await repository.ListDownloadClientsAsync(CancellationToken.None));
 
         var audit = Assert.Single(await repository.ListMigrationAuditReportsAsync(10, CancellationToken.None));
@@ -232,7 +233,7 @@ public sealed class MigrationAssistantServiceTests
         var platform = new SqlitePlatformSettingsRepository(storage.Factory, timeProvider, TestSecretProtection.Create(storage));
         var movies = new SqliteMovieCatalogRepository(storage.Factory, timeProvider);
         var series = new SqliteSeriesCatalogRepository(storage.Factory, timeProvider);
-        var service = new MigrationAssistantService(platform, CreateIntakeRepository(storage),
+        var service = new MigrationAssistantService(platform, CreateQualityRepository(storage), CreateIntakeRepository(storage),
         [
             new MovieMigrationCatalogImporter(movies),
             new SeriesMigrationCatalogImporter(series)
@@ -280,7 +281,7 @@ public sealed class MigrationAssistantServiceTests
         using var storage = TestStorage.Create();
         await CreateServiceAsync(storage);
         var repository = CreateRepository(storage);
-        var failingService = new MigrationAssistantService(repository, CreateIntakeRepository(storage), [new ThrowingCatalogImporter()]);
+        var failingService = new MigrationAssistantService(repository, CreateQualityRepository(storage), CreateIntakeRepository(storage), [new ThrowingCatalogImporter()]);
 
         var failed = await failingService.ApplyAsync(CreateRadarrRequest(), CancellationToken.None);
 
@@ -290,7 +291,7 @@ public sealed class MigrationAssistantServiceTests
         Assert.Contains(failedAudit.Applied, item => item.Result == "failed");
         Assert.Contains(failedAudit.ResultReport.Errors, error => error.Contains("retry", StringComparison.OrdinalIgnoreCase));
 
-        var retry = await new MigrationAssistantService(repository, CreateIntakeRepository(storage)).ApplyAsync(CreateRadarrRequest(), CancellationToken.None);
+        var retry = await new MigrationAssistantService(repository, CreateQualityRepository(storage), CreateIntakeRepository(storage)).ApplyAsync(CreateRadarrRequest(), CancellationToken.None);
 
         Assert.Empty(retry.Report.Errors);
         Assert.Empty(retry.Applied);
@@ -367,7 +368,7 @@ public sealed class MigrationAssistantServiceTests
             new SqliteDatabaseMigrator(storage.Factory, timeProvider),
             NullLogger<PlatformSchemaInitializer>.Instance).StartAsync(CancellationToken.None);
 
-        return new MigrationAssistantService(CreateRepository(storage), CreateIntakeRepository(storage));
+        return new MigrationAssistantService(CreateRepository(storage), CreateQualityRepository(storage), CreateIntakeRepository(storage));
     }
 
     private static SqliteIntakeRepository CreateIntakeRepository(TestStorage storage)
@@ -383,6 +384,13 @@ public sealed class MigrationAssistantServiceTests
             storage.Factory,
             new FixedTimeProvider(DateTimeOffset.Parse("2026-04-29T00:00:00Z")),
             TestSecretProtection.Create(storage));
+    }
+
+    private static SqliteQualityRepository CreateQualityRepository(TestStorage storage)
+    {
+        return new SqliteQualityRepository(
+            storage.Factory,
+            new FixedTimeProvider(DateTimeOffset.Parse("2026-04-29T00:00:00Z")));
     }
 
     private sealed class ThrowingCatalogImporter : IMigrationCatalogImporter

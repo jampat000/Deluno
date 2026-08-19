@@ -78,12 +78,8 @@ public static class PlatformEndpointRouteBuilderExtensions
         });
 
         var libraries = endpoints.MapGroup("/api/libraries");
-        var qualityProfiles = endpoints.MapGroup("/api/quality-profiles");
-        var qualityModel = endpoints.MapGroup("/api/quality-model");
         var tags = endpoints.MapGroup("/api/tags");
-        var customFormats = endpoints.MapGroup("/api/custom-formats");
         var destinationRules = endpoints.MapGroup("/api/destination-rules");
-        var policySets = endpoints.MapGroup("/api/policy-sets");
         var libraryViews = endpoints.MapGroup("/api/library-views");
         var migration = endpoints.MapGroup("/api/migration");
 
@@ -238,164 +234,6 @@ public static class PlatformEndpointRouteBuilderExtensions
             return Results.Ok(activity);
         });
 
-        qualityProfiles.MapGet(string.Empty, async (IPlatformSettingsRepository repository, CancellationToken cancellationToken) =>
-        {
-            var items = await repository.ListQualityProfilesAsync(cancellationToken);
-            return Results.Ok(items);
-        });
-
-        qualityProfiles.MapPost(string.Empty, async (
-            HttpContext httpContext,
-            [FromBody] CreateQualityProfileRequest request,
-            IPlatformSettingsRepository repository,
-            CancellationToken cancellationToken) =>
-        {
-            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
-            if (denied is not null)
-            {
-                return denied;
-            }
-
-            var errors = ValidateQualityProfile(request);
-            if (errors.Count > 0)
-            {
-                return Results.ValidationProblem(errors);
-            }
-
-            var item = await repository.CreateQualityProfileAsync(request, cancellationToken);
-            return Results.Ok(item);
-        });
-
-        qualityProfiles.MapPut("{id}", async (
-            string id,
-            HttpContext httpContext,
-            [FromBody] UpdateQualityProfileRequest request,
-            IPlatformSettingsRepository repository,
-            CancellationToken cancellationToken) =>
-        {
-            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
-            if (denied is not null)
-            {
-                return denied;
-            }
-
-            var errors = ValidateQualityProfile(request);
-            if (errors.Count > 0)
-            {
-                return Results.ValidationProblem(errors);
-            }
-
-            var item = await repository.UpdateQualityProfileAsync(id, request, cancellationToken);
-            return item is null ? Results.NotFound() : Results.Ok(item);
-        });
-
-        qualityProfiles.MapDelete("{id}", async (
-            string id,
-            HttpContext httpContext,
-            IPlatformSettingsRepository repository,
-            CancellationToken cancellationToken) =>
-        {
-            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
-            if (denied is not null)
-            {
-                return denied;
-            }
-
-            var removed = await repository.DeleteQualityProfileAsync(id, cancellationToken);
-            return removed ? Results.NoContent() : Results.NotFound();
-        });
-
-        qualityProfiles.MapPut("order", async (
-            HttpContext httpContext,
-            [FromBody] ReorderQualityProfilesRequest request,
-            IPlatformSettingsRepository repository,
-            CancellationToken cancellationToken) =>
-        {
-            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
-            if (denied is not null)
-            {
-                return denied;
-            }
-
-            if (request.Ids is null || request.Ids.Count == 0)
-            {
-                return Results.ValidationProblem(new Dictionary<string, string[]>
-                {
-                    ["ids"] = ["Provide at least one quality profile id."]
-                });
-            }
-
-            await repository.ReorderQualityProfilesAsync(request.Ids, cancellationToken);
-            return Results.NoContent();
-        });
-
-        qualityModel.MapGet(string.Empty, async (
-            IQualityModelService service,
-            CancellationToken cancellationToken) =>
-        {
-            var model = await service.GetAsync(cancellationToken);
-            return Results.Ok(model);
-        });
-
-        qualityModel.MapPut(string.Empty, async (
-            HttpContext httpContext,
-            [FromBody] UpdateQualityModelRequest request,
-            IQualityModelService service,
-            CancellationToken cancellationToken) =>
-        {
-            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
-            if (denied is not null)
-            {
-                return denied;
-            }
-
-            try
-            {
-                var model = await service.SaveAsync(request, cancellationToken);
-                return Results.Ok(model);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return Results.ValidationProblem(new Dictionary<string, string[]>
-                {
-                    ["qualityModel"] = [ex.Message]
-                });
-            }
-        });
-
-        var qualityPresets = endpoints.MapGroup("/api/quality-profile-presets");
-
-        qualityPresets.MapGet(string.Empty, () =>
-        {
-            var items = QualityProfilePresetCatalog.All.Select(p => new QualityProfilePresetItem(
-                p.Id, p.Name, p.Description, p.MediaType, p.CutoffQuality,
-                p.AllowedQualities, p.UpgradeUntilCutoff, p.UpgradeUnknownItems, p.Version));
-            return Results.Ok(items);
-        });
-
-        qualityPresets.MapPost("{presetId}/apply", async (
-            string presetId,
-            [FromBody] ApplyQualityPresetRequest request,
-            HttpContext httpContext,
-            IPlatformSettingsRepository repository,
-            CancellationToken cancellationToken) =>
-        {
-            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
-            if (denied is not null)
-            {
-                return denied;
-            }
-
-            if (QualityProfilePresetCatalog.FindById(presetId) is null)
-            {
-                return Results.NotFound();
-            }
-
-            var item = await repository.CreateQualityProfileFromPresetAsync(presetId, request.Name, cancellationToken);
-            return Results.Ok(item);
-        });
-
-
         tags.MapGet(string.Empty, async (IPlatformSettingsRepository repository, CancellationToken cancellationToken) =>
         {
             var items = await repository.ListTagsAsync(cancellationToken);
@@ -463,73 +301,6 @@ public static class PlatformEndpointRouteBuilderExtensions
             return removed ? Results.NoContent() : Results.NotFound();
         });
 
-
-        customFormats.MapGet(string.Empty, async (IPlatformSettingsRepository repository, CancellationToken cancellationToken) =>
-        {
-            var items = await repository.ListCustomFormatsAsync(cancellationToken);
-            return Results.Ok(items);
-        });
-
-        customFormats.MapPost(string.Empty, async (
-            HttpContext httpContext,
-            [FromBody] CreateCustomFormatRequest request,
-            IPlatformSettingsRepository repository,
-            CancellationToken cancellationToken) =>
-        {
-            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
-            if (denied is not null)
-            {
-                return denied;
-            }
-
-            var errors = ValidateCustomFormat(request.Name);
-            if (errors.Count > 0)
-            {
-                return Results.ValidationProblem(errors);
-            }
-
-            var item = await repository.CreateCustomFormatAsync(request, cancellationToken);
-            return Results.Ok(item);
-        });
-
-        customFormats.MapPut("{id}", async (
-            string id,
-            HttpContext httpContext,
-            [FromBody] UpdateCustomFormatRequest request,
-            IPlatformSettingsRepository repository,
-            CancellationToken cancellationToken) =>
-        {
-            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
-            if (denied is not null)
-            {
-                return denied;
-            }
-
-            var errors = ValidateCustomFormat(request.Name);
-            if (errors.Count > 0)
-            {
-                return Results.ValidationProblem(errors);
-            }
-
-            var item = await repository.UpdateCustomFormatAsync(id, request, cancellationToken);
-            return item is null ? Results.NotFound() : Results.Ok(item);
-        });
-
-        customFormats.MapDelete("{id}", async (
-            string id,
-            HttpContext httpContext,
-            IPlatformSettingsRepository repository,
-            CancellationToken cancellationToken) =>
-        {
-            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
-            if (denied is not null)
-            {
-                return denied;
-            }
-
-            var removed = await repository.DeleteCustomFormatAsync(id, cancellationToken);
-            return removed ? Results.NoContent() : Results.NotFound();
-        });
 
         destinationRules.MapGet(string.Empty, async (IPlatformSettingsRepository repository, CancellationToken cancellationToken) =>
         {
@@ -606,78 +377,6 @@ public static class PlatformEndpointRouteBuilderExtensions
             }
 
             var removed = await repository.DeleteDestinationRuleAsync(id, cancellationToken);
-            return removed ? Results.NoContent() : Results.NotFound();
-        });
-
-        policySets.MapGet(string.Empty, async (IPlatformSettingsRepository repository, CancellationToken cancellationToken) =>
-        {
-            var items = await repository.ListPolicySetsAsync(cancellationToken);
-            return Results.Ok(items);
-        });
-
-        policySets.MapPost(string.Empty, async (
-            HttpContext httpContext,
-            [FromBody] CreatePolicySetRequest request,
-            IPlatformSettingsRepository repository,
-            CancellationToken cancellationToken) =>
-        {
-            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
-            if (denied is not null)
-            {
-                return denied;
-            }
-
-            var errors = ValidatePolicySet(request.Name);
-            if (errors.Count > 0)
-            {
-                return Results.ValidationProblem(errors);
-            }
-
-            var item = await repository.CreatePolicySetAsync(request, cancellationToken);
-            await repository.ApplyMediaPlanToAssignedLibrariesAsync(item.Id, cancellationToken);
-            return Results.Ok(item);
-        });
-
-        policySets.MapPut("{id}", async (
-            string id,
-            HttpContext httpContext,
-            [FromBody] UpdatePolicySetRequest request,
-            IPlatformSettingsRepository repository,
-            CancellationToken cancellationToken) =>
-        {
-            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
-            if (denied is not null)
-            {
-                return denied;
-            }
-
-            var errors = ValidatePolicySet(request.Name);
-            if (errors.Count > 0)
-            {
-                return Results.ValidationProblem(errors);
-            }
-
-            var item = await repository.UpdatePolicySetAsync(id, request, cancellationToken);
-            if (item is not null)
-            {
-                await repository.ApplyMediaPlanToAssignedLibrariesAsync(item.Id, cancellationToken);
-            }
-            return item is null ? Results.NotFound() : Results.Ok(item);
-        });
-
-        policySets.MapDelete("{id}", async (
-            string id,
-            HttpContext httpContext,
-            IPlatformSettingsRepository repository,
-            CancellationToken cancellationToken) =>
-        {
-            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
-            if (denied is not null)
-            {
-                return denied;
-            }
-
-            var removed = await repository.DeletePolicySetAsync(id, cancellationToken);
             return removed ? Results.NoContent() : Results.NotFound();
         });
 
@@ -2291,46 +1990,6 @@ public static class PlatformEndpointRouteBuilderExtensions
         return errors;
     }
 
-    private static Dictionary<string, string[]> ValidateQualityProfile(CreateQualityProfileRequest request)
-    {
-        var errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
-
-        if (string.IsNullOrWhiteSpace(request.Name))
-        {
-            errors["name"] = ["Give this quality profile a name."];
-        }
-
-        var mediaType = request.MediaType?.Trim().ToLowerInvariant();
-        if (mediaType is not ("movies" or "tv" or "tv shows" or "tvshows"))
-        {
-            errors["mediaType"] = ["Choose whether this profile is for Movies or TV Shows."];
-        }
-
-        if (string.IsNullOrWhiteSpace(request.CutoffQuality))
-        {
-            errors["cutoffQuality"] = ["Choose the quality Deluno should aim for."];
-        }
-
-        return errors;
-    }
-
-    private static Dictionary<string, string[]> ValidateQualityProfile(UpdateQualityProfileRequest request)
-    {
-        var errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
-
-        if (string.IsNullOrWhiteSpace(request.Name))
-        {
-            errors["name"] = ["Give this quality profile a name."];
-        }
-
-        if (string.IsNullOrWhiteSpace(request.CutoffQuality))
-        {
-            errors["cutoffQuality"] = ["Choose the quality Deluno should aim for."];
-        }
-
-        return errors;
-    }
-
     private static Dictionary<string, string[]> ValidateTag(string? name)
     {
         var errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
@@ -2338,18 +1997,6 @@ public static class PlatformEndpointRouteBuilderExtensions
         if (string.IsNullOrWhiteSpace(name))
         {
             errors["name"] = ["Give this tag a name."];
-        }
-
-        return errors;
-    }
-
-    private static Dictionary<string, string[]> ValidateCustomFormat(string? name)
-    {
-        var errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
-
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            errors["name"] = ["Give this custom format a name."];
         }
 
         return errors;
@@ -2372,18 +2019,6 @@ public static class PlatformEndpointRouteBuilderExtensions
         if (string.IsNullOrWhiteSpace(rootPath))
         {
             errors["rootPath"] = ["Choose where matching titles should land."];
-        }
-
-        return errors;
-    }
-
-    private static Dictionary<string, string[]> ValidatePolicySet(string? name)
-    {
-        var errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
-
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            errors["name"] = ["Give this policy set a name."];
         }
 
         return errors;

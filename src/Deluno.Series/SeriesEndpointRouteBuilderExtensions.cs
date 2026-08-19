@@ -12,6 +12,7 @@ using Deluno.Platform.Data;
 using Deluno.Platform.Contracts;
 using Deluno.Platform;
 using Deluno.Quality;
+using Deluno.Quality.Data;
 using Deluno.Security;
 using Deluno.Series.Contracts;
 using Deluno.Series.Data;
@@ -337,6 +338,7 @@ public static class SeriesEndpointRouteBuilderExtensions
             HttpContext httpContext,
             ISeriesCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
+            IQualityRepository qualityRepository,
             IJobQueueRepository jobQueueRepository,
             IAcquisitionDecisionPipeline acquisitionPipeline,
             IDownloadClientGrabService downloadClientGrabService,
@@ -378,7 +380,7 @@ public static class SeriesEndpointRouteBuilderExtensions
 
             var routing = await platformSettingsRepository.GetLibraryRoutingAsync(library.Id, cancellationToken);
             var now = timeProvider.GetUtcNow();
-            var customFormats = await ResolveCustomFormatsAsync(platformSettingsRepository, library.QualityProfileId, cancellationToken);
+            var customFormats = await ResolveCustomFormatsAsync(qualityRepository, library.QualityProfileId, cancellationToken);
 
             var decisionPlan = await acquisitionPipeline.PlanAsync(
                 new AcquisitionDecisionRequest(
@@ -738,6 +740,7 @@ public static class SeriesEndpointRouteBuilderExtensions
             [FromBody] SearchSeriesEpisodesRequest request,
             ISeriesCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
+            IQualityRepository qualityRepository,
             IJobQueueRepository jobQueueRepository,
             IAcquisitionDecisionPipeline acquisitionPipeline,
             IDownloadClientGrabService downloadClientGrabService,
@@ -813,7 +816,7 @@ public static class SeriesEndpointRouteBuilderExtensions
             var configuredClients = routing?.DownloadClients.Count ?? 0;
             var now = timeProvider.GetUtcNow();
             var nextEligibleSearchUtc = now.AddHours(Math.Max(1, library.RetryDelayHours));
-            var customFormats = await ResolveCustomFormatsAsync(platformSettingsRepository, library.QualityProfileId, cancellationToken);
+            var customFormats = await ResolveCustomFormatsAsync(qualityRepository, library.QualityProfileId, cancellationToken);
 
             if (configuredSources == 0 || configuredClients == 0)
             {
@@ -1370,6 +1373,7 @@ public static class SeriesEndpointRouteBuilderExtensions
             HttpContext httpContext,
             ISeriesCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
+            IQualityRepository qualityRepository,
             IJobQueueRepository jobQueueRepository,
             IAcquisitionDecisionPipeline acquisitionPipeline,
             IDownloadClientGrabService downloadClientGrabService,
@@ -1430,7 +1434,7 @@ public static class SeriesEndpointRouteBuilderExtensions
             var overrideReason = string.IsNullOrWhiteSpace(request.OverrideReason)
                 ? "User manually forced this release from search results."
                 : request.OverrideReason.Trim();
-            var customFormats = await ResolveCustomFormatsAsync(platformSettingsRepository, library.QualityProfileId, cancellationToken);
+            var customFormats = await ResolveCustomFormatsAsync(qualityRepository, library.QualityProfileId, cancellationToken);
             var sourcePriorityScore = routing?.Sources
                 .FirstOrDefault(item => string.Equals(item.IndexerId, request.IndexerId, StringComparison.OrdinalIgnoreCase)) is { } source
                     ? Math.Max(0, 200 - source.Priority)
@@ -1563,6 +1567,7 @@ public static class SeriesEndpointRouteBuilderExtensions
             HttpContext httpContext,
             ISeriesCatalogRepository repository,
             IPlatformSettingsRepository platformSettingsRepository,
+            IQualityRepository qualityRepository,
             IJobQueueRepository jobQueueRepository,
             IAcquisitionDecisionPipeline acquisitionPipeline,
             IDownloadClientGrabService downloadClientGrabService,
@@ -1626,7 +1631,7 @@ public static class SeriesEndpointRouteBuilderExtensions
             var configuredClients = routing?.DownloadClients.Count ?? 0;
             var now = timeProvider.GetUtcNow();
             var nextEligibleSearchUtc = now.AddHours(Math.Max(1, library.RetryDelayHours));
-            var customFormats = await ResolveCustomFormatsAsync(platformSettingsRepository, library.QualityProfileId, cancellationToken);
+            var customFormats = await ResolveCustomFormatsAsync(qualityRepository, library.QualityProfileId, cancellationToken);
 
             if (configuredSources == 0 || configuredClients == 0)
             {
@@ -2281,7 +2286,7 @@ public static class SeriesEndpointRouteBuilderExtensions
     }
 
     private static async Task<IReadOnlyList<CustomFormatItem>> ResolveCustomFormatsAsync(
-        IPlatformSettingsRepository repository,
+        IQualityRepository repository,
         string? qualityProfileId,
         CancellationToken cancellationToken)
     {

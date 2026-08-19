@@ -4,6 +4,7 @@ using Deluno.Platform.Contracts;
 using Deluno.Platform.Data;
 using Microsoft.Extensions.Logging.Abstractions;
 using Deluno.Quality.Contracts;
+using Deluno.Quality.Data;
 
 namespace Deluno.Persistence.Tests.Platform;
 
@@ -20,10 +21,7 @@ public sealed class CustomFormatPersistenceTests
             new SqliteDatabaseMigrator(storage.Factory, timeProvider),
             NullLogger<PlatformSchemaInitializer>.Instance).StartAsync(CancellationToken.None);
 
-        var repository = new SqlitePlatformSettingsRepository(
-            storage.Factory,
-            timeProvider,
-            TestSecretProtection.Create(storage));
+        var repository = new SqliteQualityRepository(storage.Factory, timeProvider);
 
         var movieFormat = await repository.CreateCustomFormatAsync(
             new CreateCustomFormatRequest(

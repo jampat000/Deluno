@@ -5,11 +5,13 @@ using Deluno.Intake.Contracts;
 using Deluno.Intake.Data;
 using Deluno.Platform.Data;
 using Deluno.Quality.Contracts;
+using Deluno.Quality.Data;
 
 namespace Deluno.Platform.Migration;
 
 public sealed class MigrationAssistantService(
     IPlatformSettingsRepository repository,
+    IQualityRepository qualityRepository,
     IIntakeRepository intakeRepository,
     IEnumerable<IMigrationCatalogImporter>? catalogImporters = null) : IMigrationAssistantService
 {
@@ -51,7 +53,7 @@ public sealed class MigrationAssistantService(
 
         using (document)
         {
-            var existing = await ExistingState.LoadAsync(repository, intakeRepository, cancellationToken);
+            var existing = await ExistingState.LoadAsync(repository, qualityRepository, intakeRepository, cancellationToken);
             var operations = new List<MigrationReportOperation>();
             var contexts = ResolveContexts(document.RootElement, sourceKind).ToArray();
 
@@ -117,7 +119,7 @@ public sealed class MigrationAssistantService(
             {
                 case "quality-profile":
                 {
-                    var created = await repository.CreateQualityProfileAsync(
+                    var created = await qualityRepository.CreateQualityProfileAsync(
                         new CreateQualityProfileRequest(
                             GetData(operation, "name"),
                             GetData(operation, "mediaType"),
@@ -133,7 +135,7 @@ public sealed class MigrationAssistantService(
                 case "library":
                 {
                     var mediaType = GetData(operation, "mediaType");
-                    var matchingProfiles = await repository.ListQualityProfilesAsync(cancellationToken);
+                    var matchingProfiles = await qualityRepository.ListQualityProfilesAsync(cancellationToken);
                     var profileId = matchingProfiles.FirstOrDefault(profile =>
                         string.Equals(profile.MediaType, mediaType, StringComparison.OrdinalIgnoreCase))?.Id;
                     var created = await repository.CreateLibraryAsync(
@@ -1170,10 +1172,11 @@ public sealed class MigrationAssistantService(
     {
         public static async Task<ExistingState> LoadAsync(
             IPlatformSettingsRepository repository,
+            IQualityRepository qualityRepository,
             IIntakeRepository intakeRepository,
             CancellationToken cancellationToken)
         {
-            var profiles = await repository.ListQualityProfilesAsync(cancellationToken);
+            var profiles = await qualityRepository.ListQualityProfilesAsync(cancellationToken);
             var libraries = await repository.ListLibrariesAsync(cancellationToken);
             var indexers = await repository.ListIndexersAsync(cancellationToken);
             var clients = await repository.ListDownloadClientsAsync(cancellationToken);
