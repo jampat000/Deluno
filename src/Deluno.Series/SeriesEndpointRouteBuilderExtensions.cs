@@ -343,6 +343,7 @@ public static class SeriesEndpointRouteBuilderExtensions
             HttpContext httpContext,
             [FromBody] UpdateEpisodeMonitoringRequest request,
             ISeriesCatalogRepository repository,
+            IRealtimeEventPublisher realtimeEventPublisher,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -363,6 +364,14 @@ public static class SeriesEndpointRouteBuilderExtensions
                 request.EpisodeIds,
                 request.Monitored,
                 cancellationToken);
+
+            if (updated > 0)
+            {
+                foreach (var seriesId in await repository.ListParentSeriesIdsAsync(request.EpisodeIds, cancellationToken))
+                {
+                    await realtimeEventPublisher.PublishEntityChangedAsync("Series", seriesId, cancellationToken);
+                }
+            }
 
             return Results.Ok(new { updated });
         });
@@ -1090,6 +1099,7 @@ public static class SeriesEndpointRouteBuilderExtensions
             IJobScheduler jobScheduler,
             IJobQueueRepository jobQueueRepository,
             IActivityFeedRepository activityFeedRepository,
+            IRealtimeEventPublisher realtimeEventPublisher,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -1198,6 +1208,11 @@ public static class SeriesEndpointRouteBuilderExtensions
                             results.Add(new BulkSeriesItemResult(series.Id, series.Title, false,
                                 $"Unknown operation: {request.Operation}"));
                             break;
+                    }
+
+                    if (results[^1].Succeeded)
+                    {
+                        await realtimeEventPublisher.PublishEntityChangedAsync("Series", series.Id, cancellationToken);
                     }
                 }
                 catch (Exception ex)

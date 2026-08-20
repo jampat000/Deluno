@@ -1216,6 +1216,11 @@ public sealed class SqliteJobStore(
             .ThenBy(item => item.Library.LibraryName, StringComparer.OrdinalIgnoreCase)
             .Select(item => item.Library)
             .ToArray();
+        var plannedLibraryIds = orderedLibraries
+            .Select(library => library.LibraryId)
+            .Where(libraryId => !string.IsNullOrWhiteSpace(libraryId))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 
         foreach (var library in orderedLibraries)
         {
@@ -1417,6 +1422,10 @@ public sealed class SqliteJobStore(
         }
 
         await transaction.CommitAsync(cancellationToken);
+        foreach (var libraryId in plannedLibraryIds)
+        {
+            await realtimeEventPublisher.PublishEntityChangedAsync("AutomationState", libraryId, cancellationToken);
+        }
         if (queuedAny)
         {
             laneSignal?.Notify("library.search");
