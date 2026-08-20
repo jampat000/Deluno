@@ -35,20 +35,17 @@ import {
   type SeriesWantedSummary
 } from "../../lib/api";
 import { adaptMovieItems, adaptSeriesItems } from "../../lib/ui-adapters";
-import { defaultDisplayOptions, parseDisplayOptions } from "../../lib/library-filters";
-import { ProgressiveGrid, type CardSize, type DisplayOptions } from "./library-grid";
+import { parseDisplayOptions } from "../../lib/library-filters";
+import { ProgressiveGrid } from "./library-grid";
 import {
   ControlRail,
   isQuickFilter,
   isSortField,
-  type QuickFilter,
   type SavedFilterPreset,
-  type SortDirection,
-  type SortField,
-  type ViewMode
 } from "./library-control-rail";
 import { LibraryTable } from "./library-table";
 import { useDensity } from "../../lib/use-density";
+import { useLibraryFilters } from "../../hooks/use-library-filters";
 import { authedFetch } from "../../lib/use-auth";
 import { cn } from "../../lib/utils";
 import { GlassTile, PageHero } from "../shell/page-hero";
@@ -110,34 +107,6 @@ interface BulkRemovalResponse {
   }>;
 }
 
-const SIZE_STORAGE_KEY = (v: Variant) => `deluno-card-size-${v}`;
-const DISPLAY_STORAGE_KEY = (v: Variant) => `deluno-display-options-${v}`;
-
-function resolveInitialSize(variant: Variant): CardSize {
-  try {
-    const stored = localStorage.getItem(SIZE_STORAGE_KEY(variant)) as CardSize | null;
-    if (stored === "sm" || stored === "md" || stored === "lg") return stored;
-  } catch { /* ignore */ }
-  return "md";
-}
-
-function resolveInitialDisplayOptions(variant: Variant): DisplayOptions {
-  try {
-    const raw = localStorage.getItem(DISPLAY_STORAGE_KEY(variant));
-    if (!raw) return defaultDisplayOptions();
-    const parsed = JSON.parse(raw) as Partial<DisplayOptions>;
-    return {
-      showTitle: parsed.showTitle ?? true,
-      showMeta: parsed.showMeta ?? true,
-      showStatusPill: parsed.showStatusPill ?? true,
-      showQualityBadge: parsed.showQualityBadge ?? true,
-      showRating: parsed.showRating ?? true
-    };
-  } catch {
-    return defaultDisplayOptions();
-  }
-}
-
 export function LibraryView({
   isRouteLoading = false,
   metadataStatus,
@@ -162,25 +131,13 @@ export function LibraryView({
   const [isCatalogueLoading, setIsCatalogueLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [refreshVersion, setRefreshVersion] = useState(0);
-  const [query, setQuery] = useState("");
-  const [quickFilter, setQuickFilter] = useState<QuickFilter>("all");
-  const [view, setView] = useState<ViewMode>("grid");
-  const [sortField, setSortField] = useState<SortField>("title");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
-  const [cardSize, setCardSize] = useState<CardSize>(() => resolveInitialSize(variant));
-  const [displayOptions, setDisplayOptions] = useState<DisplayOptions>(() => resolveInitialDisplayOptions(variant));
-  const [savedPresets, setSavedPresets] = useState<SavedFilterPreset[]>([]);
-  const [newPresetName, setNewPresetName] = useState("");
-  const [isSavingPreset, setIsSavingPreset] = useState(false);
+  const {
+    query, setQuery, quickFilter, setQuickFilter, view, setView, sortField, setSortField,
+    sortDirection, setSortDirection, cardSize, displayOptions, setDisplayOptions,
+    savedPresets, setSavedPresets, newPresetName, setNewPresetName, isSavingPreset,
+    setIsSavingPreset, changeSize, updateDisplayOptions, activeFilterCount
+  } = useLibraryFilters(variant, searchParams.get("filter"));
 
-  function changeSize(size: CardSize) {
-    setCardSize(size);
-    try { localStorage.setItem(SIZE_STORAGE_KEY(variant), size); } catch { /* ignore */ }
-  }
-  function updateDisplayOptions(nextOptions: DisplayOptions) {
-    setDisplayOptions(nextOptions);
-    try { localStorage.setItem(DISPLAY_STORAGE_KEY(variant), JSON.stringify(nextOptions)); } catch { /* ignore */ }
-  }
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const [isBulkToolsOpen, setIsBulkToolsOpen] = useState(false);
@@ -331,10 +288,6 @@ export function LibraryView({
     if (searchParams.get("add") === "true") {
       setShowCreate(true);
     }
-    const filter = searchParams.get("filter");
-    if (isQuickFilter(filter)) {
-      setQuickFilter(filter);
-    }
   }, [searchParams]);
 
   useEffect(() => {
@@ -384,14 +337,6 @@ export function LibraryView({
       };
     });
   }, [selectedMetadataResults]);
-
-  useEffect(() => {
-    setSavedPresets([]);
-    setQuickFilter("all");
-    setSortField("title");
-    setSortDirection("asc");
-    setDisplayOptions(resolveInitialDisplayOptions(variant));
-  }, [variant]);
 
   useEffect(() => {
     if (!isBulkToolsOpen) {
@@ -1077,8 +1022,6 @@ export function LibraryView({
       toast.error("Could not remove this custom filter.");
     }
   }
-
-  const activeFilterCount = quickFilter !== "all" ? 1 : 0;
 
   async function handleMetadataSearch(options: { silent?: boolean } = {}) {
     const searchTitle = createForm.title.trim();
