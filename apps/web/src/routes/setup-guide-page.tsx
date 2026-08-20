@@ -652,7 +652,7 @@ export function SetupGuidePage() {
   );
 
   async function testIndexerConnection() {
-    if (!form.indexerUrl.trim() && data.indexers.length === 0) {
+    if (!form.indexerUrl.trim()) {
       setServiceTest((current) => ({ ...current, indexer: "failed", indexerMessage: "Enter an indexer URL before testing." }));
       return;
     }
@@ -678,7 +678,7 @@ export function SetupGuidePage() {
   }
 
   async function testClientConnection() {
-    if (!form.clientHost.trim() && data.clients.length === 0) {
+    if (!form.clientHost.trim()) {
       setServiceTest((current) => ({ ...current, client: "failed", clientMessage: "Enter a download client host before testing." }));
       return;
     }
