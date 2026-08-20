@@ -46,6 +46,7 @@ import {
   type SeriesWantedSummary
 } from "../../lib/api";
 import { adaptMovieItems, adaptSeriesItems } from "../../lib/ui-adapters";
+import { defaultDisplayOptions, parseDisplayOptions } from "../../lib/library-filters";
 import { useDensity, type Density } from "../../lib/use-density";
 import { authedFetch } from "../../lib/use-auth";
 import { cn, formatBytesFromGb } from "../../lib/utils";
@@ -141,7 +142,6 @@ interface CustomFilterRule {
   comparator: FilterComparator;
   value: string;
 }
-
 interface SavedFilterPreset {
   id: string;
   name: string;
@@ -264,18 +264,6 @@ function isQuickFilter(value: string | null): value is QuickFilter {
 
 function isSortField(value: string | null): value is SortField {
   return sortFieldOptions.some((sort) => sort.value === value);
-}
-
-function isUpgradeCandidate(item: MediaItem) {
-  return item.wantedReason?.toLowerCase().includes("upgrade") === true ||
-    (item.status === "downloaded" &&
-      Boolean(item.currentQuality) &&
-      Boolean(item.targetQuality) &&
-      item.currentQuality !== item.targetQuality);
-}
-
-function isAttentionCandidate(item: MediaItem) {
-  return item.status === "importFailed" || item.status === "processingFailed";
 }
 
 const sortFieldOptions: Array<{ value: SortField; label: string }> = [
@@ -3408,68 +3396,6 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function defaultDisplayOptions(): DisplayOptions {
-  return {
-    showTitle: true,
-    showMeta: true,
-    showStatusPill: true,
-    showQualityBadge: true,
-    showRating: true
-  };
-}
-
-function parseDisplayOptions(raw: string | null | undefined): DisplayOptions {
-  if (!raw) {
-    return defaultDisplayOptions();
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as Partial<DisplayOptions>;
-    return {
-      showTitle: parsed.showTitle ?? true,
-      showMeta: parsed.showMeta ?? true,
-      showStatusPill: parsed.showStatusPill ?? true,
-      showQualityBadge: parsed.showQualityBadge ?? true,
-      showRating: parsed.showRating ?? true
-    };
-  } catch {
-    return defaultDisplayOptions();
-  }
-}
-
-function parseCustomRules(raw: string | null | undefined): CustomFilterRule[] {
-  if (!raw) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as Array<Partial<CustomFilterRule>>;
-    return Array.isArray(parsed)
-      ? parsed.map((rule) => ({
-          id: rule.id ?? crypto.randomUUID(),
-          field: rule.field ?? "title",
-          comparator: rule.comparator ?? "contains",
-          value: rule.value ?? ""
-        }))
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function defaultComparatorForField(field: FilterField): FilterComparator {
-  const kind = filterFieldOptions.find((option) => option.value === field)?.kind;
-  if (kind === "number") return "gte";
-  return kind === "boolean" || kind === "enum" ? "equals" : "contains";
-}
-
-function comparatorsForField(field: FilterField): FilterComparator[] {
-  const kind = filterFieldOptions.find((option) => option.value === field)?.kind;
-  if (kind === "number") return ["equals", "gt", "gte", "lt", "lte"];
-  if (kind === "boolean" || kind === "enum") return ["equals", "notEquals"];
-  return ["contains", "equals", "notEquals"];
-}
-
 function friendlyComparatorLabel(comparator: FilterComparator) {
   return {
     contains: "contains",
@@ -3532,138 +3458,4 @@ function placeholderForField(field: FilterField) {
     monitored: "",
     type: ""
   }[field];
-}
-
-function matchesCustomRule(item: MediaItem, rule: CustomFilterRule) {
-  if (!rule.value.trim()) return true;
-
-  const rawValue = resolveRuleValue(item, rule.field);
-  if (rawValue === null || rawValue === undefined) return false;
-
-  if (typeof rawValue === "number") {
-    const target = Number(rule.value);
-    if (Number.isNaN(target)) return false;
-    switch (rule.comparator) {
-      case "equals": return rawValue === target;
-      case "gt": return rawValue > target;
-      case "gte": return rawValue >= target;
-      case "lt": return rawValue < target;
-      case "lte": return rawValue <= target;
-      default: return false;
-    }
-  }
-
-  const normalizedValue = String(rawValue).toLowerCase();
-  const normalizedTarget = rule.value.toLowerCase();
-  switch (rule.comparator) {
-    case "contains":
-      return normalizedValue.includes(normalizedTarget);
-    case "equals":
-      return normalizedValue === normalizedTarget;
-    case "notEquals":
-      return normalizedValue !== normalizedTarget;
-    default:
-      return false;
-  }
-}
-
-function resolveRuleValue(item: MediaItem, field: FilterField): string | number | boolean | null | undefined {
-  switch (field) {
-    case "title":
-      return item.title;
-    case "status":
-      return item.status;
-    case "monitored":
-      return item.monitored;
-    case "quality":
-      return item.quality;
-    case "genre":
-      return item.genres.join(" ");
-    case "year":
-      return item.year;
-    case "rating":
-      return item.rating;
-    case "sizeGb":
-      return item.sizeGb;
-    case "bitrateMbps":
-      return item.bitrateMbps ?? null;
-    case "network":
-      return item.network ?? null;
-    case "releaseGroup":
-      return item.releaseGroup ?? null;
-    case "tags":
-      return item.tags?.join(" ") ?? null;
-    case "source":
-      return item.source ?? null;
-    case "codec":
-      return item.codec ?? null;
-    case "audioCodec":
-      return item.audioCodec ?? null;
-    case "audioChannels":
-      return item.audioChannels ?? null;
-    case "language":
-      return item.language ?? null;
-    case "hdrFormat":
-      return item.hdrFormat ?? null;
-    case "releaseStatus":
-      return item.releaseStatus ?? null;
-    case "certification":
-      return item.certification ?? null;
-    case "collection":
-      return item.collection ?? null;
-    case "minimumAvailability":
-      return item.minimumAvailability ?? null;
-    case "consideredAvailable":
-      return item.consideredAvailable ?? null;
-    case "digitalRelease":
-      return item.digitalRelease ?? null;
-    case "physicalRelease":
-      return item.physicalRelease ?? null;
-    case "releaseDate":
-      return item.releaseDate ?? null;
-    case "inCinemas":
-      return item.inCinemas ?? null;
-    case "originalLanguage":
-      return item.originalLanguage ?? null;
-    case "originalTitle":
-      return item.originalTitle ?? null;
-    case "path":
-      return item.path ?? null;
-    case "qualityProfile":
-      return item.qualityProfile ?? null;
-    case "runtimeMinutes":
-      return item.runtimeMinutes ?? null;
-    case "studio":
-      return item.studio ?? null;
-    case "tmdbRating":
-      return item.tmdbRating ?? null;
-    case "tmdbVotes":
-      return item.tmdbVotes ?? null;
-    case "imdbRating":
-      return item.imdbRating ?? null;
-    case "imdbVotes":
-      return item.imdbVotes ?? null;
-    case "traktRating":
-      return item.traktRating ?? null;
-    case "traktVotes":
-      return item.traktVotes ?? null;
-    case "tomatoRating":
-      return item.tomatoRating ?? null;
-    case "tomatoVotes":
-      return item.tomatoVotes ?? null;
-    case "popularity":
-      return item.popularity ?? null;
-    case "keywords":
-      return item.keywords?.join(" ") ?? null;
-    case "wantedReason":
-      return item.wantedReason ?? null;
-    case "currentQuality":
-      return item.currentQuality ?? null;
-    case "targetQuality":
-      return item.targetQuality ?? null;
-    case "type":
-      return item.type;
-    default:
-      return null;
-  }
 }
