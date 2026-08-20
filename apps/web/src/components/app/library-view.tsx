@@ -6,7 +6,6 @@ import {
   Plus,
   Redo2,
   Search,
-  Star,
   Trash2,
   Undo2,
   X,
@@ -48,7 +47,7 @@ import { useBulkEdit, type BulkWorkflowOperation } from "../../hooks/use-bulk-ed
 import { createInitialLibraryForm, useLibraryCreate, type CreateFormDraft } from "../../hooks/use-library-create";
 import { authedFetch } from "../../lib/use-auth";
 import { cn } from "../../lib/utils";
-import { GlassTile, PageHero } from "../shell/page-hero";
+import { GlassTile } from "../shell/page-hero";
 import { EmptyState } from "../shell/empty-state";
 import { LibraryGridSkeleton } from "../shell/skeleton";
 import { toast } from "../shell/toaster";
@@ -336,10 +335,6 @@ export function LibraryView({
   const missingCount = facets?.missing ?? 0;
   const downloadingCount = 0;
   const downloadedCount = facets?.downloaded ?? 0;
-  const totalSizeTb = (
-    libraryItems.reduce((sum, item) => sum + (item.sizeGb ?? 0), 0) / 1024
-  ).toFixed(1);
-
   const label = variant === "movies" ? "movies" : "TV shows";
   const singular = variant === "movies" ? "movie" : "TV show";
   const selectedMetadataCount = selectedMetadataResults.length;
@@ -721,64 +716,6 @@ export function LibraryView({
             </div>
           </div>
         </div>
-        {/* ═══════ CINEMATIC HERO ═══════ */}
-        <div className="hidden">
-        <PageHero
-          eyebrow={variant === "movies" ? "Movie library" : "TV library"}
-          eyebrowIcon={
-            <Star className="h-3 w-3 text-primary" />
-          }
-          title={
-            <>
-              Browse and manage your{" "}
-              <span className="bg-gradient-to-r from-primary via-primary to-[hsl(var(--primary-2))] bg-clip-text text-transparent">
-                {label}
-              </span>
-            </>
-          }
-          subtitle={
-            <>
-              <span className="font-semibold text-foreground">{totalCount.toLocaleString()} total titles</span>
-              {" · "}
-              <span className={cn("font-semibold", librarySummaryTone("availability", downloadedCount))}>{downloadedCount} downloaded</span>
-              {missingCount > 0 ? (
-                <>
-                  {" · "}
-                  <span className="font-semibold text-warning">{missingCount} missing</span>
-                </>
-              ) : null}
-              {downloadingCount > 0 ? (
-                <>
-                  {" · "}
-                  <span className="font-semibold text-info">{downloadingCount} downloading</span>
-                </>
-              ) : null}
-            </>
-          }
-          size="sm"
-          stats={[
-            { label: "Total", value: totalCount.toString(), tone: "neutral" },
-            { label: "Monitored", value: monitoredCount.toString(), tone: "primary" },
-            { label: "Missing", value: missingCount.toString(), tone: missingCount > 0 ? "warn" : "neutral" },
-            { label: "Library", value: `${totalSizeTb}TB`, tone: "neutral" }
-          ]}
-          actions={
-            <>
-              <Button className="gap-2" onClick={() => showCreate ? closeCreate() : openCreate()}>
-                <Plus className="h-4 w-4" strokeWidth={2.5} />
-                Add {singular}
-              </Button>
-              {missingCount > 0 ? (
-                <Button variant="secondary" className="gap-2">
-                  <Zap className="h-4 w-4" />
-                  Hunt {missingCount} missing
-                </Button>
-              ) : null}
-            </>
-          }
-        />
-        </div>
-
         <Dialog.Root open={showCreate} onOpenChange={(open) => (open ? openCreate() : closeCreate())}>
           <Dialog.Portal>
             <Dialog.Overlay className="fixed inset-0 z-50 bg-black/55 backdrop-blur-[3px]" />
