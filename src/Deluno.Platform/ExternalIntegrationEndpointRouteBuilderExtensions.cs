@@ -365,7 +365,7 @@ public static class ExternalIntegrationEndpointRouteBuilderExtensions
             HttpContext httpContext,
             string? libraryId,
             int? take,
-            IPlatformSettingsRepository repository,
+            IProcessorRepository repository,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -378,7 +378,7 @@ public static class ExternalIntegrationEndpointRouteBuilderExtensions
         integrations.MapPost("/processors/handoffs/{id}/retry", async (
             string id,
             HttpContext httpContext,
-            IPlatformSettingsRepository repository,
+            IProcessorRepository repository,
             IActivityFeedRepository activityFeed,
             CancellationToken cancellationToken) =>
         {
@@ -437,7 +437,7 @@ public static class ExternalIntegrationEndpointRouteBuilderExtensions
 
         integrations.MapGet("/processors/connections", async (
             HttpContext httpContext,
-            IPlatformSettingsRepository repository,
+            IProcessorRepository repository,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -448,7 +448,7 @@ public static class ExternalIntegrationEndpointRouteBuilderExtensions
         integrations.MapPost("/processors/connections", async (
             HttpContext httpContext,
             [FromBody] CreateProcessorConnectionRequest request,
-            IPlatformSettingsRepository repository,
+            IProcessorRepository repository,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -462,7 +462,7 @@ public static class ExternalIntegrationEndpointRouteBuilderExtensions
             string id,
             HttpContext httpContext,
             [FromBody] UpdateProcessorConnectionRequest request,
-            IPlatformSettingsRepository repository,
+            IProcessorRepository repository,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -476,7 +476,7 @@ public static class ExternalIntegrationEndpointRouteBuilderExtensions
         integrations.MapDelete("/processors/connections/{id}", async (
             string id,
             HttpContext httpContext,
-            IPlatformSettingsRepository repository,
+            IProcessorRepository repository,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -489,7 +489,7 @@ public static class ExternalIntegrationEndpointRouteBuilderExtensions
         integrations.MapPost("/processors/connections/{id}/test", async (
             string id,
             HttpContext httpContext,
-            IPlatformSettingsRepository repository,
+            IProcessorRepository repository,
             IProcessorConnectionService processorConnections,
             IActivityFeedRepository activityFeed,
             CancellationToken cancellationToken) =>
@@ -514,7 +514,7 @@ public static class ExternalIntegrationEndpointRouteBuilderExtensions
         integrations.MapPost("/processors/events", async (
             HttpContext httpContext,
             [FromBody] ProcessorEventRequest request,
-            IPlatformSettingsRepository repository,
+            IProcessorRepository repository,
             ILibrariesRepository librariesRepository,
             IActivityFeedRepository activityFeed,
             IJobScheduler jobScheduler,

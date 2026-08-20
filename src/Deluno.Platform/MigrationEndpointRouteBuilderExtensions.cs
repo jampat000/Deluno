@@ -78,7 +78,7 @@ public static class MigrationEndpointRouteBuilderExtensions
 
         migration.MapGet("/reports", async (
             HttpContext httpContext,
-            IPlatformSettingsRepository repository,
+            IMigrationAuditRepository repository,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -88,7 +88,7 @@ public static class MigrationEndpointRouteBuilderExtensions
         migration.MapGet("/reports/{id}", async (
             string id,
             HttpContext httpContext,
-            IPlatformSettingsRepository repository,
+            IMigrationAuditRepository repository,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
