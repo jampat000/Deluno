@@ -1,8 +1,6 @@
-import { Plus, Zap } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useNavigation, useSearchParams } from "react-router-dom";
 import type { MediaItem } from "../../lib/media-types";
-import { librarySummaryTone } from "../../lib/media-status-presentation";
 import {
   ApiRequestError,
   fetchJson,
@@ -20,8 +18,8 @@ import {
 } from "../../lib/api";
 import { adaptMovieItems, adaptSeriesItems } from "../../lib/ui-adapters";
 import { parseDisplayOptions } from "../../lib/library-filters";
-import { ProgressiveGrid } from "./library-grid";
 import { LibraryCreateDialog } from "./library-create-dialog";
+import { LibraryResults } from "./library-results";
 import { LibrarySelectionCommandBar } from "./library-selection-command-bar";
 import {
   ControlRail,
@@ -29,22 +27,16 @@ import {
   isSortField,
   type SavedFilterPreset,
 } from "./library-control-rail";
-import { LibraryTable } from "./library-table";
 import { useDensity } from "../../lib/use-density";
 import { useLibraryFilters } from "../../hooks/use-library-filters";
-import { useBulkEdit, type BulkWorkflowOperation } from "../../hooks/use-bulk-edit";
+import { useBulkEdit } from "../../hooks/use-bulk-edit";
 import { createInitialLibraryForm, metadataCreatePayload, useLibraryCreate, type CreateFormDraft } from "../../hooks/use-library-create";
 import { authedFetch } from "../../lib/use-auth";
-import { cn } from "../../lib/utils";
-import { GlassTile } from "../shell/page-hero";
-import { EmptyState } from "../shell/empty-state";
-import { LibraryGridSkeleton } from "../shell/skeleton";
 import { toast } from "../shell/toaster";
-import { Button } from "../ui/button";
 import { ConfirmDialog } from "../ui/confirm-dialog";
-import { Field } from "../ui/field";
-import { Input } from "../ui/input";
-import { Select } from "../ui/select";
+import { LibraryBulkToolsDialog } from "./library-bulk-tools-dialog";
+import { LibrarySelectAllToggle } from "./library-select-all-toggle";
+import { LibrarySummaryHeader } from "./library-summary-header";
 
 type Variant = "movies" | "shows";
 function sameMetadataResult(left: MetadataSearchResult, right: MetadataSearchResult) {
@@ -653,55 +645,26 @@ export function LibraryView({
     }
   }
 
+  function closeBulkTools() {
+    setIsBulkToolsOpen(false);
+    setBulkConfirming(false);
+    setBulkError(null);
+    setBulkRenamePreview([]);
+  }
+
   return (
     <>
       <section className="space-y-[var(--grid-gap)]">
-        <div className="relative overflow-hidden rounded-2xl border border-hairline bg-card p-[var(--tile-pad)] shadow-card dark:border-white/[0.06]">
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-x-5 top-0 h-px rounded-full"
-            style={{ background: "linear-gradient(90deg, transparent, hsl(var(--primary)/0.45), hsl(var(--primary-2)/0.28), transparent)" }}
-          />
-          <span aria-hidden className="pointer-events-none absolute -right-20 -top-28 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
-          <div className="relative flex flex-col gap-[var(--grid-gap)] lg:flex-row lg:items-center lg:justify-between">
-            <div className="min-w-0">
-              <h2 className="font-display text-[length:var(--type-title-md)] font-semibold tracking-tight text-foreground">
-                Browse and manage your {label}
-              </h2>
-              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[length:var(--type-body-sm)] text-muted-foreground">
-                <span><span className="tabular font-semibold text-foreground">{totalCount.toLocaleString()}</span> total</span>
-                <span className="text-muted-foreground/45">·</span>
-                <span><span className={cn("tabular font-semibold", librarySummaryTone("availability", downloadedCount))}>{downloadedCount}</span> downloaded</span>
-                <span className="text-muted-foreground/45">·</span>
-                <span><span className="tabular font-semibold text-muted-foreground">{monitoredCount}</span> monitored</span>
-                {missingCount > 0 ? (
-                  <>
-                    <span className="text-muted-foreground/45">·</span>
-                    <span><span className="tabular font-semibold text-warning">{missingCount}</span> missing</span>
-                  </>
-                ) : null}
-                {downloadingCount > 0 ? (
-                  <>
-                    <span className="text-muted-foreground/45">·</span>
-                    <span><span className="tabular font-semibold text-info">{downloadingCount}</span> downloading</span>
-                  </>
-                ) : null}
-              </p>
-            </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
-              <Button className="gap-2" onClick={() => showCreate ? closeCreate() : openCreate()}>
-                <Plus className="h-4 w-4" strokeWidth={2.5} />
-                Add {singular}
-              </Button>
-              {missingCount > 0 ? (
-                <Button variant="secondary" className="gap-2">
-                  <Zap className="h-4 w-4" />
-                  Hunt {missingCount} missing
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        </div>
+        <LibrarySummaryHeader
+          label={label}
+          singular={singular}
+          totalCount={totalCount}
+          downloadedCount={downloadedCount}
+          monitoredCount={monitoredCount}
+          missingCount={missingCount}
+          downloadingCount={downloadingCount}
+          onToggleCreate={() => showCreate ? closeCreate() : openCreate()}
+        />
         <LibraryCreateDialog
           open={showCreate}
           onOpenChange={(open) => (open ? openCreate() : closeCreate())}
@@ -736,50 +699,14 @@ export function LibraryView({
           }}
         />
 
-        {/* Results only occupy space when there is something to report. */}
-        {totalCount > libraryItems.length ? (
-          <div className="flex items-center justify-between gap-3">
-            {totalCount > libraryItems.length ? (
-              <p className="text-[length:var(--library-toolbar-size)] font-medium text-muted-foreground">
-                Showing <span className="font-bold tabular text-foreground">{filtered.length}</span> loaded of {totalCount.toLocaleString()}
-              </p>
-          ) : (
-            <span />
-          )}
-
-          {/* Right — premium select-all toggle */}
-          <button
-            type="button"
-            onClick={toggleSelectAllVisible}
-            className={cn(
-              "group flex min-h-[var(--library-toolbar-height)] items-center gap-2 rounded-xl px-3 py-1.5 text-[length:var(--library-toolbar-size)] font-medium transition-all duration-200 select-none",
-              selectedCount > 0
-                ? "bg-primary/10 text-primary ring-1 ring-inset ring-primary/20 hover:bg-primary/15"
-                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground dark:hover:bg-white/[0.05]"
-            )}
-          >
-            {/* Custom checkbox */}
-            <span className={cn(
-              "flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border transition-all duration-200",
-              filtered.length > 0 && filtered.every((i) => selectedIds.includes(i.id))
-                ? "border-primary bg-primary text-primary-foreground shadow-[0_0_8px_hsl(var(--primary)/0.5)]"
-                : selectedCount > 0
-                  ? "border-primary/60 bg-primary/15"
-                  : "border-hairline bg-background group-hover:border-primary/40 dark:bg-white/[0.04]"
-            )}>
-              {filtered.length > 0 && filtered.every((i) => selectedIds.includes(i.id)) ? (
-                <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-                  <path d="M1 3.5L3.5 6L8 1" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              ) : selectedCount > 0 ? (
-                /* Indeterminate dash */
-                <span className="h-0.5 w-2 rounded-full bg-primary" />
-              ) : null}
-            </span>
-            {selectedCount > 0 ? `${selectedCount} selected` : "Select all"}
-          </button>
-        </div>
-        ) : null}
+        <LibrarySelectAllToggle
+          totalCount={totalCount}
+          loadedCount={libraryItems.length}
+          filteredCount={filtered.length}
+          selectedCount={selectedCount}
+          allVisibleSelected={filtered.length > 0 && filtered.every((item) => selectedIds.includes(item.id))}
+          onToggle={toggleSelectAllVisible}
+        />
 
         {/* Action messages now surface through the global Toaster */}
 
@@ -795,269 +722,62 @@ export function LibraryView({
           onClear={() => setSelectedIds([])}
         />
 
-        {/* ═══════ POSTER GRID or LIST ═══════ */}
-        {(isRouteLoading || navigation.state !== "idle") && libraryItems.length === 0 ? (
-          <GlassTile className="p-[var(--tile-pad)]">
-            <LibraryGridSkeleton count={20} />
-          </GlassTile>
-        ) : filtered.length === 0 ? (
-          libraryItems.length === 0 ? (
-            <EmptyState
-              variant="library"
-              title={`Your ${label} library is empty`}
-              description={`Add your first ${singular} to start monitoring releases, running search, and building out your collection.`}
-              action={
-                <Button onClick={openCreate} className="gap-1.5">
-                  <Plus className="h-4 w-4" strokeWidth={2.5} />
-                  Add {singular}
-                </Button>
-              }
-              learnMore={`Deluno will track up to 100,000 ${label} without breaking a sweat.`}
-            />
-          ) : (
-            <EmptyState
-              variant="search"
-              title="Nothing matches"
-              description={`Try clearing filters or broadening your search. Your library has ${libraryItems.length} total title${libraryItems.length === 1 ? "" : "s"}.`}
-              action={
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setQuickFilter("all");
-                    setQuery("");
-                  }}
-                >
-                  Clear filters
-                </Button>
-              }
-            />
-          )
-        ) : view === "grid" ? (
-            <ProgressiveGrid
-              items={filtered}
-              cardSize={cardSize}
-              density={density}
-              displayOptions={displayOptions}
-              selectedIds={selectedIds}
-              keyBust={`${cardSize}-${quickFilter}-${query}-${sortField}-${sortDirection}-${displayOptions.showMeta}-${displayOptions.showStatusPill}-${displayOptions.showQualityBadge}-${displayOptions.showRating}`}
-              onSelect={openWorkspace}
-              onToggle={toggleSelectedId}
-              onEndReached={() => undefined}
-            />
-        ) : (
-          <GlassTile className="p-0">
-            <LibraryTable
-              items={filtered}
-              selectedIds={selectedIds}
-              onSelect={openWorkspace}
-              onToggle={toggleSelectedId}
-              onToggleAll={toggleSelectAllVisible}
-              allSelected={filtered.length > 0 && filtered.every((item) => selectedIds.includes(item.id))}
-              someSelected={selectedCount > 0 && !filtered.every((item) => selectedIds.includes(item.id))}
-              onEndReached={() => undefined}
-            />
-          </GlassTile>
-        )}
-        {libraryItems.length > 0 && (previousPageTokens.length > 0 || nextPageToken) ? (
-          <div className="flex items-center justify-between gap-3 border-t border-hairline pt-3">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={previousPageTokens.length === 0 || isLoadingMore}
-              onClick={() => void loadPreviousCataloguePage()}
-            >
-              Previous 100
-            </Button>
-            <p className="text-sm text-muted-foreground">Only this page is kept in memory.</p>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!nextPageToken || isLoadingMore}
-              onClick={() => void loadNextCataloguePage()}
-            >
-              Next 100
-            </Button>
-          </div>
-        ) : null}
+        <LibraryResults
+          isLoading={isRouteLoading || navigation.state !== "idle"}
+          items={filtered}
+          label={label}
+          singular={singular}
+          view={view}
+          cardSize={cardSize}
+          density={density}
+          displayOptions={displayOptions}
+          selectedIds={selectedIds}
+          keyBust={`${cardSize}-${quickFilter}-${query}-${sortField}-${sortDirection}-${displayOptions.showMeta}-${displayOptions.showStatusPill}-${displayOptions.showQualityBadge}-${displayOptions.showRating}`}
+          isLoadingMore={isLoadingMore}
+          hasPreviousPage={previousPageTokens.length > 0}
+          hasNextPage={Boolean(nextPageToken)}
+          onOpenCreate={openCreate}
+          onSelect={openWorkspace}
+          onToggle={toggleSelectedId}
+          onToggleAll={toggleSelectAllVisible}
+          onPreviousPage={() => void loadPreviousCataloguePage()}
+          onNextPage={() => void loadNextCataloguePage()}
+        />
       </section>
 
-      {isBulkToolsOpen ? (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-4 py-6 backdrop-blur-sm">
-          <div className="w-full max-w-2xl space-y-[var(--page-gap)] rounded-2xl border border-hairline bg-card p-5 shadow-2xl">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[length:var(--type-caption)] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  Bulk workflow
-                </p>
-                <h3 className="font-display text-xl font-semibold text-foreground">
-                  {selectedIds.length} title{selectedIds.length === 1 ? "" : "s"} selected
-                </h3>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  setIsBulkToolsOpen(false);
-                  setBulkConfirming(false);
-                  setBulkError(null);
-                  setBulkRenamePreview([]);
-                }}
-                disabled={isBulkUpdating}
-              >
-                Close
-              </Button>
-            </div>
-
-            <div className="grid gap-[var(--grid-gap)] md:grid-cols-2">
-              <Field label="Operation" help="Choose the bulk action to run.">
-                <Select
-                  value={bulkOperation}
-                  onChange={(event) => {
-                    setBulkOperation(event.target.value as BulkWorkflowOperation);
-                    setBulkConfirming(false);
-                    setBulkError(null);
-                    setBulkRenamePreview([]);
-                  }}
-                >
-                  <option value="monitoring">Monitor or unmonitor</option>
-                  <option value="quality">Set quality profile</option>
-                  <option value="reassignLibrary">Assign library/root</option>
-                  <option value="tags">Apply tags</option>
-                  <option value="search">Search now</option>
-                  <option value="renamePreview">Rename preview</option>
-                </Select>
-              </Field>
-
-              {bulkOperation === "monitoring" ? (
-                <Field label="Monitoring state" help="Apply monitored or unmonitored to the selection.">
-                  <Select
-                    value={bulkMonitored ? "true" : "false"}
-                    onChange={(event) => setBulkMonitored(event.target.value === "true")}
-                  >
-                    <option value="true">Monitored</option>
-                    <option value="false">Unmonitored</option>
-                  </Select>
-                </Field>
-              ) : null}
-
-              {bulkOperation === "quality" ? (
-                <Field label="Quality profile" help="Set one quality profile for all selected titles.">
-                  <Select
-                    value={bulkQualityProfileId}
-                    onChange={(event) => setBulkQualityProfileId(event.target.value)}
-                  >
-                    <option value="">Choose profile</option>
-                    {bulkQualityProfiles.map((item) => (
-                      <option key={item.id} value={item.id}>{item.name}</option>
-                    ))}
-                  </Select>
-                </Field>
-              ) : null}
-
-              {bulkOperation === "reassignLibrary" ? (
-                <Field label="Destination library" help="Reassign selected titles to a different library/root.">
-                  <Select
-                    value={bulkTargetLibraryId}
-                    onChange={(event) => setBulkTargetLibraryId(event.target.value)}
-                  >
-                    <option value="">Choose library</option>
-                    {bulkLibraries.map((item) => (
-                      <option key={item.id} value={item.id}>{item.name}</option>
-                    ))}
-                  </Select>
-                </Field>
-              ) : null}
-
-              {bulkOperation === "tags" ? (
-                <Field label="Tags" help="Comma-separated tags to apply to all selected titles.">
-                  <Input
-                    value={bulkTagsInput}
-                    onChange={(event) => setBulkTagsInput(event.target.value)}
-                    placeholder="e.g. favorites, weekend, 4k"
-                  />
-                </Field>
-              ) : null}
-
-              {bulkOperation === "renamePreview" ? (
-                <Field label="Template (optional)" help="Preview generated folder names before rename workflows.">
-                  <Input
-                    value={bulkRenameTemplate}
-                    onChange={(event) => setBulkRenameTemplate(event.target.value)}
-                    placeholder={variant === "movies" ? "{Movie Title} ({Release Year})" : "{Series Title} ({Series Year})"}
-                  />
-                </Field>
-              ) : null}
-            </div>
-
-            {bulkConfirming && bulkOperation !== "renamePreview" ? (
-              <div className="rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                Confirming will run this operation across {selectedIds.length} selected title{selectedIds.length === 1 ? "" : "s"}.
-              </div>
-            ) : null}
-
-            {bulkError ? (
-              <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                {bulkError}
-              </div>
-            ) : null}
-
-            {bulkOperation === "renamePreview" && bulkRenamePreview.length > 0 ? (
-              <div className="max-h-72 overflow-auto rounded-xl border border-hairline bg-surface-1">
-                <table className="min-w-full text-sm">
-                  <thead className="sticky top-0 bg-surface-2 text-left">
-                    <tr>
-                      <th className="px-3 py-2">Title</th>
-                      <th className="px-3 py-2">Proposed name</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bulkRenamePreview.map((item) => (
-                      <tr key={item.itemId} className="border-t border-hairline/70">
-                        <td className="px-3 py-2 text-foreground">{item.title}</td>
-                        <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{item.proposedName}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : null}
-
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-xs text-muted-foreground">
-                {bulkOptionsLoading ? "Loading options..." : `Undo stack: ${undoStack.length} · Redo stack: ${redoStack.length}`}
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setIsBulkToolsOpen(false);
-                    setBulkConfirming(false);
-                    setBulkError(null);
-                    setBulkRenamePreview([]);
-                  }}
-                  disabled={isBulkUpdating}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => void executeBulkToolsOperation()}
-                  disabled={isBulkUpdating || bulkOptionsLoading}
-                >
-                  {isBulkUpdating
-                    ? "Running..."
-                    : bulkOperation === "renamePreview"
-                      ? "Run preview"
-                      : bulkConfirming
-                        ? "Confirm and run"
-                        : "Review and continue"}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <LibraryBulkToolsDialog
+        open={isBulkToolsOpen}
+        selectedCount={selectedIds.length}
+        variant={variant}
+        isUpdating={isBulkUpdating}
+        operation={bulkOperation}
+        monitored={bulkMonitored}
+        qualityProfileId={bulkQualityProfileId}
+        targetLibraryId={bulkTargetLibraryId}
+        tags={bulkTagsInput}
+        renameTemplate={bulkRenameTemplate}
+        renamePreview={bulkRenamePreview}
+        confirming={bulkConfirming}
+        error={bulkError}
+        libraries={bulkLibraries}
+        qualityProfiles={bulkQualityProfiles}
+        isOptionsLoading={bulkOptionsLoading}
+        undoCount={undoStack.length}
+        redoCount={redoStack.length}
+        onClose={closeBulkTools}
+        onOperationChange={(operation) => {
+          setBulkOperation(operation);
+          setBulkConfirming(false);
+          setBulkError(null);
+          setBulkRenamePreview([]);
+        }}
+        onMonitoredChange={setBulkMonitored}
+        onQualityProfileChange={setBulkQualityProfileId}
+        onTargetLibraryChange={setBulkTargetLibraryId}
+        onTagsChange={setBulkTagsInput}
+        onRenameTemplateChange={setBulkRenameTemplate}
+        onExecute={() => void executeBulkToolsOperation()}
+      />
 
       <ConfirmDialog
         open={isRemovalConfirmationOpen}
