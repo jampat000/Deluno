@@ -14,6 +14,8 @@ type LibraryResultsProps = {
   items: MediaItem[];
   label: string;
   singular: string;
+  libraryCount: number;
+  hasActiveFilter: boolean;
   view: "grid" | "list";
   cardSize: CardSize;
   density: Density;
@@ -24,6 +26,7 @@ type LibraryResultsProps = {
   hasPreviousPage: boolean;
   hasNextPage: boolean;
   onOpenCreate: () => void;
+  onClearFilters: () => void;
   onSelect: (item: MediaItem) => void;
   onToggle: (id: string) => void;
   onToggleAll: () => void;
@@ -32,13 +35,20 @@ type LibraryResultsProps = {
 };
 
 export function LibraryResults({
-  isLoading, items, label, singular, view, cardSize, density, displayOptions, selectedIds,
+  isLoading, items, label, singular, libraryCount, hasActiveFilter, view, cardSize, density, displayOptions, selectedIds,
   keyBust, isLoadingMore, hasPreviousPage, hasNextPage, onOpenCreate,
-  onSelect, onToggle, onToggleAll, onPreviousPage, onNextPage,
+  onClearFilters, onSelect, onToggle, onToggleAll, onPreviousPage, onNextPage,
 }: LibraryResultsProps) {
   return <>
     {isLoading && items.length === 0 ? (
       <GlassTile className="p-[var(--tile-pad)]"><LibraryGridSkeleton count={20} /></GlassTile>
+    ) : items.length === 0 && hasActiveFilter ? (
+      <EmptyState
+        variant="search"
+        title="Nothing matches"
+        description={`Try clearing filters or broadening your search. Your library has ${libraryCount} total title${libraryCount === 1 ? "" : "s"}.`}
+        action={<Button variant="secondary" onClick={onClearFilters}>Clear filters</Button>}
+      />
     ) : items.length === 0 ? (
       <EmptyState
         variant="library"

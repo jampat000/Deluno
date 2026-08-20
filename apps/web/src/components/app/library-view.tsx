@@ -102,8 +102,6 @@ export function LibraryView({
     isSearchingMetadata, setIsSearchingMetadata, metadataSearchSequence
   } = useLibraryCreate(variant, searchParams.get("add") === "true");
 
-
-
   useEffect(() => {
     let cancelled = false;
     const timer = window.setTimeout(async () => {
@@ -727,6 +725,8 @@ export function LibraryView({
           items={filtered}
           label={label}
           singular={singular}
+          libraryCount={facets?.all ?? totalCount}
+          hasActiveFilter={Boolean(query.trim()) || quickFilter !== "all"}
           view={view}
           cardSize={cardSize}
           density={density}
@@ -737,6 +737,10 @@ export function LibraryView({
           hasPreviousPage={previousPageTokens.length > 0}
           hasNextPage={Boolean(nextPageToken)}
           onOpenCreate={openCreate}
+          onClearFilters={() => {
+            setQuickFilter("all");
+            setQuery("");
+          }}
           onSelect={openWorkspace}
           onToggle={toggleSelectedId}
           onToggleAll={toggleSelectAllVisible}
@@ -792,7 +796,3 @@ export function LibraryView({
     </>
   );
 }
-
-/* ══════════════════════════════════════════════════════
-   CONTROL RAIL — premium floating bar with sliding indicator
-══════════════════════════════════════════════════════ */
