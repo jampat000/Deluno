@@ -520,6 +520,14 @@ public sealed class SqliteJobStore(
         }
 
         await transaction.CommitAsync(cancellationToken);
+        foreach (var libraryId in leasedJobs
+            .Where(job => job.JobType == "library.search" && string.Equals(job.RelatedEntityType, "library", StringComparison.OrdinalIgnoreCase))
+            .Select(job => job.RelatedEntityId)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            await realtimeEventPublisher.PublishEntityChangedAsync("AutomationState", libraryId!, cancellationToken);
+        }
         return leasedJobs;
     }
 
@@ -598,6 +606,8 @@ public sealed class SqliteJobStore(
             cancellationToken: cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
+        if (job.JobType == "library.search" && string.Equals(job.RelatedEntityType, "library", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(job.RelatedEntityId))
+            await realtimeEventPublisher.PublishEntityChangedAsync("AutomationState", job.RelatedEntityId, cancellationToken);
         await realtimeEventPublisher.PublishQueueItemRemovedAsync(job.Id, cancellationToken);
         await realtimeEventPublisher.PublishActivityEventAddedAsync(
             Guid.CreateVersion7().ToString("N"),
@@ -721,6 +731,8 @@ public sealed class SqliteJobStore(
             cancellationToken: cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
+        if (job.JobType == "library.search" && string.Equals(job.RelatedEntityType, "library", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(job.RelatedEntityId))
+            await realtimeEventPublisher.PublishEntityChangedAsync("AutomationState", job.RelatedEntityId, cancellationToken);
         await realtimeEventPublisher.PublishQueueItemRemovedAsync(job.Id, cancellationToken);
         await realtimeEventPublisher.PublishQueueItemStatusChangedAsync(
             job.Id,
@@ -1068,6 +1080,7 @@ public sealed class SqliteJobStore(
             cancellationToken: cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
+        await realtimeEventPublisher.PublishEntityChangedAsync("AutomationState", library.LibraryId, cancellationToken);
         await realtimeEventPublisher.PublishActivityEventAddedAsync(
             Guid.CreateVersion7().ToString("N"),
             $"Deluno will check {library.LibraryName} on the next pass.",
@@ -1156,6 +1169,8 @@ public sealed class SqliteJobStore(
             cancellationToken: cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
+
+        await realtimeEventPublisher.PublishEntityChangedAsync("AutomationState", library.LibraryId, cancellationToken);
 
         await realtimeEventPublisher.PublishActivityEventAddedAsync(
             Guid.CreateVersion7().ToString("N"),

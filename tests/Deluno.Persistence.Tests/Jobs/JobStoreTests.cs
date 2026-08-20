@@ -20,7 +20,8 @@ public sealed class JobStoreTests
             new SqliteDatabaseMigrator(storage.Factory, timeProvider),
             NullLogger<JobsSchemaInitializer>.Instance).StartAsync(CancellationToken.None);
 
-        var store = new SqliteJobStore(storage.Factory, timeProvider, new NullRealtimeEventPublisher(), new NullDownloadDispatchesRepository());
+        var realtime = new RecordingRealtimeEventPublisher();
+        var store = new SqliteJobStore(storage.Factory, timeProvider, realtime, new NullDownloadDispatchesRepository());
 
         var queued = await store.EnqueueAsync(
             new EnqueueJobRequest(
@@ -71,6 +72,14 @@ public sealed class JobStoreTests
         Assert.NotNull(stored.CompletedUtc);
         Assert.Null(stored.LeasedUntilUtc);
         Assert.Null(stored.LastError);
+        Assert.Equal(
+            [
+                ("AutomationState", "movies-main"),
+                ("AutomationState", "movies-main"),
+                ("AutomationState", "movies-main"),
+                ("AutomationState", "movies-main")
+            ],
+            realtime.Published);
     }
 
     [Fact]
