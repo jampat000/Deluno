@@ -64,26 +64,14 @@ type QuickFilter =
   | "monitored"
   | "unmonitored"
   | "downloaded"
-  | "downloading"
   | "missing"
-  | "upgrades"
-  | "needsAttention";
+  | "upgrades";
 type ViewMode = "grid" | "list";
 type SortField =
   | "title"
   | "year"
   | "rating"
-  | "quality"
-  | "added"
-  | "size"
-  | "status"
-  | "bitrate"
-  | "releaseGroup"
-  | "codec"
-  | "runtime"
-  | "tmdbVotes"
-  | "popularity"
-  | "path";
+  | "added";
 type SortDirection = "asc" | "desc";
 type CardSize = "sm" | "md" | "lg";
 type CreateFormDraft = {
@@ -159,7 +147,6 @@ interface SavedFilterPreset {
   viewMode: ViewMode;
   cardSize: CardSize;
   displayOptions: DisplayOptions;
-  rules: CustomFilterRule[];
 }
 
 interface DisplayOptions {
@@ -263,14 +250,16 @@ const quickFilterConfig: Array<{ key: QuickFilter; label: string }> = [
   { key: "monitored", label: "Monitored" },
   { key: "unmonitored", label: "Unmonitored" },
   { key: "downloaded", label: "Downloaded" },
-  { key: "downloading", label: "Downloading" },
   { key: "missing", label: "Missing" },
-  { key: "upgrades", label: "Upgrades" },
-  { key: "needsAttention", label: "Needs attention" }
+  { key: "upgrades", label: "Upgrades" }
 ];
 
 function isQuickFilter(value: string | null): value is QuickFilter {
   return quickFilterConfig.some((filter) => filter.key === value);
+}
+
+function isSortField(value: string | null): value is SortField {
+  return sortFieldOptions.some((sort) => sort.value === value);
 }
 
 function isUpgradeCandidate(item: MediaItem) {
@@ -289,17 +278,7 @@ const sortFieldOptions: Array<{ value: SortField; label: string }> = [
   { value: "title", label: "Title" },
   { value: "year", label: "Year" },
   { value: "rating", label: "Rating" },
-  { value: "quality", label: "Quality" },
-  { value: "added", label: "Added" },
-  { value: "size", label: "Size" },
-  { value: "status", label: "Status" },
-  { value: "bitrate", label: "Bitrate" },
-  { value: "releaseGroup", label: "Release group" },
-  { value: "codec", label: "Codec" },
-  { value: "runtime", label: "Runtime" },
-  { value: "tmdbVotes", label: "TMDb votes" },
-  { value: "popularity", label: "Popularity" },
-  { value: "path", label: "Path" }
+  { value: "added", label: "Added" }
 ];
 
 const filterFieldOptions: Array<{ value: FilterField; label: string; kind: "text" | "number" | "boolean" | "enum" }> = [
@@ -467,6 +446,8 @@ export function LibraryView({
   const [totalCount, setTotalCount] = useState(0);
   const [facets, setFacets] = useState<CatalogueFacets | null>(null);
   const [nextPageToken, setNextPageToken] = useState<string | null>(null);
+  const [currentPageToken, setCurrentPageToken] = useState<string | null>(null);
+  const [previousPageTokens, setPreviousPageTokens] = useState<Array<string | null>>([]);
   const [isCatalogueLoading, setIsCatalogueLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [refreshVersion, setRefreshVersion] = useState(0);
@@ -477,7 +458,6 @@ export function LibraryView({
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [cardSize, setCardSize] = useState<CardSize>(() => resolveInitialSize(variant));
   const [displayOptions, setDisplayOptions] = useState<DisplayOptions>(() => resolveInitialDisplayOptions(variant));
-  const [customRules, setCustomRules] = useState<CustomFilterRule[]>([]);
   const [savedPresets, setSavedPresets] = useState<SavedFilterPreset[]>([]);
   const [newPresetName, setNewPresetName] = useState("");
   const [isSavingPreset, setIsSavingPreset] = useState(false);
@@ -534,6 +514,8 @@ export function LibraryView({
           setTotalCount(page.totalCount ?? 0);
           setFacets(page.facets);
           setNextPageToken(page.nextPageToken);
+          setCurrentPageToken(null);
+          setPreviousPageTokens([]);
         } else {
           const [page, wanted] = await Promise.all([
             fetchJson<CataloguePage<SeriesListItem>>(`/api/series/page?${params}`),
@@ -544,6 +526,8 @@ export function LibraryView({
           setTotalCount(page.totalCount ?? 0);
           setFacets(page.facets);
           setNextPageToken(page.nextPageToken);
+          setCurrentPageToken(null);
+          setPreviousPageTokens([]);
         }
         setSelectedIds([]);
       } catch {
@@ -573,18 +557,56 @@ export function LibraryView({
           fetchJson<CataloguePage<MovieListItem>>(`/api/movies/page?${params}`),
           fetchJson<MovieWantedSummary>("/api/movies/wanted")
         ]);
-        setLibraryItems((current) => [...current, ...adaptMovieItems(page.items, wanted)]);
+        setLibraryItems(adaptMovieItems(page.items, wanted));
+        setNextPageToken(page.nextPageToken);
+        setPreviousPageTokens((current) => [...current, currentPageToken]);
+        setCurrentPageToken(nextPageToken);
+      } else {
+        const [page, wanted] = await Promise.all([
+          fetchJson<CataloguePage<SeriesListItem>>(`/api/series/page?${params}`),
+          fetchJson<SeriesWantedSummary>("/api/series/wanted")
+        ]);
+        setLibraryItems(adaptSeriesItems(page.items, wanted));
+        setNextPageToken(page.nextPageToken);
+        setPreviousPageTokens((current) => [...current, currentPageToken]);
+        setCurrentPageToken(nextPageToken);
+      }
+    } catch {
+      toast.error("Could not load more titles.");
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }
+
+  async function loadPreviousCataloguePage() {
+    if (previousPageTokens.length === 0 || isLoadingMore) return;
+    const previousToken = previousPageTokens[previousPageTokens.length - 1] ?? null;
+
+    setIsLoadingMore(true);
+    const params = new URLSearchParams({ pageSize: "100", sort: sortField, direction: sortDirection });
+    if (previousToken) params.set("pageToken", previousToken);
+    if (query.trim()) params.set("search", query.trim());
+    if (quickFilter !== "all") params.set("status", quickFilter);
+    try {
+      if (variant === "movies") {
+        const [page, wanted] = await Promise.all([
+          fetchJson<CataloguePage<MovieListItem>>(`/api/movies/page?${params}`),
+          fetchJson<MovieWantedSummary>("/api/movies/wanted")
+        ]);
+        setLibraryItems(adaptMovieItems(page.items, wanted));
         setNextPageToken(page.nextPageToken);
       } else {
         const [page, wanted] = await Promise.all([
           fetchJson<CataloguePage<SeriesListItem>>(`/api/series/page?${params}`),
           fetchJson<SeriesWantedSummary>("/api/series/wanted")
         ]);
-        setLibraryItems((current) => [...current, ...adaptSeriesItems(page.items, wanted)]);
+        setLibraryItems(adaptSeriesItems(page.items, wanted));
         setNextPageToken(page.nextPageToken);
       }
+      setCurrentPageToken(previousToken);
+      setPreviousPageTokens((current) => current.slice(0, -1));
     } catch {
-      toast.error("Could not load more titles.");
+      toast.error("Could not load the previous titles.");
     } finally {
       setIsLoadingMore(false);
     }
@@ -654,7 +676,6 @@ export function LibraryView({
 
   useEffect(() => {
     setSavedPresets([]);
-    setCustomRules([]);
     setQuickFilter("all");
     setSortField("title");
     setSortDirection("asc");
@@ -724,13 +745,12 @@ export function LibraryView({
           items.map((item) => ({
             id: item.id,
             name: item.name,
-            quickFilter: (item.quickFilter as QuickFilter) || "all",
-            sortField: (item.sortField as SortField) || "title",
+            quickFilter: isQuickFilter(item.quickFilter) ? item.quickFilter : "all",
+            sortField: isSortField(item.sortField) ? item.sortField : "title",
             sortDirection: item.sortDirection === "desc" ? "desc" : "asc",
             viewMode: item.viewMode === "list" ? "list" : "grid",
             cardSize: item.cardSize === "sm" || item.cardSize === "lg" ? item.cardSize : "md",
-            displayOptions: parseDisplayOptions(item.displayOptionsJson),
-            rules: parseCustomRules(item.rulesJson)
+            displayOptions: parseDisplayOptions(item.displayOptionsJson)
           }))
         );
       } catch {
@@ -1270,23 +1290,6 @@ export function LibraryView({
     navigate(item.type === "movie" ? `/movies/${item.id}` : `/tv/${item.id}`);
   }
 
-  function addCustomRule() {
-    setCustomRules((current) => [
-      ...current,
-      { id: crypto.randomUUID(), field: "title", comparator: "contains", value: "" }
-    ]);
-  }
-
-  function updateCustomRule(ruleId: string, patch: Partial<CustomFilterRule>) {
-    setCustomRules((current) =>
-      current.map((rule) => (rule.id === ruleId ? { ...rule, ...patch } : rule))
-    );
-  }
-
-  function removeCustomRule(ruleId: string) {
-    setCustomRules((current) => current.filter((rule) => rule.id !== ruleId));
-  }
-
   async function saveCurrentPreset() {
     const name = newPresetName.trim();
     if (!name) {
@@ -1305,7 +1308,9 @@ export function LibraryView({
         viewMode: view,
         cardSize,
         displayOptionsJson: JSON.stringify(displayOptions),
-        rulesJson: JSON.stringify(customRules)
+        // Rules were a browser-only filter over an incomplete page. Persist an
+        // empty legacy value until the API exposes a server-side rule contract.
+        rulesJson: "[]"
       };
 
       const created = await fetchJson<LibraryViewItem>("/api/library-views", {
@@ -1319,13 +1324,12 @@ export function LibraryView({
         {
           id: created.id,
           name: created.name,
-          quickFilter: (created.quickFilter as QuickFilter) || "all",
-          sortField: (created.sortField as SortField) || "title",
+          quickFilter: isQuickFilter(created.quickFilter) ? created.quickFilter : "all",
+          sortField: isSortField(created.sortField) ? created.sortField : "title",
           sortDirection: created.sortDirection === "desc" ? "desc" : "asc",
           viewMode: created.viewMode === "list" ? "list" : "grid",
           cardSize: created.cardSize === "sm" || created.cardSize === "lg" ? created.cardSize : "md",
-          displayOptions: parseDisplayOptions(created.displayOptionsJson),
-          rules: parseCustomRules(created.rulesJson)
+          displayOptions: parseDisplayOptions(created.displayOptionsJson)
         }
       ]);
       setNewPresetName("");
@@ -1339,7 +1343,6 @@ export function LibraryView({
 
   function applyPreset(preset: SavedFilterPreset) {
     setQuickFilter(preset.quickFilter);
-    setCustomRules(preset.rules);
     setSortField(preset.sortField);
     setSortDirection(preset.sortDirection);
     setView(preset.viewMode);
@@ -1362,8 +1365,7 @@ export function LibraryView({
     }
   }
 
-  const activeFilterCount =
-    (quickFilter !== "all" ? 1 : 0) + customRules.filter((rule) => rule.value.trim()).length;
+  const activeFilterCount = quickFilter !== "all" ? 1 : 0;
 
   async function handleMetadataSearch(options: { silent?: boolean } = {}) {
     const searchTitle = createForm.title.trim();
@@ -1891,10 +1893,6 @@ export function LibraryView({
           displayOptions={displayOptions}
           setDisplayOptions={updateDisplayOptions}
           facets={facets}
-          customRules={customRules}
-          addCustomRule={addCustomRule}
-          updateCustomRule={updateCustomRule}
-          removeCustomRule={removeCustomRule}
           savedPresets={savedPresets}
           newPresetName={newPresetName}
           setNewPresetName={setNewPresetName}
@@ -2075,7 +2073,6 @@ export function LibraryView({
                   variant="secondary"
                   onClick={() => {
                     setQuickFilter("all");
-                    setCustomRules([]);
                     setQuery("");
                   }}
                 >
@@ -2094,7 +2091,7 @@ export function LibraryView({
               keyBust={`${cardSize}-${quickFilter}-${query}-${sortField}-${sortDirection}-${displayOptions.showMeta}-${displayOptions.showStatusPill}-${displayOptions.showQualityBadge}-${displayOptions.showRating}`}
               onSelect={openWorkspace}
               onToggle={toggleSelectedId}
-              onEndReached={() => void loadNextCataloguePage()}
+              onEndReached={() => undefined}
             />
         ) : (
           <GlassTile className="p-0">
@@ -2106,10 +2103,31 @@ export function LibraryView({
               onToggleAll={toggleSelectAllVisible}
               allSelected={filtered.length > 0 && filtered.every((item) => selectedIds.includes(item.id))}
               someSelected={selectedCount > 0 && !filtered.every((item) => selectedIds.includes(item.id))}
-              onEndReached={() => void loadNextCataloguePage()}
+              onEndReached={() => undefined}
             />
           </GlassTile>
         )}
+        {libraryItems.length > 0 && (previousPageTokens.length > 0 || nextPageToken) ? (
+          <div className="flex items-center justify-between gap-3 border-t border-hairline pt-3">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={previousPageTokens.length === 0 || isLoadingMore}
+              onClick={() => void loadPreviousCataloguePage()}
+            >
+              Previous 100
+            </Button>
+            <p className="text-sm text-muted-foreground">Only this page is kept in memory.</p>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!nextPageToken || isLoadingMore}
+              onClick={() => void loadNextCataloguePage()}
+            >
+              Next 100
+            </Button>
+          </div>
+        ) : null}
       </section>
 
       {isBulkToolsOpen ? (
@@ -2939,10 +2957,6 @@ function ControlRail({
   displayOptions,
   setDisplayOptions,
   facets,
-  customRules,
-  addCustomRule,
-  updateCustomRule,
-  removeCustomRule,
   savedPresets,
   newPresetName,
   setNewPresetName,
@@ -2968,10 +2982,6 @@ function ControlRail({
   displayOptions: DisplayOptions;
   setDisplayOptions: (v: DisplayOptions) => void;
   facets: CatalogueFacets | null;
-  customRules: CustomFilterRule[];
-  addCustomRule: () => void;
-  updateCustomRule: (ruleId: string, patch: Partial<CustomFilterRule>) => void;
-  removeCustomRule: (ruleId: string) => void;
   savedPresets: SavedFilterPreset[];
   newPresetName: string;
   setNewPresetName: (v: string) => void;
@@ -3000,10 +3010,8 @@ function ControlRail({
     monitored: facets?.monitored ?? 0,
     unmonitored: facets?.unmonitored ?? 0,
     downloaded: facets?.downloaded ?? 0,
-    downloading: 0,
     missing: facets?.missing ?? 0,
-    upgrades: facets?.upgrades ?? 0,
-    needsAttention: 0
+    upgrades: facets?.upgrades ?? 0
   };
 
   return (
@@ -3177,25 +3185,17 @@ function ControlRail({
                 icon={ArrowUpDown}
                 eyebrow="Order"
                 title="Put the right titles first"
-                description="Use a common order for everyday browsing, or open the complete list when you need a precise audit."
+                description="Every available order is performed by the paged catalogue query."
                 onClose={() => setOpenPanel(null)}
               />
               <div className="grid gap-[var(--grid-gap)] p-[calc(var(--tile-pad)*0.8)] xl:grid-cols-[minmax(0,1fr)_18rem]">
                 <div>
                   <SectionLabel>Sort by</SectionLabel>
                   <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                    {sortFieldOptions.slice(0, 6).map((option) => (
+                    {sortFieldOptions.map((option) => (
                       <SortChoice key={option.value} label={option.label} selected={sortField === option.value} onClick={() => setSortField(option.value)} />
                     ))}
                   </div>
-                  <details className="mt-3 rounded-xl border border-hairline bg-background/45 px-3 py-2.5">
-                    <summary className="cursor-pointer text-[length:var(--type-caption)] font-semibold text-foreground">More ways to order your library</summary>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                      {sortFieldOptions.slice(6).map((option) => (
-                        <SortChoice key={option.value} label={option.label} selected={sortField === option.value} onClick={() => setSortField(option.value)} />
-                      ))}
-                    </div>
-                  </details>
                 </div>
                 <div className="rounded-xl border border-hairline bg-background/45 p-3">
                   <SectionLabel>Direction</SectionLabel>
@@ -3215,90 +3215,11 @@ function ControlRail({
                 icon={Filter}
                 eyebrow="Refine"
                 title="Narrow the library without losing your place"
-                description={`You are viewing ${quickFilterConfig.find((filter) => filter.key === quickFilter)?.label.toLowerCase() ?? "all"} titles${customRules.filter((rule) => rule.value.trim()).length ? ` with ${customRules.filter((rule) => rule.value.trim()).length} precise rule${customRules.filter((rule) => rule.value.trim()).length === 1 ? "" : "s"}` : ""}. Quick filters stay above; add rules only when you need something more specific.`}
+                description={`You are viewing ${quickFilterConfig.find((filter) => filter.key === quickFilter)?.label.toLowerCase() ?? "all"} titles. Quick filters and search run in the catalogue query.`}
                 onClose={() => setOpenPanel(null)}
               />
             <div className="space-y-[calc(var(--field-group-pad)*0.8)] p-[calc(var(--tile-pad)*0.8)]">
-              <div className="grid gap-[var(--grid-gap)] xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.34fr)]">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <SectionLabel>Precise rules</SectionLabel>
-                      <p className="mt-1 text-[length:var(--type-caption)] text-muted-foreground">Combine as many conditions as you need; every rule must match.</p>
-                    </div>
-                    <Button type="button" size="sm" variant="outline" onClick={addCustomRule}>
-                      <Plus className="h-4 w-4" />
-                      Add precise rule
-                    </Button>
-                  </div>
-                  {customRules.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-hairline bg-background/40 px-4 py-4 text-sm text-muted-foreground">
-                      Need more than the quick filters? Build a focused view around quality, genre, rating, bitrate, release group, tags, certification, provider score, path, studio, language, and more.
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {customRules.map((rule) => {
-                        const fieldMeta = filterFieldOptions.find((option) => option.value === rule.field) ?? filterFieldOptions[0];
-                        return (
-                          <div key={rule.id} className="grid gap-2 rounded-xl border border-hairline bg-background/40 p-3 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1.1fr)_auto]">
-                            <select
-                              value={rule.field}
-                              onChange={(event) => updateCustomRule(rule.id, { field: event.target.value as FilterField, comparator: defaultComparatorForField(event.target.value as FilterField), value: "" })}
-                              className="density-control-text h-[var(--control-height-sm)] rounded-[10px] border border-hairline bg-surface-2 px-3 text-foreground outline-none"
-                            >
-                              {filterFieldOptions.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
-
-                            <select
-                              value={rule.comparator}
-                              onChange={(event) => updateCustomRule(rule.id, { comparator: event.target.value as FilterComparator })}
-                              className="density-control-text h-[var(--control-height-sm)] rounded-[10px] border border-hairline bg-surface-2 px-3 text-foreground outline-none"
-                            >
-                              {comparatorsForField(rule.field).map((comparator) => (
-                                <option key={comparator} value={comparator}>
-                                  {friendlyComparatorLabel(comparator)}
-                                </option>
-                              ))}
-                            </select>
-
-                            {fieldMeta.kind === "enum" ? (
-                              <select
-                                value={rule.value}
-                                onChange={(event) => updateCustomRule(rule.id, { value: event.target.value })}
-                                className="density-control-text h-[var(--control-height-sm)] rounded-[10px] border border-hairline bg-surface-2 px-3 text-foreground outline-none"
-                              >
-                                <option value="">Choose value</option>
-                                {(enumOptions[rule.field] ?? []).map((option) => (
-                                  <option key={option.value} value={option.value}>
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : (
-                              <Input
-                                type={fieldMeta.kind === "number" ? "number" : "text"}
-                                value={rule.value}
-                                onChange={(event) => updateCustomRule(rule.id, { value: event.target.value })}
-                                placeholder={placeholderForField(rule.field)}
-                                className="h-[var(--control-height-sm)]"
-                              />
-                            )}
-
-                            <Button type="button" size="sm" variant="ghost" onClick={() => removeCustomRule(rule.id)}>
-                              Remove
-                            </Button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-[calc(var(--field-group-pad)*0.8)]">
+              <div className="space-y-[calc(var(--field-group-pad)*0.8)]">
                   <div className="space-y-2">
                     <SectionLabel>Saved library views</SectionLabel>
                     <div className="flex gap-2">
@@ -3317,7 +3238,7 @@ function ControlRail({
                             <p className="truncate text-sm font-medium text-foreground">{preset.name}</p>
                             <p className="text-xs text-muted-foreground">
                               {preset.quickFilter !== "all" ? `${preset.quickFilter} · ` : ""}
-                              {preset.rules.length} custom rule{preset.rules.length === 1 ? "" : "s"}
+                              Saved search, order, and display settings
                             </p>
                           </button>
                           <Button type="button" size="sm" variant="ghost" onClick={() => deletePreset(preset.id)}>
@@ -3328,12 +3249,11 @@ function ControlRail({
                     </div>
                   ) : (
                     <div className="rounded-xl border border-dashed border-hairline bg-background/40 px-4 py-4 text-sm text-muted-foreground">
-                      Save a refined view once, then return to it in one click—anime 4K, kids missing, language-specific upgrades, or whatever matters to your library.
+                      Save a search, quick filter, order, and display choice once, then return to it in one click.
                     </div>
                   )}
                 </div>
               </div>
-            </div>
             </div>
           ) : null}
         </div>
