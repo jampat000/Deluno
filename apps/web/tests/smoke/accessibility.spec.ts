@@ -7,6 +7,9 @@ const screens = [
   "/movies",
   "/setup-guide",
   "/system",
+  "/system/audit",
+  "/system/backups",
+  "/system/updates",
   "/settings/general",
   "/settings/metadata"
 ] as const;
