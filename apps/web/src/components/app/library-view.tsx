@@ -23,6 +23,7 @@ import {
   Zap,
 } from "lucide-react";
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Link, useNavigate, useNavigation, useSearchParams } from "react-router-dom";
 import type { MediaItem, MediaStatus } from "../../lib/media-types";
@@ -31,13 +32,20 @@ import {
   ApiRequestError,
   fetchJson,
   readValidationProblem,
+  type CatalogueFacets,
+  type CataloguePage,
   type CreateLibraryViewRequest,
   type LibraryItem,
   type LibraryViewItem,
   type MetadataProviderStatus,
   type MetadataSearchResult,
-  type QualityProfileItem
+  type MovieListItem,
+  type MovieWantedSummary,
+  type QualityProfileItem,
+  type SeriesListItem,
+  type SeriesWantedSummary
 } from "../../lib/api";
+import { adaptMovieItems, adaptSeriesItems } from "../../lib/ui-adapters";
 import { useDensity, type Density } from "../../lib/use-density";
 import { authedFetch } from "../../lib/use-auth";
 import { cn, formatBytesFromGb } from "../../lib/utils";
@@ -441,13 +449,11 @@ const enumOptions: Partial<Record<FilterField, Array<{ value: string; label: str
 };
 
 export function LibraryView({
-  items,
   isRouteLoading = false,
   metadataStatus,
   onReload,
   variant
 }: {
-  items: MediaItem[];
   isRouteLoading?: boolean;
   metadataStatus?: MetadataProviderStatus | null;
   onReload?: () => void;
@@ -457,7 +463,13 @@ export function LibraryView({
   const navigation = useNavigation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { density } = useDensity();
-  const [libraryItems, setLibraryItems] = useState(items);
+  const [libraryItems, setLibraryItems] = useState<MediaItem[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [facets, setFacets] = useState<CatalogueFacets | null>(null);
+  const [nextPageToken, setNextPageToken] = useState<string | null>(null);
+  const [isCatalogueLoading, setIsCatalogueLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [refreshVersion, setRefreshVersion] = useState(0);
   const [query, setQuery] = useState("");
   const [quickFilter, setQuickFilter] = useState<QuickFilter>("all");
   const [view, setView] = useState<ViewMode>("grid");
@@ -505,9 +517,78 @@ export function LibraryView({
   const metadataSearchSequence = useRef(0);
 
   useEffect(() => {
-    setLibraryItems(items);
-    setSelectedIds([]);
-  }, [items]);
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setIsCatalogueLoading(true);
+      const params = new URLSearchParams({ pageSize: "100", sort: sortField, direction: sortDirection });
+      if (query.trim()) params.set("search", query.trim());
+      if (quickFilter !== "all") params.set("status", quickFilter);
+      try {
+        if (variant === "movies") {
+          const [page, wanted] = await Promise.all([
+            fetchJson<CataloguePage<MovieListItem>>(`/api/movies/page?${params}`),
+            fetchJson<MovieWantedSummary>("/api/movies/wanted")
+          ]);
+          if (cancelled) return;
+          setLibraryItems(adaptMovieItems(page.items, wanted));
+          setTotalCount(page.totalCount ?? 0);
+          setFacets(page.facets);
+          setNextPageToken(page.nextPageToken);
+        } else {
+          const [page, wanted] = await Promise.all([
+            fetchJson<CataloguePage<SeriesListItem>>(`/api/series/page?${params}`),
+            fetchJson<SeriesWantedSummary>("/api/series/wanted")
+          ]);
+          if (cancelled) return;
+          setLibraryItems(adaptSeriesItems(page.items, wanted));
+          setTotalCount(page.totalCount ?? 0);
+          setFacets(page.facets);
+          setNextPageToken(page.nextPageToken);
+        }
+        setSelectedIds([]);
+      } catch {
+        if (!cancelled) {
+          setLibraryItems([]);
+          setTotalCount(0);
+          setFacets(null);
+          setNextPageToken(null);
+          toast.error("Could not load the library.");
+        }
+      } finally {
+        if (!cancelled) setIsCatalogueLoading(false);
+      }
+    }, 250);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [query, quickFilter, refreshVersion, sortDirection, sortField, variant]);
+
+  async function loadNextCataloguePage() {
+    if (!nextPageToken || isLoadingMore) return;
+    setIsLoadingMore(true);
+    const params = new URLSearchParams({ pageSize: "100", sort: sortField, direction: sortDirection, pageToken: nextPageToken });
+    if (query.trim()) params.set("search", query.trim());
+    if (quickFilter !== "all") params.set("status", quickFilter);
+    try {
+      if (variant === "movies") {
+        const [page, wanted] = await Promise.all([
+          fetchJson<CataloguePage<MovieListItem>>(`/api/movies/page?${params}`),
+          fetchJson<MovieWantedSummary>("/api/movies/wanted")
+        ]);
+        setLibraryItems((current) => [...current, ...adaptMovieItems(page.items, wanted)]);
+        setNextPageToken(page.nextPageToken);
+      } else {
+        const [page, wanted] = await Promise.all([
+          fetchJson<CataloguePage<SeriesListItem>>(`/api/series/page?${params}`),
+          fetchJson<SeriesWantedSummary>("/api/series/wanted")
+        ]);
+        setLibraryItems((current) => [...current, ...adaptSeriesItems(page.items, wanted)]);
+        setNextPageToken(page.nextPageToken);
+      }
+    } catch {
+      toast.error("Could not load more titles.");
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }
 
   useEffect(() => {
     setCreateForm(createInitialForm());
@@ -678,81 +759,15 @@ export function LibraryView({
     return () => window.removeEventListener("keydown", onKey);
   }, [selectedIds.length]);
 
-  const filtered = useMemo(() => {
-    const result = libraryItems.filter((item) => {
-      const matchesQuery =
-        [
-          item.title,
-          item.genres.join(" "),
-          item.network ?? "",
-          item.quality,
-          item.wantedReason ?? "",
-          item.releaseGroup ?? "",
-          item.codec ?? "",
-          item.audioCodec ?? "",
-          item.audioChannels ?? "",
-          (item.tags ?? []).join(" "),
-          item.path ?? ""
-        ]
-          .join(" ")
-          .toLowerCase()
-          .includes(query.toLowerCase());
-
-      const matchesQuick =
-        quickFilter === "all" ||
-        (quickFilter === "monitored" && item.monitored) ||
-        (quickFilter === "unmonitored" && !item.monitored) ||
-        (quickFilter === "downloaded" && item.status === "downloaded") ||
-        (quickFilter === "downloading" && item.status === "downloading") ||
-        (quickFilter === "missing" && item.status === "missing") ||
-        (quickFilter === "upgrades" && isUpgradeCandidate(item)) ||
-        (quickFilter === "needsAttention" && isAttentionCandidate(item));
-
-      const matchesRules = customRules.every((rule) => matchesCustomRule(item, rule));
-
-      return matchesQuery && matchesQuick && matchesRules;
-    });
-
-    return result.sort((left, right) => {
-      const modifier = sortDirection === "asc" ? 1 : -1;
-      switch (sortField) {
-        case "year":
-          return ((left.year ?? 0) - (right.year ?? 0)) * modifier;
-        case "rating":
-          return ((left.rating ?? 0) - (right.rating ?? 0)) * modifier;
-        case "quality":
-          return (left.quality ?? "").localeCompare(right.quality ?? "") * modifier;
-        case "added":
-          return left.added.localeCompare(right.added) * modifier;
-        case "size":
-          return ((left.sizeGb ?? 0) - (right.sizeGb ?? 0)) * modifier;
-        case "status":
-          return left.status.localeCompare(right.status) * modifier;
-        case "bitrate":
-          return ((left.bitrateMbps ?? 0) - (right.bitrateMbps ?? 0)) * modifier;
-        case "releaseGroup":
-          return (left.releaseGroup ?? "").localeCompare(right.releaseGroup ?? "") * modifier;
-        case "codec":
-          return (left.codec ?? "").localeCompare(right.codec ?? "") * modifier;
-        case "runtime":
-          return ((left.runtimeMinutes ?? 0) - (right.runtimeMinutes ?? 0)) * modifier;
-        case "tmdbVotes":
-          return ((left.tmdbVotes ?? 0) - (right.tmdbVotes ?? 0)) * modifier;
-        case "popularity":
-          return ((left.popularity ?? 0) - (right.popularity ?? 0)) * modifier;
-        case "path":
-          return (left.path ?? "").localeCompare(right.path ?? "") * modifier;
-        default:
-          return left.title.localeCompare(right.title) * modifier;
-      }
-    });
-  }, [customRules, libraryItems, query, quickFilter, sortDirection, sortField]);
+  // The catalogue endpoint owns filtering and ordering. A browser-side pass
+  // here would quietly make the answer incomplete after the first page.
+  const filtered = libraryItems;
 
   const selectedCount = selectedIds.length;
-  const monitoredCount = libraryItems.filter((item) => item.monitored).length;
-  const missingCount = libraryItems.filter((item) => item.status === "missing").length;
-  const downloadingCount = libraryItems.filter((item) => item.status === "downloading").length;
-  const downloadedCount = libraryItems.filter((item) => item.status === "downloaded").length;
+  const monitoredCount = facets?.monitored ?? 0;
+  const missingCount = facets?.missing ?? 0;
+  const downloadingCount = 0;
+  const downloadedCount = facets?.downloaded ?? 0;
   const totalSizeTb = (
     libraryItems.reduce((sum, item) => sum + (item.sizeGb ?? 0), 0) / 1024
   ).toFixed(1);
@@ -1615,7 +1630,7 @@ export function LibraryView({
                 Browse and manage your {label}
               </h2>
               <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[length:var(--type-body-sm)] text-muted-foreground">
-                <span><span className="tabular font-semibold text-foreground">{libraryItems.length.toLocaleString()}</span> total</span>
+                <span><span className="tabular font-semibold text-foreground">{totalCount.toLocaleString()}</span> total</span>
                 <span className="text-muted-foreground/45">·</span>
                 <span><span className={cn("tabular font-semibold", librarySummaryTone("availability", downloadedCount))}>{downloadedCount}</span> downloaded</span>
                 <span className="text-muted-foreground/45">·</span>
@@ -1632,8 +1647,6 @@ export function LibraryView({
                     <span><span className="tabular font-semibold text-info">{downloadingCount}</span> downloading</span>
                   </>
                 ) : null}
-                <span className="text-muted-foreground/45">·</span>
-                <span><span className="tabular font-semibold text-foreground">{totalSizeTb} TB</span> on disk</span>
               </p>
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -1667,7 +1680,7 @@ export function LibraryView({
           }
           subtitle={
             <>
-              <span className="font-semibold text-foreground">{libraryItems.length.toLocaleString()} total titles</span>
+              <span className="font-semibold text-foreground">{totalCount.toLocaleString()} total titles</span>
               {" · "}
               <span className={cn("font-semibold", librarySummaryTone("availability", downloadedCount))}>{downloadedCount} downloaded</span>
               {missingCount > 0 ? (
@@ -1686,7 +1699,7 @@ export function LibraryView({
           }
           size="sm"
           stats={[
-            { label: "Total", value: libraryItems.length.toString(), tone: "neutral" },
+            { label: "Total", value: totalCount.toString(), tone: "neutral" },
             { label: "Monitored", value: monitoredCount.toString(), tone: "primary" },
             { label: "Missing", value: missingCount.toString(), tone: missingCount > 0 ? "warn" : "neutral" },
             { label: "Library", value: `${totalSizeTb}TB`, tone: "neutral" }
@@ -1877,7 +1890,7 @@ export function LibraryView({
           changeSize={changeSize}
           displayOptions={displayOptions}
           setDisplayOptions={updateDisplayOptions}
-          libraryItems={libraryItems}
+          facets={facets}
           customRules={customRules}
           addCustomRule={addCustomRule}
           updateCustomRule={updateCustomRule}
@@ -1893,11 +1906,11 @@ export function LibraryView({
         />
 
         {/* Results only occupy space when there is something to report. */}
-        {filtered.length !== libraryItems.length ? (
+        {totalCount > libraryItems.length ? (
           <div className="flex items-center justify-between gap-3">
-            {filtered.length !== libraryItems.length ? (
+            {totalCount > libraryItems.length ? (
               <p className="text-[length:var(--library-toolbar-size)] font-medium text-muted-foreground">
-                Showing <span className="font-bold tabular text-foreground">{filtered.length}</span> of {libraryItems.length}
+                Showing <span className="font-bold tabular text-foreground">{filtered.length}</span> loaded of {totalCount.toLocaleString()}
               </p>
           ) : (
             <span />
@@ -2081,6 +2094,7 @@ export function LibraryView({
               keyBust={`${cardSize}-${quickFilter}-${query}-${sortField}-${sortDirection}-${displayOptions.showMeta}-${displayOptions.showStatusPill}-${displayOptions.showQualityBadge}-${displayOptions.showRating}`}
               onSelect={openWorkspace}
               onToggle={toggleSelectedId}
+              onEndReached={() => void loadNextCataloguePage()}
             />
         ) : (
           <GlassTile className="p-0">
@@ -2092,6 +2106,7 @@ export function LibraryView({
               onToggleAll={toggleSelectAllVisible}
               allSelected={filtered.length > 0 && filtered.every((item) => selectedIds.includes(item.id))}
               someSelected={selectedCount > 0 && !filtered.every((item) => selectedIds.includes(item.id))}
+              onEndReached={() => void loadNextCataloguePage()}
             />
           </GlassTile>
         )}
@@ -2301,9 +2316,6 @@ export function LibraryView({
  * intersection sentinel scrolls into view. Keeps first paint cheap
  * when a library has 10k+ titles while still feeling instantaneous.
  */
-const INITIAL_BATCH = 60;
-const BATCH_INCREMENT = 48;
-
 function ProgressiveGrid({
   items,
   cardSize,
@@ -2312,7 +2324,8 @@ function ProgressiveGrid({
   selectedIds,
   keyBust,
   onSelect,
-  onToggle
+  onToggle,
+  onEndReached
 }: {
   items: MediaItem[];
   cardSize: CardSize;
@@ -2322,68 +2335,40 @@ function ProgressiveGrid({
   keyBust: string;
   onSelect: (item: MediaItem) => void;
   onToggle: (id: string) => void;
+  onEndReached: () => void;
 }) {
-  const [visible, setVisible] = useState(() => Math.min(items.length, INITIAL_BATCH));
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const parentRef = useRef<HTMLDivElement | null>(null);
+  const [columns, setColumns] = useState(4);
+  useEffect(() => {
+    const updateColumns = () => setColumns(window.innerWidth < 640 ? 2 : window.innerWidth < 1024 ? 3 : 4);
+    updateColumns();
+    window.addEventListener("resize", updateColumns);
+    return () => window.removeEventListener("resize", updateColumns);
+  }, []);
+  const rowCount = Math.ceil(items.length / columns);
+  const virtualizer = useVirtualizer({ count: rowCount, getScrollElement: () => parentRef.current, estimateSize: () => cardSize === "lg" ? 440 : cardSize === "sm" ? 245 : 340, overscan: 3 });
+  const virtualRows = virtualizer.getVirtualItems();
 
   useEffect(() => {
-    setVisible(Math.min(items.length, INITIAL_BATCH));
-  }, [keyBust, items.length]);
-
-  useEffect(() => {
-    if (visible >= items.length) return;
-    const el = sentinelRef.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setVisible((prev) => Math.min(items.length, prev + BATCH_INCREMENT));
-          }
-        }
-      },
-      { rootMargin: "600px 0px" }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [visible, items.length]);
-
-  const slice = items.slice(0, visible);
-  const remaining = items.length - visible;
+    const lastRow = virtualRows.at(-1);
+    if (lastRow && lastRow.index >= rowCount - 2) onEndReached();
+  }, [onEndReached, rowCount, virtualRows]);
 
   return (
     <>
-      <div
-        key={keyBust}
-        className="stagger grid gap-[var(--library-grid-gap)] transition-[grid-template-columns] duration-200"
-        style={{
-          gridTemplateColumns: `repeat(auto-fill, minmax(${GRID_MIN_BY_DENSITY[density][cardSize]}, 1fr))`
-        }}
-      >
-        {slice.map((item) => (
-          <PosterCard
-            key={item.id}
-            item={item}
-            size={cardSize}
-            density={density}
-            displayOptions={displayOptions}
-            selected={selectedIds.includes(item.id)}
-            onSelect={() => onSelect(item)}
-            onToggle={() => onToggle(item.id)}
-          />
-        ))}
-      </div>
-      {remaining > 0 ? (
-        <div
-          ref={sentinelRef}
-          className="flex items-center justify-center py-6 text-[length:var(--type-caption)] uppercase tracking-[0.18em] text-muted-foreground"
-          role="status"
-          aria-live="polite"
-        >
-          <LoaderCircle className="mr-2 h-3.5 w-3.5 animate-spin" />
-          Loading {remaining} more
+      <div ref={parentRef} className="max-h-[calc(100dvh-260px)] overflow-auto" key={keyBust}>
+        <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
+          {virtualRows.map((row) => (
+            <div key={row.key} ref={virtualizer.measureElement} data-index={row.index} className="absolute left-0 top-0 w-full" style={{ transform: `translateY(${row.start}px)` }}>
+              <div className="stagger grid gap-[var(--library-grid-gap)] pb-[var(--library-grid-gap)]" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+                {items.slice(row.index * columns, (row.index + 1) * columns).map((item) => (
+                  <PosterCard key={item.id} item={item} size={cardSize} density={density} displayOptions={displayOptions} selected={selectedIds.includes(item.id)} onSelect={() => onSelect(item)} onToggle={() => onToggle(item.id)} />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
-      ) : null}
+      </div>
     </>
   );
 }
@@ -2705,7 +2690,8 @@ function LibraryTable({
   onToggle,
   onToggleAll,
   allSelected,
-  someSelected
+  someSelected,
+  onEndReached
 }: {
   items: MediaItem[];
   selectedIds: string[];
@@ -2714,10 +2700,18 @@ function LibraryTable({
   onToggleAll: () => void;
   allSelected: boolean;
   someSelected: boolean;
+  onEndReached: () => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLTableElement>(null);
   const [focusIndex, setFocusIndex] = useState(0);
+  const rowVirtualizer = useVirtualizer({ count: items.length, getScrollElement: () => scrollRef.current, estimateSize: () => 65, overscan: 10 });
+  const virtualRows = rowVirtualizer.getVirtualItems();
+
+  useEffect(() => {
+    const lastRow = virtualRows.at(-1);
+    if (lastRow && lastRow.index >= items.length - 2) onEndReached();
+  }, [items.length, onEndReached, virtualRows]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -2819,7 +2813,10 @@ function LibraryTable({
           </tr>
         </thead>
         <tbody>
-          {items.map((item, index) => {
+          {virtualRows.length > 0 && virtualRows[0].start > 0 ? <tr aria-hidden="true"><td colSpan={8} style={{ height: virtualRows[0].start, padding: 0 }} /></tr> : null}
+          {virtualRows.map((virtualRow) => {
+            const index = virtualRow.index;
+            const item = items[index];
             const isSelected = selectedIds.includes(item.id);
             const isFocused = index === focusIndex;
             return (
@@ -2886,6 +2883,7 @@ function LibraryTable({
               </tr>
             );
           })}
+          {virtualRows.length > 0 && rowVirtualizer.getTotalSize() - virtualRows.at(-1)!.end > 0 ? <tr aria-hidden="true"><td colSpan={8} style={{ height: rowVirtualizer.getTotalSize() - virtualRows.at(-1)!.end, padding: 0 }} /></tr> : null}
         </tbody>
       </table>
     </div>
@@ -2940,7 +2938,7 @@ function ControlRail({
   changeSize,
   displayOptions,
   setDisplayOptions,
-  libraryItems,
+  facets,
   customRules,
   addCustomRule,
   updateCustomRule,
@@ -2969,7 +2967,7 @@ function ControlRail({
   changeSize: (v: CardSize) => void;
   displayOptions: DisplayOptions;
   setDisplayOptions: (v: DisplayOptions) => void;
-  libraryItems: MediaItem[];
+  facets: CatalogueFacets | null;
   customRules: CustomFilterRule[];
   addCustomRule: () => void;
   updateCustomRule: (ruleId: string, patch: Partial<CustomFilterRule>) => void;
@@ -2998,14 +2996,14 @@ function ControlRail({
   }, [quickFilter]);
 
   const counts: Record<QuickFilter, number> = {
-    all: libraryItems.length,
-    monitored: libraryItems.filter((item) => item.monitored).length,
-    unmonitored: libraryItems.filter((item) => !item.monitored).length,
-    downloaded: libraryItems.filter((item) => item.status === "downloaded").length,
-    downloading: libraryItems.filter((item) => item.status === "downloading").length,
-    missing: libraryItems.filter((item) => item.status === "missing").length,
-    upgrades: libraryItems.filter(isUpgradeCandidate).length,
-    needsAttention: libraryItems.filter(isAttentionCandidate).length
+    all: facets?.all ?? 0,
+    monitored: facets?.monitored ?? 0,
+    unmonitored: facets?.unmonitored ?? 0,
+    downloaded: facets?.downloaded ?? 0,
+    downloading: 0,
+    missing: facets?.missing ?? 0,
+    upgrades: facets?.upgrades ?? 0,
+    needsAttention: 0
   };
 
   return (
