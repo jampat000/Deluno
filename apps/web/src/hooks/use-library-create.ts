@@ -15,6 +15,22 @@ export function createInitialLibraryForm(): CreateFormDraft {
   return { title: "", year: "", imdbId: "", monitored: true, metadata: null };
 }
 
+export function metadataCreatePayload(metadata: MetadataSearchResult | null) {
+  if (!metadata) return {};
+  return {
+    metadataProvider: metadata.provider,
+    metadataProviderId: metadata.providerId,
+    originalTitle: metadata.originalTitle,
+    overview: metadata.overview,
+    posterUrl: metadata.posterUrl,
+    backdropUrl: metadata.backdropUrl,
+    rating: metadata.rating,
+    genres: metadata.genres.join(", "),
+    externalUrl: metadata.externalUrl,
+    metadataJson: JSON.stringify(metadata)
+  };
+}
+
 /** Keeps add-title state local to each movie or TV library screen. */
 export function useLibraryCreate(variant: LibraryVariant, addRequested: boolean) {
   const [showCreate, setShowCreate] = useState(addRequested);

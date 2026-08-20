@@ -45,7 +45,7 @@ import { LibraryTable } from "./library-table";
 import { useDensity } from "../../lib/use-density";
 import { useLibraryFilters } from "../../hooks/use-library-filters";
 import { useBulkEdit, type BulkWorkflowOperation } from "../../hooks/use-bulk-edit";
-import { createInitialLibraryForm, useLibraryCreate, type CreateFormDraft } from "../../hooks/use-library-create";
+import { createInitialLibraryForm, metadataCreatePayload, useLibraryCreate, type CreateFormDraft } from "../../hooks/use-library-create";
 import { authedFetch } from "../../lib/use-auth";
 import { cn } from "../../lib/utils";
 import { GlassTile } from "../shell/page-hero";
@@ -1297,25 +1297,6 @@ export function LibraryView({
 
     </>
   );
-}
-
-function metadataCreatePayload(metadata: MetadataSearchResult | null) {
-  if (!metadata) {
-    return {};
-  }
-
-  return {
-    metadataProvider: metadata.provider,
-    metadataProviderId: metadata.providerId,
-    originalTitle: metadata.originalTitle,
-    overview: metadata.overview,
-    posterUrl: metadata.posterUrl,
-    backdropUrl: metadata.backdropUrl,
-    rating: metadata.rating,
-    genres: metadata.genres.join(", "),
-    externalUrl: metadata.externalUrl,
-    metadataJson: JSON.stringify(metadata)
-  };
 }
 
 /* ══════════════════════════════════════════════════════
