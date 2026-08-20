@@ -12,7 +12,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useNavigate, useNavigation, useSearchParams } from "react-router-dom";
 import type { MediaItem } from "../../lib/media-types";
@@ -45,6 +45,7 @@ import { LibraryTable } from "./library-table";
 import { useDensity } from "../../lib/use-density";
 import { useLibraryFilters } from "../../hooks/use-library-filters";
 import { useBulkEdit, type BulkWorkflowOperation } from "../../hooks/use-bulk-edit";
+import { createInitialLibraryForm, useLibraryCreate, type CreateFormDraft } from "../../hooks/use-library-create";
 import { authedFetch } from "../../lib/use-auth";
 import { cn } from "../../lib/utils";
 import { GlassTile, PageHero } from "../shell/page-hero";
@@ -60,13 +61,6 @@ import { Input } from "../ui/input";
 import { Select } from "../ui/select";
 
 type Variant = "movies" | "shows";
-type CreateFormDraft = {
-  title: string;
-  year: string;
-  imdbId: string;
-  monitored: boolean;
-  metadata: MetadataSearchResult | null;
-};
 function sameMetadataResult(left: MetadataSearchResult, right: MetadataSearchResult) {
   return left.provider === right.provider && left.providerId === right.providerId;
 }
@@ -124,13 +118,11 @@ export function LibraryView({
     executeBulkToolsOperation, toggleSelectedId, toggleSelectAllVisible
   } = useBulkEdit({ libraryItems, setLibraryItems, variant });
 
-  const [showCreate, setShowCreate] = useState(() => searchParams.get("add") === "true");
-  const [isCreating, setIsCreating] = useState(false);
-  const [createForm, setCreateForm] = useState(() => createInitialForm());
-  const [metadataResults, setMetadataResults] = useState<MetadataSearchResult[]>([]);
-  const [selectedMetadataResults, setSelectedMetadataResults] = useState<MetadataSearchResult[]>([]);
-  const [isSearchingMetadata, setIsSearchingMetadata] = useState(false);
-  const metadataSearchSequence = useRef(0);
+  const {
+    showCreate, setShowCreate, isCreating, setIsCreating, createForm, setCreateForm,
+    metadataResults, setMetadataResults, selectedMetadataResults, setSelectedMetadataResults,
+    isSearchingMetadata, setIsSearchingMetadata, metadataSearchSequence
+  } = useLibraryCreate(variant, searchParams.get("add") === "true");
 
 
 
@@ -249,16 +241,6 @@ export function LibraryView({
       setIsLoadingMore(false);
     }
   }
-
-  useEffect(() => {
-    setCreateForm(createInitialForm());
-  }, [variant]);
-
-  useEffect(() => {
-    if (searchParams.get("add") === "true") {
-      setShowCreate(true);
-    }
-  }, [searchParams]);
 
   useEffect(() => {
     const query = createForm.title.trim();
@@ -657,7 +639,7 @@ export function LibraryView({
         }
 
         if (failureCount === 0) {
-          setCreateForm(createInitialForm());
+          setCreateForm(createInitialLibraryForm());
           setMetadataResults([]);
           setSelectedMetadataResults([]);
           closeCreate();
@@ -677,7 +659,7 @@ export function LibraryView({
 
       await submitCreateDraft(createDraftFromCurrentForm());
       toast.success(variant === "movies" ? "Movie added" : "TV show added");
-      setCreateForm(createInitialForm());
+      setCreateForm(createInitialLibraryForm());
       setMetadataResults([]);
       setSelectedMetadataResults([]);
       closeCreate();
@@ -1377,10 +1359,6 @@ export function LibraryView({
 
     </>
   );
-}
-
-function createInitialForm(): CreateFormDraft {
-  return { title: "", year: "", imdbId: "", monitored: true, metadata: null as MetadataSearchResult | null };
 }
 
 function metadataCreatePayload(metadata: MetadataSearchResult | null) {
