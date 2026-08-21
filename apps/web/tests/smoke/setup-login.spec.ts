@@ -145,7 +145,7 @@ test.describe("first-run and auth screens", () => {
     await expect(page.getByRole("heading", { name: "Find & download" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "First acquisition" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Discover media" })).toBeVisible();
-    await expect(page.getByText("Optional", { exact: true })).toBeVisible();
+    await expect(page.getByText(/Optionally configure import lists/)).toBeVisible();
     await expect(page.getByText(/required steps complete/)).toBeVisible();
   });
 });
