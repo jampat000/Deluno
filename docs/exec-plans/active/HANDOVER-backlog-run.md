@@ -109,7 +109,7 @@ movies; a page is **31 KB / 30ms**; 100 pages walked with a slowest page of 22ms
 
 | Question | Answer |
 |---|---|
-| How work lands | **PR per issue.** Wait for CI green, then merge. See "branch protection" below. |
+| How work lands | **PR per issue.** Wait for every required check to be green, then manually squash-merge. `main` is not protected on the current private free-plan repository, so never use auto-merge and treat the green-check rule as a discipline. |
 | Scale target | **20,000+ items, unbounded growth.** |
 | Dead UI controls | **Make them work** (owner's instruction), not remove them. #179 did the data half; the UI half is the library view rewrite. |
 | Library view delivery | **One PR, verified live.** |
