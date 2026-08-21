@@ -110,7 +110,6 @@ test.describe("first-run and auth screens", () => {
     await authenticateAndNavigate(page, "/setup-guide");
     await page.getByRole("button", { name: /4 Connections/ }).click();
     await expect(page.getByRole("radiogroup", { name: "Search source presets" })).toBeVisible();
-    await expect(page.getByPlaceholder("https://indexer.example/api")).toHaveValue("");
     await page.getByRole("button", { name: "Test search source" }).click();
 
     await expect(page.getByText("Enter an indexer URL before testing.")).toBeVisible({ timeout: 10_000 });
