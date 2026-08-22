@@ -294,17 +294,18 @@ export function SettingsLibrariesPage() {
 
   return (
     <div className="grid gap-[var(--page-gap)]">
-      <PageToolbar
-        tabs={librarySetupNavItems}
+      <PageToolbar tabs={librarySetupNavItems} />
+
+      <ListCard
+        title="Libraries"
+        count={`${libraries.length} ${libraries.length === 1 ? "library" : "libraries"}`}
         actions={
-          <Button type="button" onClick={openCreate}>
-            <Plus className="h-4 w-4" />
+          <Button type="button" size="sm" onClick={openCreate}>
+            <Plus className="h-3.5 w-3.5" />
             New library
           </Button>
         }
-      />
-
-      <ListCard title="Libraries" count={`${libraries.length} ${libraries.length === 1 ? "library" : "libraries"}`}>
+      >
         {libraries.length === 0 ? (
           <ListEmpty
             title="No libraries yet"
