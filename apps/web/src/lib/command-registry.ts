@@ -157,7 +157,7 @@ export const settingsCommands: CommandItem[] = [
   },
   {
     id: "settings.media-management",
-    label: "Library setup · File handling & naming",
+    label: "Library setup · Media organization",
     keywords: ["naming", "import", "organise", "hardlinks", "cleanup"],
     group: "navigation",
     icon: FolderTree,

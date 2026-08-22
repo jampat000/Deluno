@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Check, ChevronDown, Code2, Wand2 } from "lucide-react";
+import { ChevronDown, Code2, Wand2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import { Select } from "../ui/select";
 import { cn } from "../../lib/utils";
 
 type NamingFormatKind = "movie-folder" | "series-folder" | "episode-file" | "destination-movie" | "destination-series";
@@ -90,6 +91,8 @@ const TOKENS: Record<NamingFormatKind, FormatToken[]> = {
   ]
 };
 
+const CUSTOM_VALUE = "__custom__";
+
 export function NamingFormatField({
   value,
   onChange,
@@ -109,60 +112,52 @@ export function NamingFormatField({
   }
 
   return (
-    <div className={cn("space-y-3", className)}>
-      <div className="grid gap-2 lg:grid-cols-3">
-        {presets.map((preset) => {
-          const active = preset.value === value;
-          const recommended = preset === presets[0];
-          return (
-            <button
-              key={preset.value}
-              type="button"
-              onClick={() => onChange(preset.value)}
-              className={cn(
-                "group rounded-xl border px-3 py-2.5 text-left transition-all",
-                active
-                  ? "border-primary/35 bg-primary/8 text-foreground"
-                  : "border-hairline bg-background/25 text-muted-foreground hover:border-primary/25 hover:bg-surface-2"
-              )}
-            >
-              <span className="flex items-center justify-between gap-2">
-                <span className="flex min-w-0 items-center gap-2">
-                  <span className="truncate text-sm font-semibold text-foreground">{preset.label}</span>
-                  {recommended ? (
-                    <span className="rounded-full border border-primary/25 bg-primary/10 px-1.5 py-0.5 text-[length:var(--type-micro)] font-semibold uppercase tracking-wide text-primary">
-                      Recommended
-                    </span>
-                  ) : null}
-                </span>
-                {active ? <Check className="h-4 w-4 text-primary" /> : null}
-              </span>
-              <span className="mt-1 block truncate text-xs text-muted-foreground">{preset.hint}</span>
-            </button>
-          );
-        })}
+    <div className={cn("grid gap-2", className)}>
+      <div className="grid gap-2 sm:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] sm:items-center">
+        <Select
+          value={selectedPreset?.value ?? CUSTOM_VALUE}
+          onChange={(event) => {
+            const preset = presets.find((candidate) => candidate.value === event.target.value);
+            if (!preset) {
+              setAdvancedOpen(true);
+              return;
+            }
+            onChange(preset.value);
+            setAdvancedOpen(false);
+          }}
+          options={[
+            ...presets.map((preset, index) => ({
+              value: preset.value,
+              label: `${preset.label}${index === 0 ? " — recommended" : ""}`
+            })),
+            { value: CUSTOM_VALUE, label: "Custom pattern" }
+          ]}
+        />
+        <div className="flex min-h-[var(--control-height)] items-center gap-2 rounded-[8px] border border-hairline bg-surface-1 px-3 text-[length:var(--type-caption)]">
+          <span className="shrink-0 font-semibold text-foreground">Preview</span>
+          <span className="truncate font-mono text-muted-foreground">{example || "Choose a style or add a custom pattern."}</span>
+        </div>
       </div>
 
-      <div className="rounded-xl border border-primary/15 bg-primary/5 px-3 py-2 text-sm text-muted-foreground">
-        <span className="font-semibold text-foreground">Example:</span>{" "}
-        <span className="font-mono text-foreground">{example || "Choose a preset or add tokens."}</span>
-      </div>
-
-      <div className="rounded-xl border border-hairline bg-background/25">
+      <div className="rounded-[8px] border border-hairline bg-background/25">
         <button
           type="button"
           onClick={() => setAdvancedOpen((open) => !open)}
-          className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm text-muted-foreground hover:text-foreground"
+          className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-[length:var(--type-caption)] text-muted-foreground hover:text-foreground"
         >
           <span className="flex items-center gap-2">
             <Code2 className="h-3.5 w-3.5" />
-            Advanced pattern and tokens
+            Advanced pattern
           </span>
-          <ChevronDown className={cn("h-4 w-4 transition-transform", advancedOpen && "rotate-180")} />
+          <span className="flex items-center gap-2">
+            <span className="text-[length:var(--type-micro)]">{advancedOpen ? "Editing" : "Optional"}</span>
+            <ChevronDown className={cn("h-4 w-4 transition-transform", advancedOpen && "rotate-180")} />
+          </span>
         </button>
 
         {advancedOpen ? (
-          <div className="border-t border-hairline p-3">
+          <div className="grid gap-2 border-t border-hairline p-3">
+            <p className="text-[length:var(--type-caption)] text-muted-foreground">Use a custom pattern only if the presets do not fit your library.</p>
             <Input
               value={value}
               onChange={(event) => onChange(event.target.value)}

@@ -1,5 +1,5 @@
 /**
- * File handling & naming, and Processing workflow — two routes, one module.
+ * Media organization and Processing workflow — two routes, one module.
  *
  *   File handling  → page form: Folder naming · Import behaviour · PageFooter
  *   Processing     → ListCard of libraries → drawer (workflow per library),
@@ -111,7 +111,7 @@ function FileHandlingPage() {
     <form onSubmit={handleSubmit} className="flex flex-col gap-[var(--page-gap)]" noValidate>
       <PageToolbar tabs={librarySetupNavItems} />
 
-      <ListCard title="Folder and file naming" count="How Deluno names media when it creates or renames it">
+      <ListCard title="Naming style" count="Choose a consistent style for folders and episode files">
         <div className="grid gap-[var(--grid-gap)] p-[var(--card-pad-x)]">
           <Field label="Movie folders" help="Used when Deluno creates or renames a movie folder.">
             <NamingFormatField kind="movie-folder" value={form.movieFolderFormat} onChange={(value) => setForm((current) => ({ ...current, movieFolderFormat: value }))} placeholder="{Movie Title} ({Release Year})" />
@@ -125,7 +125,7 @@ function FileHandlingPage() {
         </div>
       </ListCard>
 
-      <ListCard title="On import" count="What Deluno does once a download finishes">
+      <ListCard title="Import behavior" count="Choose what happens after a download completes">
         <div className="grid gap-[var(--grid-gap)] p-[var(--card-pad-x)]">
           <SwitchRow label="Rename on import" description="Rename files and folders using the patterns above." checked={form.renameOnImport} onCheckedChange={(checked) => setForm((current) => ({ ...current, renameOnImport: checked }))} />
           <SwitchRow label="Use hardlinks" description="Keep seeding without a second full copy, when the filesystem supports it." checked={form.useHardlinks} onCheckedChange={(checked) => setForm((current) => ({ ...current, useHardlinks: checked }))} />
@@ -137,7 +137,7 @@ function FileHandlingPage() {
         </div>
       </ListCard>
 
-      <PageFooter state={state} message={message} saveLabel="Save file handling" onDiscard={() => setForm(saved)} />
+      <PageFooter state={state} message={message} saveLabel="Save changes" onDiscard={() => setForm(saved)} />
     </form>
   );
 }

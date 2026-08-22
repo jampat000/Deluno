@@ -7,7 +7,7 @@ import { PageToolbar } from "../ui/page-toolbar";
 
 export const librarySetupNavItems = [
   { to: "/settings/libraries", label: "Library folders", end: false },
-  { to: "/settings/media-management", label: "File handling & naming", end: false },
+  { to: "/settings/media-management", label: "Media organization", end: false },
   { to: "/settings/processing", label: "Processing workflow", end: false },
   { to: "/settings/destination-rules", label: "Final destinations", end: false },
   { to: "/settings/metadata", label: "Metadata & sidecars", end: false },
@@ -145,8 +145,8 @@ export const settingsPageMeta = [
   },
   {
     match: (path: string) => path.startsWith("/settings/media-management"),
-    title: "File handling & naming",
-    description: "Set how completed files are named, linked, cleaned up, and imported into your library.",
+    title: "Media organization",
+    description: "Choose how Deluno names, imports, and organizes your media.",
     chrome: "none"
   },
   {

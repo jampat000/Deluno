@@ -237,6 +237,9 @@ test.describe("dashboard workflow", () => {
   test("keeps the same configuration tree in every configuration family", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "mobile", "The mobile drawer has the same destination tree.");
     await authenticateAndNavigate(page, "/settings/media-management");
+    await expect(page.getByRole("heading", { name: "Media organization", exact: true })).toBeVisible();
+    await expect(page.getByText("Naming style", { exact: true })).toBeVisible();
+    await expect(page.getByText("Import behavior", { exact: true })).toBeVisible();
 
     // Area rows, not their children — see the tabsInToolbar rule on
     // configurationNavAreas. Child pages live in the page toolbar.
