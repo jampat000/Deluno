@@ -1,5 +1,5 @@
 /**
- * Media organisation, Import policy, and Processing workflow — one module.
+ * Media Management: Media Naming, Import Policy, and Processing Workflow — one module.
  *
  *   File handling  → page form: Folder naming · PageFooter
  *   Processing     → ListCard of libraries → drawer (workflow per library),
@@ -299,7 +299,7 @@ function ImportPolicyPage() {
         ]}
       />
 
-      <ListCard title="Import policy" count="What happens when a download is ready">
+      <ListCard title="Import Policy" count="What happens when a download is ready">
         <ImportPolicyFields
           form={form}
           qualityModel={qualityModel}
@@ -308,7 +308,7 @@ function ImportPolicyPage() {
         />
       </ListCard>
 
-      <PageFooter state={state} message={message} saveLabel="Save import policy" onDiscard={() => { setForm(saved); setQualityModel(savedQualityModel); }} />
+      <PageFooter state={state} message={message} saveLabel="Save Import Policy" onDiscard={() => { setForm(saved); setQualityModel(savedQualityModel); }} />
     </form>
   );
 }
@@ -327,7 +327,7 @@ function ImportPolicyFields({
   return (
     <div className="grid md:grid-cols-2">
       <div className="border-b border-hairline p-[var(--card-pad-x)] md:border-r">
-        <SwitchRow label="Rename on import" description="Use the naming styles from Media naming." checked={form.renameOnImport} onCheckedChange={(checked) => onFormChange((current) => ({ ...current, renameOnImport: checked }))} />
+        <SwitchRow label="Rename on import" description="Use the naming styles from Media Naming." checked={form.renameOnImport} onCheckedChange={(checked) => onFormChange((current) => ({ ...current, renameOnImport: checked }))} />
       </div>
       <div className="border-b border-hairline p-[var(--card-pad-x)]">
         <SwitchRow label="Use hardlinks" description="Keep seeding without a second full copy." checked={form.useHardlinks} onCheckedChange={(checked) => onFormChange((current) => ({ ...current, useHardlinks: checked }))} />

@@ -1,7 +1,7 @@
 /**
  * Metadata & sidecars — a page-level form on the shared grammar.
  *
- *   PageToolbar (Library setup tabs)
+ *   PageToolbar (Media Management tabs)
  *   ListCard  what Deluno saves   (page form: language, region, sidecar files)
  *   ListCard  title matching      (status row · check runs and reports in place)
  *   ListCard  refresh jobs        (one row per maintenance command)

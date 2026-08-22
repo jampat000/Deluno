@@ -120,7 +120,7 @@ export const navigationCommands: CommandItem[] = [
   },
   {
     id: "nav.settings",
-    label: "Library setup",
+    label: "Media Management",
     keywords: ["preferences", "config"],
     group: "navigation",
     icon: Settings,
@@ -157,7 +157,7 @@ export const settingsCommands: CommandItem[] = [
   },
   {
     id: "settings.media-management",
-    label: "Library setup · Media naming",
+    label: "Media Management · Media Naming",
     keywords: ["naming", "import", "organise", "hardlinks", "cleanup"],
     group: "navigation",
     icon: FolderTree,
@@ -165,7 +165,7 @@ export const settingsCommands: CommandItem[] = [
   },
   {
     id: "settings.import-policy",
-    label: "Library setup · Import policy",
+    label: "Media Management · Import Policy",
     keywords: ["import", "downloads", "hardlinks", "cleanup", "cutoff", "upgrade"],
     group: "navigation",
     icon: Download,
@@ -173,7 +173,7 @@ export const settingsCommands: CommandItem[] = [
   },
   {
     id: "settings.processing",
-    label: "Library setup · Processing workflow",
+    label: "Media Management · Processing Workflow",
     keywords: ["processor", "fileflows", "mediamop", "handoff", "completed files", "import"],
     group: "navigation",
     icon: RefreshCw,
@@ -181,7 +181,7 @@ export const settingsCommands: CommandItem[] = [
   },
   {
     id: "settings.libraries",
-    label: "Library setup · Library & storage",
+    label: "Media Management · Library & Storage",
     keywords: ["library", "folders", "paths", "root", "movies", "tv"],
     group: "navigation",
     icon: FolderTree,
@@ -189,7 +189,7 @@ export const settingsCommands: CommandItem[] = [
   },
   {
     id: "settings.destination-rules",
-    label: "Library setup · Final destinations",
+    label: "Media Management · Final Destinations",
     keywords: ["library", "routing", "rules", "root folders", "genre", "tag", "language"],
     group: "navigation",
     icon: FolderTree,
@@ -197,7 +197,7 @@ export const settingsCommands: CommandItem[] = [
   },
   {
     id: "settings.metadata",
-    label: "Library setup · Metadata & sidecars",
+    label: "Media Management · Metadata & Sidecars",
     keywords: ["library", "tmdb", "tvdb", "fanart", "metadata", "nfo"],
     group: "navigation",
     icon: Sparkles,
@@ -205,7 +205,7 @@ export const settingsCommands: CommandItem[] = [
   },
   {
     id: "settings.tags",
-    label: "Library setup · Tags",
+    label: "Media Management · Tags",
     keywords: ["library", "tags", "labels", "groups", "routing"],
     group: "navigation",
     icon: Tag,
@@ -369,7 +369,7 @@ export const globalShortcuts: ShortcutItem[] = [
   { keys: ["g", "x"], label: "Go to Automation", group: "Navigation" },
   { keys: ["g", "a"], label: "Go to Activity", group: "Navigation" },
   { keys: ["g", "c"], label: "Go to Schedule", group: "Navigation" },
-  { keys: ["g", "s"], label: "Go to Library setup", group: "Navigation" },
+  { keys: ["g", "s"], label: "Go to Media Management", group: "Navigation" },
   { keys: ["g", "y"], label: "Go to System & settings", group: "Navigation" },
   { keys: ["j"], label: "Focus next row", group: "Table" },
   { keys: ["k"], label: "Focus previous row", group: "Table" },

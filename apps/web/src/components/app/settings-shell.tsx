@@ -6,12 +6,12 @@ import { GlossaryModal } from "../ui/glossary-modal";
 import { PageToolbar } from "../ui/page-toolbar";
 
 export const librarySetupNavItems = [
-  { to: "/settings/libraries", label: "Library & storage", end: false, icon: <FolderTree aria-hidden="true" /> },
-  { to: "/settings/media-management", label: "Media naming", end: false, icon: <SlidersHorizontal aria-hidden="true" /> },
-  { to: "/settings/import-policy", label: "Import policy", end: false, icon: <FileInput aria-hidden="true" /> },
-  { to: "/settings/processing", label: "Processing workflow", end: false, icon: <Workflow aria-hidden="true" /> },
-  { to: "/settings/destination-rules", label: "Final destinations", end: false, icon: <MapPinned aria-hidden="true" /> },
-  { to: "/settings/metadata", label: "Metadata & sidecars", end: false, icon: <Image aria-hidden="true" /> },
+  { to: "/settings/libraries", label: "Library & Storage", end: false, icon: <FolderTree aria-hidden="true" /> },
+  { to: "/settings/media-management", label: "Media Naming", end: false, icon: <SlidersHorizontal aria-hidden="true" /> },
+  { to: "/settings/import-policy", label: "Import Policy", end: false, icon: <FileInput aria-hidden="true" /> },
+  { to: "/settings/processing", label: "Processing Workflow", end: false, icon: <Workflow aria-hidden="true" /> },
+  { to: "/settings/destination-rules", label: "Final Destinations", end: false, icon: <MapPinned aria-hidden="true" /> },
+  { to: "/settings/metadata", label: "Metadata & Sidecars", end: false, icon: <Image aria-hidden="true" /> },
   { to: "/settings/tags", label: "Tags", end: false, icon: <Tags aria-hidden="true" /> }
 ] as const;
 
@@ -27,7 +27,7 @@ export const librarySetupNavItems = [
 export const configurationNavAreas = [
   {
     match: (path: string) => path === "/settings" || librarySetupNavItems.some((item) => path.startsWith(item.to)),
-    label: "Files & folders",
+    label: "Media Management",
     icon: "library",
     to: "/settings/libraries",
     tabsInToolbar: true,
@@ -129,12 +129,12 @@ const systemNavItems = [
  * The topbar renders this as the page's h1 (see routeMeta in app-layout). The
  * page body deliberately does not repeat it — a page is named once. Before this
  * was consolidated there were two independent maps, which drifted: "/settings"
- * was "Files & folders" in the topbar and "Setup overview" in the body.
+ * was "Media Management" in the topbar and "Setup overview" in the body.
  */
 export const settingsPageMeta = [
   {
     match: (path: string) => path.startsWith("/settings/processing"),
-    title: "Processing workflow",
+    title: "Media Management",
     description: "Optional: let an external processor finish a file before Deluno imports and renames it.",
     chrome: "none"
   },
@@ -146,25 +146,25 @@ export const settingsPageMeta = [
   },
   {
     match: (path: string) => path.startsWith("/settings/import-policy"),
-    title: "Import policy",
+    title: "Media Management",
     description: "Choose how Deluno handles completed downloads before they enter your library.",
     chrome: "none"
   },
   {
     match: (path: string) => path.startsWith("/settings/media-management"),
-    title: "Media naming",
+    title: "Media Management",
     description: "Choose how Deluno names and presents your media.",
     chrome: "none"
   },
   {
     match: (path: string) => path.startsWith("/settings/libraries"),
-    title: "Library & storage",
+    title: "Media Management",
     description: "Create the movie and TV libraries Deluno manages, and choose where each one lives.",
     chrome: "none"
   },
   {
     match: (path: string) => path.startsWith("/settings/destination-rules"),
-    title: "Final destinations",
+    title: "Media Management",
     description: "Choose where completed movies and TV shows finally live after Deluno imports and names them.",
     chrome: "none"
   },
@@ -213,13 +213,13 @@ export const settingsPageMeta = [
   },
   {
     match: (path: string) => path.startsWith("/settings/metadata"),
-    title: "Metadata & sidecars",
+    title: "Media Management",
     description: "Language, ratings region, artwork, and optional files saved beside your media.",
     chrome: "none"
   },
   {
     match: (path: string) => path.startsWith("/settings/tags"),
-    title: "Tags",
+    title: "Media Management",
     description: "Labels used for filtering, routing, policies, and user organisation.",
     chrome: "none"
   },
@@ -315,7 +315,7 @@ export function SystemWorkspaceLayout() {
 }
 
 export function SettingsShell({
-  eyebrow = "Library setup",
+  eyebrow = "Media Management",
   title,
   description,
   children

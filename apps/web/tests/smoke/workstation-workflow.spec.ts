@@ -91,7 +91,7 @@ test.describe("dashboard workflow", () => {
     const setupProgress = page.getByRole("region", { name: "Setup progress" });
     await expect(guidedSetup).toBeVisible();
     await expect(setupProgress).toBeVisible();
-    await expect(page.getByRole("link", { name: /1\. Library & storage/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: /1\. Media Management/ })).toBeVisible();
     const guidedSetupBox = await guidedSetup.boundingBox();
     const setupProgressBox = await setupProgress.boundingBox();
     expect(guidedSetupBox?.y).toBeLessThan(setupProgressBox?.y ?? Number.POSITIVE_INFINITY);
@@ -210,14 +210,14 @@ test.describe("dashboard workflow", () => {
     await api.dispose();
   });
 
-  test("keeps Library setup as an expandable sidebar hierarchy", async ({ page }, testInfo) => {
+  test("keeps Media Management as an expandable sidebar hierarchy", async ({ page }, testInfo) => {
     await authenticateAndNavigate(page, "/settings");
 
-    await expect(page.getByRole("heading", { name: "Library setup" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Media Management" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Setup overview" })).toBeVisible();
     if (testInfo.project.name === "mobile") {
       await page.getByRole("button", { name: "More destinations" }).click();
-      await expect(page.getByLabel("Panel").getByRole("link", { name: "Files & folders", exact: true })).toBeVisible();
+      await expect(page.getByLabel("Panel").getByRole("link", { name: "Media Management", exact: true })).toBeVisible();
       return;
     }
 
@@ -225,7 +225,7 @@ test.describe("dashboard workflow", () => {
     // row per area and the page's own toolbar is how you move between siblings.
     // See the comment on configurationNavAreas: the two must not do the same job
     // twice. Assert the area rows here, and the sibling tabs on the page below.
-    const tree = page.locator("aside").getByRole("navigation", { name: "Library setup" });
+    const tree = page.locator("aside").getByRole("navigation", { name: "Media Management" });
     for (const destination of ["/settings/libraries", "/indexers/indexers", "/settings/policy-sets", "/settings/lists"]) {
       await expect(tree.locator(`a[href="${destination}"]`).first()).toHaveCount(1);
     }
@@ -237,16 +237,16 @@ test.describe("dashboard workflow", () => {
   test("keeps the same configuration tree in every configuration family", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "mobile", "The mobile drawer has the same destination tree.");
     await authenticateAndNavigate(page, "/settings/media-management");
-    await expect(page.getByRole("heading", { name: "Media naming", exact: true })).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Media naming", exact: true })).toHaveAttribute("aria-current", "page");
-    await expect(page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Import policy", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Media Management", exact: true })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Media Naming", exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Import Policy", exact: true })).toBeVisible();
     await expect(page.getByText("Naming", { exact: true })).toBeVisible();
-    await expect(page.getByText("Import policy", { exact: true })).toHaveCount(1);
+    await expect(page.getByText("Import Policy", { exact: true })).toHaveCount(1);
 
     // Area rows, not their children — see the tabsInToolbar rule on
     // configurationNavAreas. Child pages live in the page toolbar.
     const expectedSections = ["/settings/libraries", "/indexers/indexers", "/settings/policy-sets", "/settings/lists"];
-    const navigator = page.locator("aside").getByRole("navigation", { name: "Library setup" });
+    const navigator = page.locator("aside").getByRole("navigation", { name: "Media Management" });
     await expect(navigator).toBeVisible();
     for (const destination of expectedSections) {
       await expect(navigator.locator(`a[href="${destination}"]`)).toHaveCount(1);
@@ -273,8 +273,8 @@ test.describe("dashboard workflow", () => {
     await expect(page.getByRole("textbox", { name: "Custom pattern", exact: true }).first()).toHaveValue("{Movie Title}");
 
     await page.getByRole("button", { name: "Close", exact: true }).click();
-    await page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Import policy", exact: true }).click();
-    await expect(page.locator("h1")).toHaveText("Import policy");
+    await page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Import Policy", exact: true }).click();
+    await expect(page.locator("h1")).toHaveText("Media Management");
     await expect(page.getByRole("switch", { name: "Stop upgrading when cutoff is met" })).toBeVisible();
     await expect(page.getByText("Keep monitoring missing media and future episodes, but stop searching for a better release once the cutoff quality is reached.", { exact: true })).toBeVisible();
   });
@@ -286,7 +286,7 @@ test.describe("dashboard workflow", () => {
     const maintenance = page.locator("aside").getByRole("navigation", { name: "System controls" });
     await expect(maintenance.getByRole("button", { name: /Collapse|Expand/ })).toHaveCount(0);
     await expect(maintenance.getByRole("link", { name: "System", exact: true })).toBeVisible();
-    await expect(page.locator("aside").getByRole("navigation", { name: "Library setup" }).getByRole("link", { name: "Preferences", exact: true })).toHaveCount(0);
+    await expect(page.locator("aside").getByRole("navigation", { name: "Media Management" }).getByRole("link", { name: "Preferences", exact: true })).toHaveCount(0);
   });
 
   test("keeps every system maintenance destination visible from System", async ({ page }) => {
@@ -302,7 +302,7 @@ test.describe("dashboard workflow", () => {
     test.skip(testInfo.project.name === "mobile", "The mobile drawer is touch-first.");
     await authenticateAndNavigate(page, "/settings");
 
-    const sources = page.locator("aside").getByRole("navigation", { name: "Library setup" }).getByRole("link", { name: "Connections", exact: true });
+    const sources = page.locator("aside").getByRole("navigation", { name: "Media Management" }).getByRole("link", { name: "Connections", exact: true });
     await sources.focus();
     await page.keyboard.press("Enter");
 
@@ -329,7 +329,7 @@ test.describe("dashboard workflow", () => {
       await page.getByRole("button", { name: "More destinations" }).click();
       const drawer = page.getByLabel("Panel");
       await expect(drawer.getByRole("link", { name: "Automation", exact: true })).toBeVisible();
-      await expect(drawer.getByRole("link", { name: "Files & folders", exact: true })).toBeVisible();
+      await expect(drawer.getByRole("link", { name: "Media Management", exact: true })).toBeVisible();
       await expect(drawer.getByRole("link", { name: "System", exact: true })).toBeVisible();
       await expect(drawer.getByText("Control room", { exact: true })).toHaveCount(0);
       await drawer.getByRole("link", { name: "Automation", exact: true }).click();
@@ -386,7 +386,7 @@ test.describe("dashboard workflow", () => {
     if (testInfo.project.name === "mobile") await page.getByRole("button", { name: "More destinations" }).click();
     const navigation = testInfo.project.name === "mobile"
       ? page.getByLabel("Panel")
-      : page.locator("aside").getByRole("navigation", { name: "Library setup" });
+      : page.locator("aside").getByRole("navigation", { name: "Media Management" });
     const importLists = navigation.getByRole("link", { name: "Import lists", exact: true });
     await expect(importLists).toHaveAttribute("href", "/settings/lists");
     await importLists.click();
@@ -414,11 +414,11 @@ test.describe("dashboard workflow", () => {
   test("keeps library details discoverable and provider credentials out of normal setup", async ({ page }, testInfo) => {
     await authenticateAndNavigate(page, "/settings/media-management");
 
-    // Metadata is a page inside the Files & folders area, so it is reached from
+    // Metadata is a page inside the Media Management area, so it is reached from
     // the page toolbar rather than the sidebar — see the tabsInToolbar rule.
-    await page.getByRole("link", { name: "Metadata & sidecars", exact: true }).first().click();
+    await page.getByRole("link", { name: "Metadata & Sidecars", exact: true }).first().click();
 
-    await expect(page.getByRole("heading", { name: "Metadata & sidecars", exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Media Management", exact: true }).first()).toBeVisible();
     await expect(page.getByText("What Deluno saves", { exact: true })).toBeVisible();
     await expect(page.getByText(/there are no provider keys to set/)).toBeVisible();
     await expect(page.getByText("TMDb API key", { exact: true })).toHaveCount(0);

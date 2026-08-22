@@ -79,7 +79,7 @@ const routeMeta = [
   { match: (path: string) => path.startsWith("/settings/general") || path.startsWith("/settings/notifications") || path.startsWith("/settings/ui") || path.startsWith("/settings/migration"), title: "Preferences", subtitle: "How you want Deluno to behave, look, and tell you things" },
   // Every /settings route is named by settingsPageMeta, which is the single
   // source of truth for settings page names. This used to be a handful of
-  // coarse prefix matches ending in a "Files & folders" catch-all, which is
+  // coarse prefix matches ending in a "Media Management" catch-all, which is
   // why /settings itself was titled after a different page entirely.
   {
     match: (path: string) => settingsPageMeta.some((item) => item.match(path)),
@@ -307,7 +307,7 @@ function DesktopSidebar({
         <div className="mb-2 mt-5 border-t border-hairline/70 px-[var(--shell-nav-inset)] pt-4 text-[length:var(--shell-subtle-size)] font-semibold uppercase tracking-[0.13em] text-muted-foreground first:mt-0 first:border-t-0 first:pt-0">
           Setup
         </div>
-        <nav aria-label="Library setup" className="space-y-[calc(var(--shell-nav-gap)*0.7)]">
+        <nav aria-label="Media Management" className="space-y-[calc(var(--shell-nav-gap)*0.7)]">
           <ConfigurationSidebarTree pathname={pathname} />
         </nav>
 

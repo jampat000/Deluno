@@ -1,7 +1,7 @@
 /**
  * Libraries — list → drawer.
  *
- *   PageToolbar (Library setup tabs · New library)
+ *   PageToolbar (Media Management tabs · New library)
  *   ListCard  (name · folder · default plan · automation · status · on · ›)
  *   Drawer    (Basics · Automation · Remove)
  *

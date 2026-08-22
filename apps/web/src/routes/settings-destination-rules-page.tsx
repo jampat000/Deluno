@@ -1,7 +1,7 @@
 /**
  * Final destinations — list → drawer.
  *
- *   PageToolbar (Library setup tabs · Test a title · New rule)
+ *   PageToolbar (Media Management tabs · Test a title · New rule)
  *   ListCard  (name · when · goes to · order · status · on · ›)
  *   Rule drawer (Basics · Destination · Remove) · Test drawer (routing preview)
  *
@@ -292,7 +292,7 @@ export function SettingsDestinationRulesPage() {
         }
       />
 
-      <ListCard title="Final destinations" count={destinationRules.length ? `${destinationRules.length} ${destinationRules.length === 1 ? "rule" : "rules"} · ${destinationRules.filter((rule) => rule.isEnabled).length} enabled · first match wins` : undefined}>
+      <ListCard title="Final Destinations" count={destinationRules.length ? `${destinationRules.length} ${destinationRules.length === 1 ? "rule" : "rules"} · ${destinationRules.filter((rule) => rule.isEnabled).length} enabled · first match wins` : undefined}>
         {destinationRules.length === 0 ? (
           <ListEmpty
             title="No destination rules"

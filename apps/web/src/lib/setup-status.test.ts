@@ -9,7 +9,7 @@ function input(overrides: Partial<SetupStatusInput> = {}): SetupStatusInput {
 describe("setup status", () => {
   it("explains a fresh install", () => {
     const status = buildSetupStatus(input());
-    expect(status).toMatchObject({ completedCount: 0, totalCount: 5, isComplete: false, readiness: "not-ready", summary: "Start with step 1: Library & storage." });
+    expect(status).toMatchObject({ completedCount: 0, totalCount: 5, isComplete: false, readiness: "not-ready", summary: "Start with step 1: Media Management." });
     expect(status.steps.map((step) => step.id)).toEqual(["library", "media-plans", "connections", "automation", "workflow", "discovery"]);
     expect(status.steps.map((step) => step.state)).toEqual(["not-started", "not-started", "not-started", "not-started", "not-started", "not-started"]);
     expect(status.attentionItems.map((item) => item.id)).toEqual(["library", "media-plans", "connections", "automation", "workflow"]);

@@ -79,8 +79,8 @@ export function buildSetupStatus(input: SetupStatusInput): SetupStatusModel {
     {
       id: "library",
       number: 1,
-      title: "Library & storage",
-      description: "Create your movie and TV libraries, choose their folders, then set naming and import behaviour.",
+      title: "Media Management",
+      description: "Set up your movie and TV libraries, storage paths, naming, and import behaviour.",
       status:
         configuredLibraries === 0
           ? "Not configured"
@@ -89,8 +89,8 @@ export function buildSetupStatus(input: SetupStatusInput): SetupStatusModel {
       state: configuredLibraries > 0 ? "complete" : "not-started",
       optional: false,
       to: "/settings/libraries",
-      action: configuredLibraries === 0 ? "Configure library" : "Review library",
-      attentionTitle: "Library not configured",
+      action: configuredLibraries === 0 ? "Configure media management" : "Review media management",
+      attentionTitle: "Media management not configured",
       attentionText: "Create at least one movie or TV library and choose its final folder."
     },
     {

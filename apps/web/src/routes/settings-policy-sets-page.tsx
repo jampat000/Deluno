@@ -642,7 +642,7 @@ export function SettingsPolicySetsPage() {
             </div>
           ) : (
             <p className="text-[length:var(--type-caption)] text-muted-foreground">
-              No {form.mediaType === "tv" ? "TV" : "movie"} libraries yet. Create one under Library setup, then assign this plan there or here.
+              No {form.mediaType === "tv" ? "TV" : "movie"} libraries yet. Create one under Media Management, then assign this plan there or here.
             </p>
           )}
         </DrawerSection>

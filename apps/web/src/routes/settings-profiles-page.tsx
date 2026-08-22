@@ -463,7 +463,7 @@ export function SettingsProfilesPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-[length:var(--type-caption)] text-muted-foreground">Not assigned yet. Libraries pick a profile through their media plan, or directly in Library setup.</p>
+              <p className="text-[length:var(--type-caption)] text-muted-foreground">Not assigned yet. Libraries pick a profile through their media plan, or directly in Media Management.</p>
             )}
           </DrawerSection>
         ) : null}

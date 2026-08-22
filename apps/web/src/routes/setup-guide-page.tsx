@@ -626,7 +626,7 @@ export function SetupGuidePage() {
             </Button>
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="ghost" asChild>
-                <Link to="/settings">Open Library setup</Link>
+                <Link to="/settings">Open Media Management</Link>
               </Button>
               {result ? (
                 <Button type="button" asChild>
@@ -1169,7 +1169,7 @@ function FinishStep({
         />
       </div>
       <p className="text-sm leading-relaxed text-muted-foreground">
-        Nothing here is permanent. After setup, open Library setup to refine final destinations, release scoring, quality profiles,
+        Nothing here is permanent. After setup, open Media Management to refine final destinations, release scoring, quality profiles,
         metadata preferences, tags, multi-library routing, and automation.
       </p>
     </div>
@@ -1199,7 +1199,7 @@ function SetupComplete({ result }: { result: SetupCompletion }) {
         <HandoffTile title="Dashboard" copy="See automation, provider health, queue, and recent activity." to="/" />
         <HandoffTile title="Add titles" copy="Browse and monitor the library you just created." to={result.firstTitlePath ?? "/movies"} />
         <HandoffTile title="Review routing" copy="Confirm indexer and download-client routing." to="/indexers" />
-        <HandoffTile title="Library setup" copy="Tune plans, quality, final destinations, metadata, and automation." to="/settings" />
+        <HandoffTile title="Media Management" copy="Tune plans, quality, final destinations, metadata, and automation." to="/settings" />
       </div>
     </div>
   );

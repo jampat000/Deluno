@@ -57,7 +57,7 @@ const GLOSSARY: GlossaryItem[] = [
   },
   {
     term: "Live Automation",
-    definition: "The operational view of what Deluno is searching, retrying, waiting on, or pausing right now. It is separate from Library setup so a live action is not mistaken for a permanent configuration change."
+    definition: "The operational view of what Deluno is searching, retrying, waiting on, or pausing right now. It is separate from Media Management so a live action is not mistaken for a permanent configuration change."
   },
   {
     term: "Download Health & Cleanup",
