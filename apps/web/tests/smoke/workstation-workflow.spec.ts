@@ -238,6 +238,11 @@ test.describe("dashboard workflow", () => {
     test.skip(testInfo.project.name === "mobile", "The mobile drawer has the same destination tree.");
     await authenticateAndNavigate(page, "/settings/media-management");
     await expect(page.getByRole("heading", { name: "Media organization", exact: true })).toBeVisible();
+    await expect(page.getByText("Library setup", { exact: true })).toBeVisible();
+    await expect(page.getByText("Where your media lives and how Deluno handles it.", { exact: true })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Media organization", exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(page.locator("section").nth(0).getByRole("heading", { name: "Import policy", exact: true })).toBeVisible();
+    await expect(page.locator("section").nth(1).getByRole("heading", { name: "Naming", exact: true })).toBeVisible();
     await expect(page.getByText("Naming", { exact: true })).toBeVisible();
     await expect(page.getByText("Import policy", { exact: true })).toBeVisible();
 

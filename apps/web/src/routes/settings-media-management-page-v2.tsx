@@ -166,7 +166,7 @@ function FileHandlingPage() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-[var(--page-gap)]" noValidate>
-      <PageToolbar tabs={librarySetupNavItems} />
+      <PageToolbar tabs={librarySetupNavItems} context={{ label: "Library setup", description: "Where your media lives and how Deluno handles it." }} />
 
       <SummaryStrip
         cells={[
@@ -175,6 +175,28 @@ function FileHandlingPage() {
           { label: "Import", value: form.renameOnImport ? "Organize on import" : "Keep original names", help: form.renameOnImport ? "Naming rules are applied" : "Files are left unchanged" }
         ]}
       />
+
+      <ListCard title="Import policy" count="What happens when a download is ready">
+        <div className="grid md:grid-cols-2">
+          <div className="border-b border-hairline p-[var(--card-pad-x)] md:border-r">
+            <SwitchRow label="Rename on import" description="Use the naming styles above." checked={form.renameOnImport} onCheckedChange={(checked) => setForm((current) => ({ ...current, renameOnImport: checked }))} />
+          </div>
+          <div className="border-b border-hairline p-[var(--card-pad-x)]">
+            <SwitchRow label="Use hardlinks" description="Keep seeding without a second full copy." checked={form.useHardlinks} onCheckedChange={(checked) => setForm((current) => ({ ...current, useHardlinks: checked }))} />
+          </div>
+          <div className="border-b border-hairline p-[var(--card-pad-x)] md:border-r md:border-b-0">
+            <SwitchRow label="Clean up empty folders" description="Remove leftover folders after import." checked={form.cleanupEmptyFolders} onCheckedChange={(checked) => setForm((current) => ({ ...current, cleanupEmptyFolders: checked }))} />
+          </div>
+          <div className="border-b border-hairline p-[var(--card-pad-x)] md:border-b-0">
+            <SwitchRow label="Stop upgrading when cutoff is met" description="Keep monitoring missing media and future episodes, but stop searching for a better release once the cutoff quality is reached." checked={qualityModel.upgradeStop.stopWhenCutoffMet} onCheckedChange={(checked) => setQualityModel((current) => ({ ...current, upgradeStop: { ...current.upgradeStop, stopWhenCutoffMet: checked } }))} />
+          </div>
+          <div className="border-t border-hairline p-[var(--card-pad-x)] md:col-span-2">
+            <Field label="Default completed-file location" optional help="Fallback for manual imports and downloads not linked to a client.">
+              <PathInput value={form.downloadsPath ?? ""} onChange={(value) => setForm((current) => ({ ...current, downloadsPath: value }))} browseTitle="Choose downloads folder" />
+            </Field>
+          </div>
+        </div>
+      </ListCard>
 
       <ListCard title="Naming" count="The names people see in your library">
         <div className="grid md:grid-cols-[minmax(0,1.45fr)_minmax(22rem,0.8fr)]">
@@ -222,28 +244,6 @@ function FileHandlingPage() {
               </div>
             </div>
           </aside>
-        </div>
-      </ListCard>
-
-      <ListCard title="Import policy" count="What happens when a download is ready">
-        <div className="grid md:grid-cols-2">
-          <div className="border-b border-hairline p-[var(--card-pad-x)] md:border-r">
-            <SwitchRow label="Rename on import" description="Use the naming styles above." checked={form.renameOnImport} onCheckedChange={(checked) => setForm((current) => ({ ...current, renameOnImport: checked }))} />
-          </div>
-          <div className="border-b border-hairline p-[var(--card-pad-x)]">
-            <SwitchRow label="Use hardlinks" description="Keep seeding without a second full copy." checked={form.useHardlinks} onCheckedChange={(checked) => setForm((current) => ({ ...current, useHardlinks: checked }))} />
-          </div>
-          <div className="border-b border-hairline p-[var(--card-pad-x)] md:border-r md:border-b-0">
-            <SwitchRow label="Clean up empty folders" description="Remove leftover folders after import." checked={form.cleanupEmptyFolders} onCheckedChange={(checked) => setForm((current) => ({ ...current, cleanupEmptyFolders: checked }))} />
-          </div>
-          <div className="border-b border-hairline p-[var(--card-pad-x)] md:border-b-0">
-            <SwitchRow label="Stop upgrading when cutoff is met" description="Keep monitoring missing media and future episodes, but stop searching for a better release once the cutoff quality is reached." checked={qualityModel.upgradeStop.stopWhenCutoffMet} onCheckedChange={(checked) => setQualityModel((current) => ({ ...current, upgradeStop: { ...current.upgradeStop, stopWhenCutoffMet: checked } }))} />
-          </div>
-          <div className="border-t border-hairline p-[var(--card-pad-x)] md:col-span-2">
-            <Field label="Default completed-file location" optional help="Fallback for manual imports and downloads not linked to a client.">
-              <PathInput value={form.downloadsPath ?? ""} onChange={(value) => setForm((current) => ({ ...current, downloadsPath: value }))} browseTitle="Choose downloads folder" />
-            </Field>
-          </div>
         </div>
       </ListCard>
 
@@ -420,7 +420,7 @@ function ProcessingWorkflowPage() {
 
   return (
     <div className="grid gap-[var(--page-gap)]">
-      <PageToolbar tabs={librarySetupNavItems} actions={<Button type="button" variant="outline" onClick={openCallback}><Plus className="h-4 w-4" />New callback</Button>} />
+      <PageToolbar tabs={librarySetupNavItems} context={{ label: "Library setup", description: "Where your media lives and how Deluno handles it." }} actions={<Button type="button" variant="outline" onClick={openCallback}><Plus className="h-4 w-4" />New callback</Button>} />
 
       <ListCard title="Import workflow" count="Standard import, or wait for a processor to clean the file first">
         {libraries.length === 0 ? (

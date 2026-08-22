@@ -1,17 +1,17 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { HelpCircle } from "lucide-react";
+import { FolderTree, HelpCircle, Image, MapPinned, SlidersHorizontal, Tags, Workflow } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { GlossaryModal } from "../ui/glossary-modal";
 import { PageToolbar } from "../ui/page-toolbar";
 
 export const librarySetupNavItems = [
-  { to: "/settings/libraries", label: "Library folders", end: false },
-  { to: "/settings/media-management", label: "Media organization", end: false },
-  { to: "/settings/processing", label: "Processing workflow", end: false },
-  { to: "/settings/destination-rules", label: "Final destinations", end: false },
-  { to: "/settings/metadata", label: "Metadata & sidecars", end: false },
-  { to: "/settings/tags", label: "Tags", end: false }
+  { to: "/settings/libraries", label: "Library folders", end: false, icon: <FolderTree aria-hidden="true" /> },
+  { to: "/settings/media-management", label: "Media organization", end: false, icon: <SlidersHorizontal aria-hidden="true" /> },
+  { to: "/settings/processing", label: "Processing workflow", end: false, icon: <Workflow aria-hidden="true" /> },
+  { to: "/settings/destination-rules", label: "Final destinations", end: false, icon: <MapPinned aria-hidden="true" /> },
+  { to: "/settings/metadata", label: "Metadata & sidecars", end: false, icon: <Image aria-hidden="true" /> },
+  { to: "/settings/tags", label: "Tags", end: false, icon: <Tags aria-hidden="true" /> }
 ] as const;
 
 /**
