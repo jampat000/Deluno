@@ -33,7 +33,7 @@ test.describe("dashboard workflow", () => {
     });
 
     try {
-      await drawer.getByRole("button", { name: "Choose movies library folder", exact: true }).click();
+      await drawer.getByRole("button", { name: "Choose folder", exact: true }).first().click();
 
       const advancedBrowser = page.getByRole("dialog", { name: "Choose movies library folder" });
       await expect(advancedBrowser).toBeVisible();
@@ -59,7 +59,7 @@ test.describe("dashboard workflow", () => {
     });
 
     try {
-      await drawer.getByRole("button", { name: "Choose movies library folder", exact: true }).click();
+      await drawer.getByRole("button", { name: "Choose folder", exact: true }).first().click();
       await expect(drawer.getByRole("textbox", { name: "Library folder" })).toHaveValue("C:\\Media\\Movies");
     } finally {
       await page.unroute("**/api/filesystem/native-folder-picker");

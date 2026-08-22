@@ -230,7 +230,6 @@ export function PathInput({
           className="shrink-0"
           onClick={() => void handleNativeBrowse()}
           disabled={nativePickerLoading}
-          aria-label={browseTitle}
         >
           {nativePickerLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <FolderOpen className="h-4 w-4" />}
           Choose folder
