@@ -237,14 +237,11 @@ test.describe("dashboard workflow", () => {
   test("keeps the same configuration tree in every configuration family", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "mobile", "The mobile drawer has the same destination tree.");
     await authenticateAndNavigate(page, "/settings/media-management");
-    await expect(page.getByRole("heading", { name: "Media organization", exact: true })).toBeVisible();
-    await expect(page.getByText("Library setup", { exact: true })).toBeVisible();
-    await expect(page.getByText("Where your media lives and how Deluno handles it.", { exact: true })).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Media organization", exact: true })).toHaveAttribute("aria-current", "page");
-    await expect(page.locator("section").nth(0).getByRole("heading", { name: "Import policy", exact: true })).toBeVisible();
-    await expect(page.locator("section").nth(1).getByRole("heading", { name: "Naming", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Media naming", exact: true })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Media naming", exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Import policy", exact: true })).toBeVisible();
     await expect(page.getByText("Naming", { exact: true })).toBeVisible();
-    await expect(page.getByText("Import policy", { exact: true })).toBeVisible();
+    await expect(page.getByText("Import policy", { exact: true })).toHaveCount(1);
 
     // Area rows, not their children — see the tabsInToolbar rule on
     // configurationNavAreas. Child pages live in the page toolbar.
@@ -268,14 +265,18 @@ test.describe("dashboard workflow", () => {
 
     await expect(page.getByText("Live preview", { exact: true })).toBeVisible();
     await expect(page.getByText("See how Deluno will name new and imported media.", { exact: true })).toBeVisible();
-    await expect(page.getByRole("switch", { name: "Stop upgrading when cutoff is met" })).toBeVisible();
-    await expect(page.getByText("Keep monitoring missing media and future episodes, but stop searching for a better release once the cutoff quality is reached.", { exact: true })).toBeVisible();
     await page.getByRole("radio", { name: "Custom pattern", exact: true }).first().click();
     await expect(page.getByRole("textbox", { name: "Custom pattern", exact: true }).first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Movie title", exact: true }).first()).toBeVisible();
 
     await page.getByRole("button", { name: "Movie title", exact: true }).first().click();
     await expect(page.getByRole("textbox", { name: "Custom pattern", exact: true }).first()).toHaveValue("{Movie Title}");
+
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    await page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Import policy", exact: true }).click();
+    await expect(page.locator("h1")).toHaveText("Import policy");
+    await expect(page.getByRole("switch", { name: "Stop upgrading when cutoff is met" })).toBeVisible();
+    await expect(page.getByText("Keep monitoring missing media and future episodes, but stop searching for a better release once the cutoff quality is reached.", { exact: true })).toBeVisible();
   });
 
   test("keeps installation-wide settings under Maintain Deluno", async ({ page }, testInfo) => {

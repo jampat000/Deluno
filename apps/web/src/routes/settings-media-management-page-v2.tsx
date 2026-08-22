@@ -1,7 +1,7 @@
 /**
- * Media organization and Processing workflow — two routes, one module.
+ * Media organisation, Import policy, and Processing workflow — one module.
  *
- *   File handling  → page form: Folder naming · Import behaviour · PageFooter
+ *   File handling  → page form: Folder naming · PageFooter
  *   Processing     → ListCard of libraries → drawer (workflow per library),
  *                    plus optional completion callbacks as their own list.
  *
@@ -66,6 +66,7 @@ export async function settingsMediaManagementLoader(): Promise<LoaderData> {
 
 export function SettingsMediaManagementPage() {
   const location = useLocation();
+  if (location.pathname.startsWith("/settings/import-policy")) return <ImportPolicyPage />;
   return location.pathname.startsWith("/settings/processing") ? <ProcessingWorkflowPage /> : <FileHandlingPage />;
 }
 
@@ -101,17 +102,15 @@ function customPatternPreview(kind: NamingFormatKind, value: string, placeholder
 }
 
 function FileHandlingPage() {
-  const { qualityModel: loadedQualityModel, settings } = useLoaderData() as LoaderData;
+  const { settings } = useLoaderData() as LoaderData;
   const settingsMutation = useApiMutation<PlatformSettingsPatch, PlatformSettingsSnapshot>("/api/settings", "PATCH");
-  const [savedQualityModel, setSavedQualityModel] = useState(loadedQualityModel);
-  const [qualityModel, setQualityModel] = useState(loadedQualityModel);
   const [saved, setSaved] = useState(settings);
   const [form, setForm] = useState(settings);
   const [customDrawer, setCustomDrawer] = useState<CustomPatternDrawerState | null>(null);
   const [saveState, setSaveState] = useState<Exclude<DrawerSaveState, "clean" | "dirty">>();
   const [message, setMessage] = useState<string | null>(null);
 
-  const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(saved) || JSON.stringify(qualityModel) !== JSON.stringify(savedQualityModel), [form, qualityModel, saved, savedQualityModel]);
+  const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(saved), [form, saved]);
   const state: DrawerSaveState = saveState === "saving" ? "saving" : dirty ? "dirty" : saveState ?? "clean";
   const customDrawerDirty = customDrawer !== null && customDrawer.value !== customDrawer.previousValue;
   useUnsavedChanges(dirty);
@@ -136,26 +135,17 @@ function FileHandlingPage() {
     if (state === "saving") return;
     setSaveState("saving");
     try {
-      const [nextSettings, nextQualityModel] = await Promise.all([
-        settingsMutation.mutate({
-          movieFolderFormat: form.movieFolderFormat,
-          seriesFolderFormat: form.seriesFolderFormat,
-          episodeFileFormat: form.episodeFileFormat,
-          renameOnImport: form.renameOnImport,
-          useHardlinks: form.useHardlinks,
-          cleanupEmptyFolders: form.cleanupEmptyFolders,
-          downloadsPath: form.downloadsPath ?? ""
-        }),
-        fetchJson<QualityModelSnapshot>("/api/quality-model", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tiers: qualityModel.tiers, upgradeStop: qualityModel.upgradeStop })
-        })
-      ]);
+      const nextSettings = await settingsMutation.mutate({
+        movieFolderFormat: form.movieFolderFormat,
+        seriesFolderFormat: form.seriesFolderFormat,
+        episodeFileFormat: form.episodeFileFormat,
+        renameOnImport: form.renameOnImport,
+        useHardlinks: form.useHardlinks,
+        cleanupEmptyFolders: form.cleanupEmptyFolders,
+        downloadsPath: form.downloadsPath ?? ""
+      });
       setSaved(nextSettings);
       setForm(nextSettings);
-      setSavedQualityModel(nextQualityModel);
-      setQualityModel(nextQualityModel);
       setSaveState("saved");
       setMessage("Saved just now");
     } catch (error) {
@@ -166,37 +156,14 @@ function FileHandlingPage() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-[var(--page-gap)]" noValidate>
-      <PageToolbar tabs={librarySetupNavItems} context={{ label: "Library setup", description: "Where your media lives and how Deluno handles it." }} />
+      <PageToolbar tabs={librarySetupNavItems} />
 
       <SummaryStrip
         cells={[
           { label: "Folders", value: namingStyleLabel("movie-folder", form.movieFolderFormat) === namingStyleLabel("series-folder", form.seriesFolderFormat) ? namingStyleLabel("movie-folder", form.movieFolderFormat) : "Mixed styles", help: "Movies and TV shows" },
           { label: "Episodes", value: namingStyleLabel("episode-file", form.episodeFileFormat), help: "Imported episode files" },
-          { label: "Import", value: form.renameOnImport ? "Organize on import" : "Keep original names", help: form.renameOnImport ? "Naming rules are applied" : "Files are left unchanged" }
         ]}
       />
-
-      <ListCard title="Import policy" count="What happens when a download is ready">
-        <div className="grid md:grid-cols-2">
-          <div className="border-b border-hairline p-[var(--card-pad-x)] md:border-r">
-            <SwitchRow label="Rename on import" description="Use the naming styles above." checked={form.renameOnImport} onCheckedChange={(checked) => setForm((current) => ({ ...current, renameOnImport: checked }))} />
-          </div>
-          <div className="border-b border-hairline p-[var(--card-pad-x)]">
-            <SwitchRow label="Use hardlinks" description="Keep seeding without a second full copy." checked={form.useHardlinks} onCheckedChange={(checked) => setForm((current) => ({ ...current, useHardlinks: checked }))} />
-          </div>
-          <div className="border-b border-hairline p-[var(--card-pad-x)] md:border-r md:border-b-0">
-            <SwitchRow label="Clean up empty folders" description="Remove leftover folders after import." checked={form.cleanupEmptyFolders} onCheckedChange={(checked) => setForm((current) => ({ ...current, cleanupEmptyFolders: checked }))} />
-          </div>
-          <div className="border-b border-hairline p-[var(--card-pad-x)] md:border-b-0">
-            <SwitchRow label="Stop upgrading when cutoff is met" description="Keep monitoring missing media and future episodes, but stop searching for a better release once the cutoff quality is reached." checked={qualityModel.upgradeStop.stopWhenCutoffMet} onCheckedChange={(checked) => setQualityModel((current) => ({ ...current, upgradeStop: { ...current.upgradeStop, stopWhenCutoffMet: checked } }))} />
-          </div>
-          <div className="border-t border-hairline p-[var(--card-pad-x)] md:col-span-2">
-            <Field label="Default completed-file location" optional help="Fallback for manual imports and downloads not linked to a client.">
-              <PathInput value={form.downloadsPath ?? ""} onChange={(value) => setForm((current) => ({ ...current, downloadsPath: value }))} browseTitle="Choose downloads folder" />
-            </Field>
-          </div>
-        </div>
-      </ListCard>
 
       <ListCard title="Naming" count="The names people see in your library">
         <div className="grid md:grid-cols-[minmax(0,1.45fr)_minmax(22rem,0.8fr)]">
@@ -270,6 +237,113 @@ function FileHandlingPage() {
         ) : null}
       </Drawer>
     </form>
+  );
+}
+
+function ImportPolicyPage() {
+  const { qualityModel: loadedQualityModel, settings } = useLoaderData() as LoaderData;
+  const settingsMutation = useApiMutation<PlatformSettingsPatch, PlatformSettingsSnapshot>("/api/settings", "PATCH");
+  const [savedQualityModel, setSavedQualityModel] = useState(loadedQualityModel);
+  const [qualityModel, setQualityModel] = useState(loadedQualityModel);
+  const [saved, setSaved] = useState(settings);
+  const [form, setForm] = useState(settings);
+  const [saveState, setSaveState] = useState<Exclude<DrawerSaveState, "clean" | "dirty">>();
+  const [message, setMessage] = useState<string | null>(null);
+
+  const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(saved) || JSON.stringify(qualityModel) !== JSON.stringify(savedQualityModel), [form, qualityModel, saved, savedQualityModel]);
+  const state: DrawerSaveState = saveState === "saving" ? "saving" : dirty ? "dirty" : saveState ?? "clean";
+  useUnsavedChanges(dirty);
+  useEffect(() => {
+    if (dirty && (saveState === "saved" || saveState === "error")) setSaveState(undefined);
+  }, [dirty, saveState]);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (state === "saving") return;
+    setSaveState("saving");
+    try {
+      const [nextSettings, nextQualityModel] = await Promise.all([
+        settingsMutation.mutate({
+          renameOnImport: form.renameOnImport,
+          useHardlinks: form.useHardlinks,
+          cleanupEmptyFolders: form.cleanupEmptyFolders,
+          downloadsPath: form.downloadsPath ?? ""
+        }),
+        fetchJson<QualityModelSnapshot>("/api/quality-model", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tiers: qualityModel.tiers, upgradeStop: qualityModel.upgradeStop })
+        })
+      ]);
+      setSaved(nextSettings);
+      setForm(nextSettings);
+      setSavedQualityModel(nextQualityModel);
+      setQualityModel(nextQualityModel);
+      setSaveState("saved");
+      setMessage("Saved just now");
+    } catch (error) {
+      setSaveState("error");
+      setMessage(error instanceof Error ? error.message : "Could not save");
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-[var(--page-gap)]" noValidate>
+      <PageToolbar tabs={librarySetupNavItems} />
+
+      <SummaryStrip
+        cells={[
+          { label: "Import", value: form.renameOnImport ? "Organise on import" : "Keep original names", help: form.renameOnImport ? "Naming rules are applied" : "Files are left unchanged" },
+          { label: "Seeding", value: form.useHardlinks ? "Use hardlinks" : "Copy files", help: form.useHardlinks ? "Keep seeding without a second full copy" : "Create a separate library copy" },
+          { label: "Upgrades", value: qualityModel.upgradeStop.stopWhenCutoffMet ? "Stop at cutoff" : "Keep searching", help: qualityModel.upgradeStop.stopWhenCutoffMet ? "Keep monitoring, but do not seek a better release" : "Continue searching for better releases" }
+        ]}
+      />
+
+      <ListCard title="Import policy" count="What happens when a download is ready">
+        <ImportPolicyFields
+          form={form}
+          qualityModel={qualityModel}
+          onFormChange={(update) => setForm((current) => update(current))}
+          onStopWhenCutoffMetChange={(checked) => setQualityModel((current) => ({ ...current, upgradeStop: { ...current.upgradeStop, stopWhenCutoffMet: checked } }))}
+        />
+      </ListCard>
+
+      <PageFooter state={state} message={message} saveLabel="Save import policy" onDiscard={() => { setForm(saved); setQualityModel(savedQualityModel); }} />
+    </form>
+  );
+}
+
+function ImportPolicyFields({
+  form,
+  qualityModel,
+  onFormChange,
+  onStopWhenCutoffMetChange
+}: {
+  form: PlatformSettingsSnapshot;
+  qualityModel: QualityModelSnapshot;
+  onFormChange: (update: (current: PlatformSettingsSnapshot) => PlatformSettingsSnapshot) => void;
+  onStopWhenCutoffMetChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="grid md:grid-cols-2">
+      <div className="border-b border-hairline p-[var(--card-pad-x)] md:border-r">
+        <SwitchRow label="Rename on import" description="Use the naming styles from Media naming." checked={form.renameOnImport} onCheckedChange={(checked) => onFormChange((current) => ({ ...current, renameOnImport: checked }))} />
+      </div>
+      <div className="border-b border-hairline p-[var(--card-pad-x)]">
+        <SwitchRow label="Use hardlinks" description="Keep seeding without a second full copy." checked={form.useHardlinks} onCheckedChange={(checked) => onFormChange((current) => ({ ...current, useHardlinks: checked }))} />
+      </div>
+      <div className="border-b border-hairline p-[var(--card-pad-x)] md:border-r md:border-b-0">
+        <SwitchRow label="Clean up empty folders" description="Remove leftover folders after import." checked={form.cleanupEmptyFolders} onCheckedChange={(checked) => onFormChange((current) => ({ ...current, cleanupEmptyFolders: checked }))} />
+      </div>
+      <div className="border-b border-hairline p-[var(--card-pad-x)] md:border-b-0">
+        <SwitchRow label="Stop upgrading when cutoff is met" description="Keep monitoring missing media and future episodes, but stop searching for a better release once the cutoff quality is reached." checked={qualityModel.upgradeStop.stopWhenCutoffMet} onCheckedChange={onStopWhenCutoffMetChange} />
+      </div>
+      <div className="border-t border-hairline p-[var(--card-pad-x)] md:col-span-2">
+        <Field label="Default completed-file location" optional help="Fallback for manual imports and downloads not linked to a client.">
+          <PathInput value={form.downloadsPath ?? ""} onChange={(value) => onFormChange((current) => ({ ...current, downloadsPath: value }))} browseTitle="Choose downloads folder" />
+        </Field>
+      </div>
+    </div>
   );
 }
 
@@ -420,7 +494,7 @@ function ProcessingWorkflowPage() {
 
   return (
     <div className="grid gap-[var(--page-gap)]">
-      <PageToolbar tabs={librarySetupNavItems} context={{ label: "Library setup", description: "Where your media lives and how Deluno handles it." }} actions={<Button type="button" variant="outline" onClick={openCallback}><Plus className="h-4 w-4" />New callback</Button>} />
+      <PageToolbar tabs={librarySetupNavItems} actions={<Button type="button" variant="outline" onClick={openCallback}><Plus className="h-4 w-4" />New callback</Button>} />
 
       <ListCard title="Import workflow" count="Standard import, or wait for a processor to clean the file first">
         {libraries.length === 0 ? (

@@ -157,11 +157,19 @@ export const settingsCommands: CommandItem[] = [
   },
   {
     id: "settings.media-management",
-    label: "Library setup · Media organization",
+    label: "Library setup · Media naming",
     keywords: ["naming", "import", "organise", "hardlinks", "cleanup"],
     group: "navigation",
     icon: FolderTree,
     to: "/settings/media-management"
+  },
+  {
+    id: "settings.import-policy",
+    label: "Library setup · Import policy",
+    keywords: ["import", "downloads", "hardlinks", "cleanup", "cutoff", "upgrade"],
+    group: "navigation",
+    icon: Download,
+    to: "/settings/import-policy"
   },
   {
     id: "settings.processing",
@@ -173,7 +181,7 @@ export const settingsCommands: CommandItem[] = [
   },
   {
     id: "settings.libraries",
-    label: "Library setup · Library folders",
+    label: "Library setup · Library & storage",
     keywords: ["library", "folders", "paths", "root", "movies", "tv"],
     group: "navigation",
     icon: FolderTree,

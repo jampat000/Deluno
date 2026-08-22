@@ -1,13 +1,14 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { FolderTree, HelpCircle, Image, MapPinned, SlidersHorizontal, Tags, Workflow } from "lucide-react";
+import { FileInput, FolderTree, HelpCircle, Image, MapPinned, SlidersHorizontal, Tags, Workflow } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { GlossaryModal } from "../ui/glossary-modal";
 import { PageToolbar } from "../ui/page-toolbar";
 
 export const librarySetupNavItems = [
-  { to: "/settings/libraries", label: "Library folders", end: false, icon: <FolderTree aria-hidden="true" /> },
-  { to: "/settings/media-management", label: "Media organization", end: false, icon: <SlidersHorizontal aria-hidden="true" /> },
+  { to: "/settings/libraries", label: "Library & storage", end: false, icon: <FolderTree aria-hidden="true" /> },
+  { to: "/settings/media-management", label: "Media naming", end: false, icon: <SlidersHorizontal aria-hidden="true" /> },
+  { to: "/settings/import-policy", label: "Import policy", end: false, icon: <FileInput aria-hidden="true" /> },
   { to: "/settings/processing", label: "Processing workflow", end: false, icon: <Workflow aria-hidden="true" /> },
   { to: "/settings/destination-rules", label: "Final destinations", end: false, icon: <MapPinned aria-hidden="true" /> },
   { to: "/settings/metadata", label: "Metadata & sidecars", end: false, icon: <Image aria-hidden="true" /> },
@@ -144,14 +145,20 @@ export const settingsPageMeta = [
       "Guided configuration for your media library, quality policy, automation, and runtime behaviour."
   },
   {
+    match: (path: string) => path.startsWith("/settings/import-policy"),
+    title: "Import policy",
+    description: "Choose how Deluno handles completed downloads before they enter your library.",
+    chrome: "none"
+  },
+  {
     match: (path: string) => path.startsWith("/settings/media-management"),
-    title: "Media organization",
-    description: "Choose how Deluno names, imports, and organizes your media.",
+    title: "Media naming",
+    description: "Choose how Deluno names and presents your media.",
     chrome: "none"
   },
   {
     match: (path: string) => path.startsWith("/settings/libraries"),
-    title: "Library folders",
+    title: "Library & storage",
     description: "Create the movie and TV libraries Deluno manages, and choose where each one lives.",
     chrome: "none"
   },

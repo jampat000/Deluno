@@ -297,6 +297,16 @@ export const router = createBrowserRouter([
             })
           },
           {
+            path: "import-policy",
+            lazy: withSkeleton(async () => {
+              const module = await import("./routes/settings-media-management-page-v2");
+              return {
+                loader: module.settingsMediaManagementLoader,
+                Component: module.SettingsMediaManagementPage
+              };
+            })
+          },
+          {
             path: "processing",
             lazy: withSkeleton(async () => {
               const module = await import("./routes/settings-media-management-page-v2");
