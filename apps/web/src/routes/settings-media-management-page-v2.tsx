@@ -113,27 +113,35 @@ function FileHandlingPage() {
 
       <ListCard title="Naming style" count="Choose a consistent style for folders and episode files">
         <div className="grid gap-[var(--grid-gap)] p-[var(--card-pad-x)]">
-          <Field label="Movie folders" help="Used when Deluno creates or renames a movie folder.">
-            <NamingFormatField kind="movie-folder" value={form.movieFolderFormat} onChange={(value) => setForm((current) => ({ ...current, movieFolderFormat: value }))} placeholder="{Movie Title} ({Release Year})" />
-          </Field>
-          <Field label="Series folders" help="Used when Deluno creates or renames a TV show folder.">
-            <NamingFormatField kind="series-folder" value={form.seriesFolderFormat} onChange={(value) => setForm((current) => ({ ...current, seriesFolderFormat: value }))} placeholder="{Series Title} ({Series Year})" />
-          </Field>
-          <Field label="Episode files" help="Used when Deluno renames imported episode files.">
-            <NamingFormatField kind="episode-file" value={form.episodeFileFormat} onChange={(value) => setForm((current) => ({ ...current, episodeFileFormat: value }))} placeholder="{Series Title} - S{Season:00}E{Episode:00} - {Episode Title}" />
-          </Field>
+          <FieldRow>
+            <Field label="Movie folders" help="Used when Deluno creates or renames a movie folder.">
+              <NamingFormatField kind="movie-folder" value={form.movieFolderFormat} onChange={(value) => setForm((current) => ({ ...current, movieFolderFormat: value }))} placeholder="{Movie Title} ({Release Year})" />
+            </Field>
+            <Field label="Series folders" help="Used when Deluno creates or renames a TV show folder.">
+              <NamingFormatField kind="series-folder" value={form.seriesFolderFormat} onChange={(value) => setForm((current) => ({ ...current, seriesFolderFormat: value }))} placeholder="{Series Title} ({Series Year})" />
+            </Field>
+          </FieldRow>
+          <div className="border-t border-hairline pt-[var(--grid-gap)]">
+            <Field label="Episode files" help="Used when Deluno renames imported episode files.">
+              <NamingFormatField kind="episode-file" value={form.episodeFileFormat} onChange={(value) => setForm((current) => ({ ...current, episodeFileFormat: value }))} placeholder="{Series Title} - S{Season:00}E{Episode:00} - {Episode Title}" />
+            </Field>
+          </div>
         </div>
       </ListCard>
 
       <ListCard title="Import behavior" count="Choose what happens after a download completes">
         <div className="grid gap-[var(--grid-gap)] p-[var(--card-pad-x)]">
-          <SwitchRow label="Rename on import" description="Rename files and folders using the patterns above." checked={form.renameOnImport} onCheckedChange={(checked) => setForm((current) => ({ ...current, renameOnImport: checked }))} />
-          <SwitchRow label="Use hardlinks" description="Keep seeding without a second full copy, when the filesystem supports it." checked={form.useHardlinks} onCheckedChange={(checked) => setForm((current) => ({ ...current, useHardlinks: checked }))} />
-          <SwitchRow label="Clean up empty folders" description="Remove leftover empty folders after an import." checked={form.cleanupEmptyFolders} onCheckedChange={(checked) => setForm((current) => ({ ...current, cleanupEmptyFolders: checked }))} />
-          <SwitchRow label="Unmonitor at cutoff" description="Stop watching a title once its file reaches the cutoff quality." checked={form.unmonitorWhenCutoffMet} onCheckedChange={(checked) => setForm((current) => ({ ...current, unmonitorWhenCutoffMet: checked }))} />
-          <Field label="Default completed-file location" optional help="Fallback for manual imports and downloads not linked to a client. For a normal client, set its completed folder in the client itself and use File locations on Connections when Deluno sees those files under a different path.">
-            <PathInput value={form.downloadsPath ?? ""} onChange={(value) => setForm((current) => ({ ...current, downloadsPath: value }))} browseTitle="Choose downloads folder" />
-          </Field>
+          <div className="grid gap-[var(--grid-gap)] md:grid-cols-2">
+            <SwitchRow label="Rename on import" description="Use the naming styles above." checked={form.renameOnImport} onCheckedChange={(checked) => setForm((current) => ({ ...current, renameOnImport: checked }))} />
+            <SwitchRow label="Use hardlinks" description="Keep seeding without a second full copy." checked={form.useHardlinks} onCheckedChange={(checked) => setForm((current) => ({ ...current, useHardlinks: checked }))} />
+            <SwitchRow label="Clean up empty folders" description="Remove leftover folders after import." checked={form.cleanupEmptyFolders} onCheckedChange={(checked) => setForm((current) => ({ ...current, cleanupEmptyFolders: checked }))} />
+            <SwitchRow label="Unmonitor at cutoff" description="Stop watching a title at its cutoff quality." checked={form.unmonitorWhenCutoffMet} onCheckedChange={(checked) => setForm((current) => ({ ...current, unmonitorWhenCutoffMet: checked }))} />
+          </div>
+          <div className="border-t border-hairline pt-[var(--grid-gap)]">
+            <Field label="Default completed-file location" optional help="Fallback for manual imports and downloads not linked to a client.">
+              <PathInput value={form.downloadsPath ?? ""} onChange={(value) => setForm((current) => ({ ...current, downloadsPath: value }))} browseTitle="Choose downloads folder" />
+            </Field>
+          </div>
         </div>
       </ListCard>
 

@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { ChevronDown, Code2, Wand2 } from "lucide-react";
+import { ChevronDown, Wand2 } from "lucide-react";
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Select } from "../ui/select";
+import { PresetField } from "../ui/preset-field";
 import { cn } from "../../lib/utils";
 
 type NamingFormatKind = "movie-folder" | "series-folder" | "episode-file" | "destination-movie" | "destination-series";
@@ -91,8 +90,6 @@ const TOKENS: Record<NamingFormatKind, FormatToken[]> = {
   ]
 };
 
-const CUSTOM_VALUE = "__custom__";
-
 export function NamingFormatField({
   value,
   onChange,
@@ -104,77 +101,60 @@ export function NamingFormatField({
   const tokens = TOKENS[kind];
   const selectedPreset = presets.find((preset) => preset.value === value);
   const example = selectedPreset?.hint ?? previewFormat(value || placeholder || "");
-  const [advancedOpen, setAdvancedOpen] = useState(!selectedPreset);
+  const [tokensOpen, setTokensOpen] = useState(false);
+  const isCustom = !selectedPreset && value.trim().length > 0;
 
   function insertToken(token: string) {
     const separator = value.trim().length === 0 || value.endsWith(" ") || value.endsWith("\\") ? "" : " ";
     onChange(`${value}${separator}${token}`);
   }
 
+  function handleChange(nextValue: string) {
+    if (presets.some((preset) => preset.value === nextValue)) setTokensOpen(false);
+    onChange(nextValue);
+  }
+
   return (
-    <div className={cn("grid gap-2", className)}>
-      <div className="grid gap-2 sm:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] sm:items-center">
-        <Select
-          value={selectedPreset?.value ?? CUSTOM_VALUE}
-          onChange={(event) => {
-            const preset = presets.find((candidate) => candidate.value === event.target.value);
-            if (!preset) {
-              setAdvancedOpen(true);
-              return;
-            }
-            onChange(preset.value);
-            setAdvancedOpen(false);
-          }}
-          options={[
-            ...presets.map((preset, index) => ({
-              value: preset.value,
-              label: `${preset.label}${index === 0 ? " — recommended" : ""}`
-            })),
-            { value: CUSTOM_VALUE, label: "Custom pattern" }
-          ]}
-        />
-        <div className="flex min-h-[var(--control-height)] items-center gap-2 rounded-[8px] border border-hairline bg-surface-1 px-3 text-[length:var(--type-caption)]">
-          <span className="shrink-0 font-semibold text-foreground">Preview</span>
-          <span className="truncate font-mono text-muted-foreground">{example || "Choose a style or add a custom pattern."}</span>
-        </div>
+    <div className={cn("grid gap-1.5", className)}>
+      <PresetField
+        value={value}
+        onChange={handleChange}
+        options={presets.map((preset, index) => ({
+          value: preset.value,
+          label: `${preset.label}${index === 0 ? " — recommended" : ""}`
+        }))}
+        customLabel="Custom pattern"
+        customPlaceholder={placeholder}
+      />
+      <div className="flex min-w-0 items-baseline gap-2 px-1 text-[length:var(--type-caption)]">
+        <span className="shrink-0 text-muted-foreground">Example</span>
+        <code className="truncate text-foreground">{example || "Choose a style or add a custom pattern."}</code>
       </div>
-
-      <div className="rounded-[8px] border border-hairline bg-background/25">
-        <button
-          type="button"
-          onClick={() => setAdvancedOpen((open) => !open)}
-          className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-[length:var(--type-caption)] text-muted-foreground hover:text-foreground"
-        >
-          <span className="flex items-center gap-2">
-            <Code2 className="h-3.5 w-3.5" />
-            Advanced pattern
-          </span>
-          <span className="flex items-center gap-2">
-            <span className="text-[length:var(--type-micro)]">{advancedOpen ? "Editing" : "Optional"}</span>
-            <ChevronDown className={cn("h-4 w-4 transition-transform", advancedOpen && "rotate-180")} />
-          </span>
-        </button>
-
-        {advancedOpen ? (
-          <div className="grid gap-2 border-t border-hairline p-3">
-            <p className="text-[length:var(--type-caption)] text-muted-foreground">Use a custom pattern only if the presets do not fit your library.</p>
-            <Input
-              value={value}
-              onChange={(event) => onChange(event.target.value)}
-              placeholder={placeholder}
-              className="font-mono"
-            />
-            <div className="mt-3 flex flex-wrap gap-1.5">
+      {isCustom ? (
+        <div className="rounded-[8px] border border-hairline bg-background/25">
+          <button
+            type="button"
+            onClick={() => setTokensOpen((open) => !open)}
+            className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-[length:var(--type-caption)] text-muted-foreground hover:text-foreground"
+            aria-expanded={tokensOpen}
+          >
+            <span className="flex items-center gap-2">
+              <Wand2 className="h-3.5 w-3.5" />
+              Insert tokens
+            </span>
+            <ChevronDown className={cn("h-4 w-4 transition-transform", tokensOpen && "rotate-180")} />
+          </button>
+          {tokensOpen ? (
+            <div className="flex flex-wrap gap-1.5 border-t border-hairline p-2">
               {tokens.map((token) => (
                 <Button key={token.value} type="button" variant="outline" size="sm" onClick={() => insertToken(token.value)}>
-                  <Wand2 className="h-3.5 w-3.5" />
                   {token.label}
                 </Button>
               ))}
             </div>
-          </div>
-        ) : null}
-      </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
