@@ -70,6 +70,13 @@ export function SettingsLibrariesPage() {
 
   /* ------------------------------------------------------------ list */
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const setupTabs = useMemo(
+    () =>
+      librarySetupNavItems.map((tab) =>
+        tab.to === "/settings/libraries" ? { ...tab, status: libraries.length > 0 ? ("complete" as const) : ("pending" as const) } : tab
+      ),
+    [libraries.length]
+  );
   const sortedLibraries = useMemo(() => [...libraries].sort((a, b) => a.name.localeCompare(b.name)), [libraries]);
 
   /* ---------------------------------------------------------- drawer */
@@ -294,7 +301,7 @@ export function SettingsLibrariesPage() {
 
   return (
     <div className="grid gap-[var(--page-gap)]">
-      <PageToolbar tabs={librarySetupNavItems} />
+      <PageToolbar tabs={setupTabs} />
 
       <ListCard
         title="Libraries"
