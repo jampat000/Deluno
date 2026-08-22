@@ -66,6 +66,19 @@ test.describe("dashboard workflow", () => {
     }
   });
 
+  test("leaves a new library name blank when switching media type", async ({ page }) => {
+    await authenticateAndNavigate(page, "/settings/libraries");
+    await page.getByRole("button", { name: "New library", exact: true }).first().click();
+
+    const drawer = page.getByRole("dialog", { name: "New library" });
+    const name = drawer.getByRole("textbox", { name: "Library name" });
+    await expect(name).toHaveValue("");
+    await drawer.getByRole("radio", { name: "TV shows", exact: true }).click();
+    await expect(name).toHaveValue("");
+    await drawer.getByRole("radio", { name: "Movies", exact: true }).click();
+    await expect(name).toHaveValue("");
+  });
+
   test("shows real empty-state information instead of invented dashboard activity", async ({ page }) => {
     await authenticateAndNavigate(page, "/");
 

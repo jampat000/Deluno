@@ -135,7 +135,7 @@ export function SettingsLibrariesPage() {
     setForm((current) => ({
       ...current,
       mediaType,
-      name: current.name.trim() && current.name !== defaultName(current.mediaType) ? current.name : defaultName(mediaType),
+      name: current.name,
       rootPath: current.rootPath.trim() && current.rootPath !== defaultRoot(current.mediaType, settings) ? current.rootPath : defaultRoot(mediaType, settings),
       planChoice: "",
       qualityProfileId: ""
@@ -545,7 +545,7 @@ function defaultRoot(mediaType: "movies" | "tv", settings: PlatformSettingsSnaps
 
 function emptyForm(mediaType: "movies" | "tv", settings: PlatformSettingsSnapshot): LibraryForm {
   return {
-    name: defaultName(mediaType),
+    name: "",
     mediaType,
     rootPath: defaultRoot(mediaType, settings),
     downloadsPath: settings.downloadsPath ?? "",
