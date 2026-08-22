@@ -1582,25 +1582,12 @@ public sealed class SqliteSeriesCatalogRepository(
                 AddParameter(insert, "@id", seriesId);
                 AddParameter(insert, "@title", normalizedTitle);
                 AddParameter(insert, "@startYear", startYear);
-                AddParameter(insert, "@monitored", unmonitorWhenCutoffMet && qualityCutoffMet ? 0 : 1);
+                // Reaching the cutoff stops upgrade searches; it must not stop
+                // monitoring. Missing media and future episodes remain visible.
+                AddParameter(insert, "@monitored", 1);
                 AddParameter(insert, "@createdUtc", now.ToString("O"));
                 AddParameter(insert, "@updatedUtc", now.ToString("O"));
                 await insert.ExecuteNonQueryAsync(cancellationToken);
-            }
-            else if (unmonitorWhenCutoffMet && qualityCutoffMet)
-            {
-                using var unmonitor = connection.CreateCommand();
-                unmonitor.Transaction = transaction;
-                unmonitor.CommandText =
-                    """
-                    UPDATE series_entries
-                    SET monitored = 0,
-                        updated_utc = @updatedUtc
-                    WHERE id = @seriesId;
-                    """;
-                AddParameter(unmonitor, "@seriesId", seriesId);
-                AddParameter(unmonitor, "@updatedUtc", now.ToString("O"));
-                await unmonitor.ExecuteNonQueryAsync(cancellationToken);
             }
         }
         else

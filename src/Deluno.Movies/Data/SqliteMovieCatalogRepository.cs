@@ -1378,27 +1378,14 @@ public sealed class SqliteMovieCatalogRepository(
             AddParameter(insert, "@id", movieId);
             AddParameter(insert, "@title", normalizedTitle);
             AddParameter(insert, "@releaseYear", request.ReleaseYear);
-            AddParameter(insert, "@monitored", request.UnmonitorWhenCutoffMet && request.QualityCutoffMet ? 0 : 1);
+            // Reaching the cutoff stops upgrade searches; it must not stop
+            // monitoring. Users may still need missing media or future
+            // episodes, and monitoring remains their explicit choice.
+            AddParameter(insert, "@monitored", 1);
             AddParameter(insert, "@createdUtc", now.ToString("O"));
             AddParameter(insert, "@updatedUtc", now.ToString("O"));
             await insert.ExecuteNonQueryAsync(cancellationToken);
         }
-        else if (request.UnmonitorWhenCutoffMet && request.QualityCutoffMet)
-        {
-            using var unmonitor = connection.CreateCommand();
-            unmonitor.Transaction = transaction;
-            unmonitor.CommandText =
-                """
-                UPDATE movie_entries
-                SET monitored = 0,
-                    updated_utc = @updatedUtc
-                WHERE id = @movieId;
-                """;
-            AddParameter(unmonitor, "@movieId", movieId);
-            AddParameter(unmonitor, "@updatedUtc", now.ToString("O"));
-            await unmonitor.ExecuteNonQueryAsync(cancellationToken);
-        }
-
         using var wanted = connection.CreateCommand();
         wanted.Transaction = transaction;
         wanted.CommandText =

@@ -238,8 +238,8 @@ test.describe("dashboard workflow", () => {
     test.skip(testInfo.project.name === "mobile", "The mobile drawer has the same destination tree.");
     await authenticateAndNavigate(page, "/settings/media-management");
     await expect(page.getByRole("heading", { name: "Media organization", exact: true })).toBeVisible();
-    await expect(page.getByText("Naming style", { exact: true })).toBeVisible();
-    await expect(page.getByText("Import behavior", { exact: true })).toBeVisible();
+    await expect(page.getByText("Naming", { exact: true })).toBeVisible();
+    await expect(page.getByText("Import policy", { exact: true })).toBeVisible();
 
     // Area rows, not their children — see the tabsInToolbar rule on
     // configurationNavAreas. Child pages live in the page toolbar.
@@ -256,6 +256,21 @@ test.describe("dashboard workflow", () => {
     await expect(page.getByRole("navigation", { name: "Automation and transfer status" }).getByRole("link", { name: "Automation", exact: true })).toBeVisible();
     await page.goto("/system");
     await expect(page.locator("aside").getByRole("navigation", { name: "System controls" }).getByRole("link", { name: "System", exact: true })).toBeVisible();
+  });
+
+  test("keeps naming choices quiet while making custom patterns discoverable", async ({ page }) => {
+    await authenticateAndNavigate(page, "/settings/media-management");
+
+    await expect(page.getByText("Live preview", { exact: true })).toBeVisible();
+    await expect(page.getByText("See how Deluno will name new and imported media.", { exact: true })).toBeVisible();
+    await expect(page.getByRole("switch", { name: "Stop upgrading when cutoff is met" })).toBeVisible();
+    await expect(page.getByText("Keep monitoring missing media and future episodes, but stop searching for a better release once the cutoff quality is reached.", { exact: true })).toBeVisible();
+    await page.getByRole("radio", { name: "Custom pattern", exact: true }).first().click();
+    await expect(page.getByRole("textbox", { name: "Custom pattern", exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Movie title", exact: true }).first()).toBeVisible();
+
+    await page.getByRole("button", { name: "Movie title", exact: true }).first().click();
+    await expect(page.getByRole("textbox", { name: "Custom pattern", exact: true }).first()).toHaveValue("{Movie Title}");
   });
 
   test("keeps installation-wide settings under Maintain Deluno", async ({ page }, testInfo) => {

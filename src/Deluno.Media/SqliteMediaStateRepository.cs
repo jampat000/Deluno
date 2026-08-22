@@ -699,29 +699,13 @@ public sealed class SqliteMediaStateRepository(
             AddParameter(insert, "@id", mediaId);
             AddParameter(insert, "@title", normalizedTitle);
             AddParameter(insert, "@year", request.Year);
-            AddParameter(
-                insert,
-                "@monitored",
-                request.UnmonitorWhenCutoffMet && request.QualityCutoffMet ? 0 : 1);
+            // Reaching the cutoff stops upgrade searches; it must not stop
+            // monitoring. The user's monitoring choice is independent.
+            AddParameter(insert, "@monitored", 1);
             AddParameter(insert, "@createdUtc", now);
             AddParameter(insert, "@updatedUtc", now);
             await insert.ExecuteNonQueryAsync(cancellationToken);
         }
-        else if (request.UnmonitorWhenCutoffMet && request.QualityCutoffMet)
-        {
-            using var unmonitor = connection.CreateCommand();
-            unmonitor.Transaction = transaction;
-            unmonitor.CommandText = $"""
-                UPDATE {map.EntryTable}
-                SET monitored = 0,
-                    updated_utc = @updatedUtc
-                WHERE id = @mediaId;
-                """;
-            AddParameter(unmonitor, "@mediaId", mediaId);
-            AddParameter(unmonitor, "@updatedUtc", now);
-            await unmonitor.ExecuteNonQueryAsync(cancellationToken);
-        }
-
         using var wanted = connection.CreateCommand();
         wanted.Transaction = transaction;
         wanted.CommandText = $"""

@@ -14,7 +14,7 @@ import { Loader2, Plus, Wifi } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Chip, type ChipProps } from "../components/ui/chip";
 import { ConfirmDialog } from "../components/ui/confirm-dialog";
-import { Drawer, DrawerDanger, DrawerFooter, DrawerSection, type DrawerSaveState } from "../components/ui/drawer";
+import { Drawer, DrawerFooter, DrawerSection, type DrawerSaveState } from "../components/ui/drawer";
 import { Field, FieldRow } from "../components/ui/field";
 import { Input } from "../components/ui/input";
 import { ListCard, ListCell, ListEmpty, ListNameCell, ListRow, ListTable, LIST_TRACK } from "../components/ui/list-card";
@@ -22,12 +22,13 @@ import { PageFooter } from "../components/ui/page-footer";
 import { PageToolbar } from "../components/ui/page-toolbar";
 import { PathInput } from "../components/ui/path-input";
 import { Select } from "../components/ui/select";
+import { SummaryStrip } from "../components/ui/summary-strip";
 import { SwitchRow } from "../components/ui/switch";
-import { NamingFormatField } from "../components/app/naming-format-field";
+import { NamingFormatField, NamingPatternEditor, namingStyleLabel, previewNamingFormat, type NamingFormatKind } from "../components/app/naming-format-field";
 import { librarySetupNavItems } from "../components/app/settings-shell";
 import { toast } from "../components/shell/toaster";
 import { settingsOverviewLoader } from "./settings-overview-page";
-import { fetchJson, type LibraryItem, type PlatformSettingsSnapshot, type ProcessorConnectionItem, type ProcessorConnectionTestResult, type QualityProfileItem } from "../lib/api";
+import { fetchJson, type LibraryItem, type PlatformSettingsSnapshot, type ProcessorConnectionItem, type ProcessorConnectionTestResult, type QualityModelSnapshot, type QualityProfileItem } from "../lib/api";
 import type { PlatformSettingsPatch } from "../lib/api/settings";
 import { useApiMutation } from "../lib/use-api-mutation";
 import { authedFetch } from "../lib/use-auth";
@@ -49,16 +50,18 @@ const FAILURE_OPTIONS = [
 interface LoaderData {
   libraries: LibraryItem[];
   qualityProfiles: QualityProfileItem[];
+  qualityModel: QualityModelSnapshot;
   settings: PlatformSettingsSnapshot;
   processorConnections: ProcessorConnectionItem[];
 }
 
 export async function settingsMediaManagementLoader(): Promise<LoaderData> {
-  const [overview, processorConnections] = await Promise.all([
+  const [overview, processorConnections, qualityModel] = await Promise.all([
     settingsOverviewLoader(),
-    fetchJson<ProcessorConnectionItem[]>("/api/integrations/processors/connections")
+    fetchJson<ProcessorConnectionItem[]>("/api/integrations/processors/connections"),
+    fetchJson<QualityModelSnapshot>("/api/quality-model")
   ]);
-  return { ...overview, processorConnections };
+  return { ...overview, processorConnections, qualityModel };
 }
 
 export function SettingsMediaManagementPage() {
@@ -68,37 +71,91 @@ export function SettingsMediaManagementPage() {
 
 /* ==================================================== file handling */
 
+interface CustomPatternDrawerState {
+  kind: NamingFormatKind;
+  label: string;
+  placeholder: string;
+  value: string;
+  previousValue: string;
+}
+
+function customPatternMeta(kind: NamingFormatKind) {
+  if (kind === "movie-folder") return { label: "Movie folders", placeholder: "{Movie Title} ({Release Year})" };
+  if (kind === "series-folder") return { label: "TV show folders", placeholder: "{Series Title} ({Series Year})" };
+  if (kind === "episode-file") return { label: "Episode files", placeholder: "{Series Title} - S{Season:00}E{Episode:00} - {Episode Title}" };
+  return { label: "Custom format", placeholder: "" };
+}
+
+function updateCustomPattern(settings: PlatformSettingsSnapshot, kind: NamingFormatKind, value: string) {
+  if (kind === "movie-folder") return { ...settings, movieFolderFormat: value };
+  if (kind === "series-folder") return { ...settings, seriesFolderFormat: value };
+  if (kind === "episode-file") return { ...settings, episodeFileFormat: value };
+  return settings;
+}
+
+function customPatternPreview(kind: NamingFormatKind, value: string, placeholder: string) {
+  const preview = previewNamingFormat(value || placeholder);
+  if (kind === "movie-folder") return `Movies\\${preview}`;
+  if (kind === "series-folder") return `TV Shows\\${preview}`;
+  return preview;
+}
+
 function FileHandlingPage() {
-  const { settings } = useLoaderData() as LoaderData;
+  const { qualityModel: loadedQualityModel, settings } = useLoaderData() as LoaderData;
   const settingsMutation = useApiMutation<PlatformSettingsPatch, PlatformSettingsSnapshot>("/api/settings", "PATCH");
+  const [savedQualityModel, setSavedQualityModel] = useState(loadedQualityModel);
+  const [qualityModel, setQualityModel] = useState(loadedQualityModel);
   const [saved, setSaved] = useState(settings);
   const [form, setForm] = useState(settings);
+  const [customDrawer, setCustomDrawer] = useState<CustomPatternDrawerState | null>(null);
   const [saveState, setSaveState] = useState<Exclude<DrawerSaveState, "clean" | "dirty">>();
   const [message, setMessage] = useState<string | null>(null);
 
-  const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(saved), [form, saved]);
+  const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(saved) || JSON.stringify(qualityModel) !== JSON.stringify(savedQualityModel), [form, qualityModel, saved, savedQualityModel]);
   const state: DrawerSaveState = saveState === "saving" ? "saving" : dirty ? "dirty" : saveState ?? "clean";
+  const customDrawerDirty = customDrawer !== null && customDrawer.value !== customDrawer.previousValue;
   useUnsavedChanges(dirty);
   useEffect(() => {
     if (dirty && (saveState === "saved" || saveState === "error")) setSaveState(undefined);
   }, [dirty, saveState]);
+
+  function handleCustomMode(kind: NamingFormatKind, active: boolean, draftValue = "", previousValue = "") {
+    if (!active) return;
+    const meta = customPatternMeta(kind);
+    setCustomDrawer({ kind, ...meta, value: draftValue, previousValue });
+  }
+
+  function closeCustomDrawer(apply: boolean) {
+    if (!customDrawer) return;
+    setForm((current) => updateCustomPattern(current, customDrawer.kind, apply ? customDrawer.value : customDrawer.previousValue));
+    setCustomDrawer(null);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (state === "saving") return;
     setSaveState("saving");
     try {
-      await settingsMutation.mutate({
-        movieFolderFormat: form.movieFolderFormat,
-        seriesFolderFormat: form.seriesFolderFormat,
-        episodeFileFormat: form.episodeFileFormat,
-        renameOnImport: form.renameOnImport,
-        useHardlinks: form.useHardlinks,
-        cleanupEmptyFolders: form.cleanupEmptyFolders,
-        unmonitorWhenCutoffMet: form.unmonitorWhenCutoffMet,
-        downloadsPath: form.downloadsPath ?? ""
-      });
-      setSaved(form);
+      const [nextSettings, nextQualityModel] = await Promise.all([
+        settingsMutation.mutate({
+          movieFolderFormat: form.movieFolderFormat,
+          seriesFolderFormat: form.seriesFolderFormat,
+          episodeFileFormat: form.episodeFileFormat,
+          renameOnImport: form.renameOnImport,
+          useHardlinks: form.useHardlinks,
+          cleanupEmptyFolders: form.cleanupEmptyFolders,
+          downloadsPath: form.downloadsPath ?? ""
+        }),
+        fetchJson<QualityModelSnapshot>("/api/quality-model", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tiers: qualityModel.tiers, upgradeStop: qualityModel.upgradeStop })
+        })
+      ]);
+      setSaved(nextSettings);
+      setForm(nextSettings);
+      setSavedQualityModel(nextQualityModel);
+      setQualityModel(nextQualityModel);
       setSaveState("saved");
       setMessage("Saved just now");
     } catch (error) {
@@ -111,33 +168,78 @@ function FileHandlingPage() {
     <form onSubmit={handleSubmit} className="flex flex-col gap-[var(--page-gap)]" noValidate>
       <PageToolbar tabs={librarySetupNavItems} />
 
-      <ListCard title="Naming style" count="Choose a consistent style for folders and episode files">
-        <div className="grid gap-[var(--grid-gap)] p-[var(--card-pad-x)]">
-          <FieldRow>
-            <Field label="Movie folders" help="Used when Deluno creates or renames a movie folder.">
-              <NamingFormatField kind="movie-folder" value={form.movieFolderFormat} onChange={(value) => setForm((current) => ({ ...current, movieFolderFormat: value }))} placeholder="{Movie Title} ({Release Year})" />
-            </Field>
-            <Field label="Series folders" help="Used when Deluno creates or renames a TV show folder.">
-              <NamingFormatField kind="series-folder" value={form.seriesFolderFormat} onChange={(value) => setForm((current) => ({ ...current, seriesFolderFormat: value }))} placeholder="{Series Title} ({Series Year})" />
-            </Field>
-          </FieldRow>
-          <div className="border-t border-hairline pt-[var(--grid-gap)]">
-            <Field label="Episode files" help="Used when Deluno renames imported episode files.">
-              <NamingFormatField kind="episode-file" value={form.episodeFileFormat} onChange={(value) => setForm((current) => ({ ...current, episodeFileFormat: value }))} placeholder="{Series Title} - S{Season:00}E{Episode:00} - {Episode Title}" />
-            </Field>
+      <SummaryStrip
+        cells={[
+          { label: "Folders", value: namingStyleLabel("movie-folder", form.movieFolderFormat) === namingStyleLabel("series-folder", form.seriesFolderFormat) ? namingStyleLabel("movie-folder", form.movieFolderFormat) : "Mixed styles", help: "Movies and TV shows" },
+          { label: "Episodes", value: namingStyleLabel("episode-file", form.episodeFileFormat), help: "Imported episode files" },
+          { label: "Import", value: form.renameOnImport ? "Organize on import" : "Keep original names", help: form.renameOnImport ? "Naming rules are applied" : "Files are left unchanged" }
+        ]}
+      />
+
+      <ListCard title="Naming" count="The names people see in your library">
+        <div className="grid md:grid-cols-[minmax(0,1.45fr)_minmax(22rem,0.8fr)]">
+          <div className="divide-y divide-hairline">
+            <div className="grid gap-[var(--grid-gap)] p-[var(--card-pad-x)]">
+              <div className="grid content-start gap-1.5">
+                <p className="text-[length:var(--type-body-sm)] font-medium leading-tight text-foreground">Movie folders</p>
+                <p className="text-[length:var(--type-caption)] leading-snug text-muted-foreground">Used when Deluno creates or renames a movie folder.</p>
+              </div>
+              <NamingFormatField kind="movie-folder" value={form.movieFolderFormat} onChange={(value) => setForm((current) => ({ ...current, movieFolderFormat: value }))} onCustomModeChange={(active, draftValue, previousValue) => handleCustomMode("movie-folder", active, draftValue, previousValue)} placeholder="{Movie Title} ({Release Year})" showExamples={false} />
+            </div>
+            <div className="grid gap-[var(--grid-gap)] p-[var(--card-pad-x)] md:grid-cols-2">
+              <div className="grid content-start gap-[var(--grid-gap)]">
+                <div className="grid content-start gap-1.5">
+                  <p className="text-[length:var(--type-body-sm)] font-medium leading-tight text-foreground">TV show folders</p>
+                  <p className="text-[length:var(--type-caption)] leading-snug text-muted-foreground">Used when Deluno creates or renames a show folder.</p>
+                </div>
+                <NamingFormatField kind="series-folder" value={form.seriesFolderFormat} onChange={(value) => setForm((current) => ({ ...current, seriesFolderFormat: value }))} onCustomModeChange={(active, draftValue, previousValue) => handleCustomMode("series-folder", active, draftValue, previousValue)} placeholder="{Series Title} ({Series Year})" showExamples={false} />
+              </div>
+              <div className="grid content-start gap-[var(--grid-gap)]">
+                <div className="grid content-start gap-1.5">
+                  <p className="text-[length:var(--type-body-sm)] font-medium leading-tight text-foreground">Episode files</p>
+                  <p className="text-[length:var(--type-caption)] leading-snug text-muted-foreground">Used when Deluno renames imported episode files.</p>
+                </div>
+                <NamingFormatField kind="episode-file" value={form.episodeFileFormat} onChange={(value) => setForm((current) => ({ ...current, episodeFileFormat: value }))} onCustomModeChange={(active, draftValue, previousValue) => handleCustomMode("episode-file", active, draftValue, previousValue)} placeholder="{Series Title} - S{Season:00}E{Episode:00} - {Episode Title}" showExamples={false} />
+              </div>
+            </div>
           </div>
+          <aside className="border-t border-hairline bg-surface-1/20 p-[var(--card-pad-x)] lg:border-l lg:border-t-0">
+            <div className="grid gap-[var(--grid-gap)]">
+              <div className="grid gap-1">
+                <p className="text-[length:var(--type-body-sm)] font-semibold leading-tight text-foreground">Live preview</p>
+                <p className="text-[length:var(--type-caption)] leading-snug text-muted-foreground">See how Deluno will name new and imported media.</p>
+              </div>
+              <div className="grid gap-[var(--grid-gap)]">
+                <div className="grid gap-[var(--grid-gap)] border-b border-hairline pb-[var(--grid-gap)] last:border-b-0 last:pb-0">
+                  <NamingPreview label="Movie folder" value={`Movies\\${previewNamingFormat(form.movieFolderFormat || "{Movie Title} ({Release Year})")}`} />
+                </div>
+                <div className="grid gap-[var(--grid-gap)] border-b border-hairline pb-[var(--grid-gap)] last:border-b-0 last:pb-0">
+                  <NamingPreview label="TV show folder" value={`TV Shows\\${previewNamingFormat(form.seriesFolderFormat || "{Series Title} ({Series Year})")}`} />
+                </div>
+                <div className="grid gap-[var(--grid-gap)] border-b border-hairline pb-[var(--grid-gap)] last:border-b-0 last:pb-0">
+                  <NamingPreview label="Episode file" value={previewNamingFormat(form.episodeFileFormat || "{Series Title} - S{Season:00}E{Episode:00} - {Episode Title}")} />
+                </div>
+              </div>
+            </div>
+          </aside>
         </div>
       </ListCard>
 
-      <ListCard title="Import behavior" count="Choose what happens after a download completes">
-        <div className="grid gap-[var(--grid-gap)] p-[var(--card-pad-x)]">
-          <div className="grid gap-[var(--grid-gap)] md:grid-cols-2">
+      <ListCard title="Import policy" count="What happens when a download is ready">
+        <div className="grid md:grid-cols-2">
+          <div className="border-b border-hairline p-[var(--card-pad-x)] md:border-r">
             <SwitchRow label="Rename on import" description="Use the naming styles above." checked={form.renameOnImport} onCheckedChange={(checked) => setForm((current) => ({ ...current, renameOnImport: checked }))} />
-            <SwitchRow label="Use hardlinks" description="Keep seeding without a second full copy." checked={form.useHardlinks} onCheckedChange={(checked) => setForm((current) => ({ ...current, useHardlinks: checked }))} />
-            <SwitchRow label="Clean up empty folders" description="Remove leftover folders after import." checked={form.cleanupEmptyFolders} onCheckedChange={(checked) => setForm((current) => ({ ...current, cleanupEmptyFolders: checked }))} />
-            <SwitchRow label="Unmonitor at cutoff" description="Stop watching a title at its cutoff quality." checked={form.unmonitorWhenCutoffMet} onCheckedChange={(checked) => setForm((current) => ({ ...current, unmonitorWhenCutoffMet: checked }))} />
           </div>
-          <div className="border-t border-hairline pt-[var(--grid-gap)]">
+          <div className="border-b border-hairline p-[var(--card-pad-x)]">
+            <SwitchRow label="Use hardlinks" description="Keep seeding without a second full copy." checked={form.useHardlinks} onCheckedChange={(checked) => setForm((current) => ({ ...current, useHardlinks: checked }))} />
+          </div>
+          <div className="border-b border-hairline p-[var(--card-pad-x)] md:border-r md:border-b-0">
+            <SwitchRow label="Clean up empty folders" description="Remove leftover folders after import." checked={form.cleanupEmptyFolders} onCheckedChange={(checked) => setForm((current) => ({ ...current, cleanupEmptyFolders: checked }))} />
+          </div>
+          <div className="border-b border-hairline p-[var(--card-pad-x)] md:border-b-0">
+            <SwitchRow label="Stop upgrading when cutoff is met" description="Keep monitoring missing media and future episodes, but stop searching for a better release once the cutoff quality is reached." checked={qualityModel.upgradeStop.stopWhenCutoffMet} onCheckedChange={(checked) => setQualityModel((current) => ({ ...current, upgradeStop: { ...current.upgradeStop, stopWhenCutoffMet: checked } }))} />
+          </div>
+          <div className="border-t border-hairline p-[var(--card-pad-x)] md:col-span-2">
             <Field label="Default completed-file location" optional help="Fallback for manual imports and downloads not linked to a client.">
               <PathInput value={form.downloadsPath ?? ""} onChange={(value) => setForm((current) => ({ ...current, downloadsPath: value }))} browseTitle="Choose downloads folder" />
             </Field>
@@ -145,8 +247,38 @@ function FileHandlingPage() {
         </div>
       </ListCard>
 
-      <PageFooter state={state} message={message} saveLabel="Save changes" onDiscard={() => setForm(saved)} />
+      <PageFooter state={state} message={message} saveLabel="Save changes" onDiscard={() => { setForm(saved); setCustomDrawer(null); }} />
+
+      <Drawer
+        open={customDrawer !== null}
+        onOpenChange={(open) => {
+          if (!open) closeCustomDrawer(false);
+        }}
+        title={customDrawer ? `Custom ${customDrawer.label.toLowerCase()} pattern` : "Custom pattern"}
+        description="Build a naming format with Deluno's tokens, then preview the result before applying it."
+        footer={customDrawer ? <DrawerFooter state={customDrawerDirty ? "dirty" : "clean"} saveLabel="Apply pattern" saveType="button" onSave={() => closeCustomDrawer(true)} onCancel={() => closeCustomDrawer(false)} /> : null}
+      >
+        {customDrawer ? (
+          <>
+            <DrawerSection title="Format" aside={customDrawer.label}>
+              <NamingPatternEditor kind={customDrawer.kind} value={customDrawer.value} onChange={(value) => setCustomDrawer((current) => (current ? { ...current, value } : current))} placeholder={customDrawer.placeholder} />
+            </DrawerSection>
+            <DrawerSection title="Preview">
+              <NamingPreview label={customDrawer.label} value={customPatternPreview(customDrawer.kind, customDrawer.value, customDrawer.placeholder)} />
+            </DrawerSection>
+          </>
+        ) : null}
+      </Drawer>
     </form>
+  );
+}
+
+function NamingPreview({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid gap-1.5">
+      <span className="text-[length:var(--type-micro)] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70">{label}</span>
+      <code className="break-words rounded-md border border-hairline bg-surface-1 px-2.5 py-2 text-[length:var(--type-caption)] leading-snug text-foreground">{value}</code>
+    </div>
   );
 }
 

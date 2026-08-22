@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { ChevronDown, Wand2 } from "lucide-react";
+import { Check } from "lucide-react";
 import { Button } from "../ui/button";
-import { PresetField } from "../ui/preset-field";
+import { Input } from "../ui/input";
 import { cn } from "../../lib/utils";
 
-type NamingFormatKind = "movie-folder" | "series-folder" | "episode-file" | "destination-movie" | "destination-series";
+export type NamingFormatKind = "movie-folder" | "series-folder" | "episode-file" | "destination-movie" | "destination-series";
 
 interface FormatPreset {
   label: string;
@@ -24,6 +24,8 @@ interface NamingFormatFieldProps {
   kind: NamingFormatKind;
   placeholder?: string;
   className?: string;
+  showExamples?: boolean;
+  onCustomModeChange?: (active: boolean, draftValue?: string, previousValue?: string) => void;
 }
 
 const PRESETS: Record<NamingFormatKind, FormatPreset[]> = {
@@ -95,71 +97,138 @@ export function NamingFormatField({
   onChange,
   kind,
   placeholder,
-  className
+  className,
+  showExamples = true,
+  onCustomModeChange
 }: NamingFormatFieldProps) {
   const presets = PRESETS[kind];
-  const tokens = TOKENS[kind];
   const selectedPreset = presets.find((preset) => preset.value === value);
-  const example = selectedPreset?.hint ?? previewFormat(value || placeholder || "");
-  const [tokensOpen, setTokensOpen] = useState(false);
-  const isCustom = !selectedPreset && value.trim().length > 0;
+  const example = selectedPreset?.hint ?? previewNamingFormat(value || placeholder || "");
+  const [customSelected, setCustomSelected] = useState(() => !selectedPreset && value.trim().length > 0);
+  const isCustom = !selectedPreset && (customSelected || value.trim().length > 0);
+  const selectedValue = selectedPreset?.value ?? (isCustom ? "__custom__" : "");
+  const options = [
+    ...presets.map((preset) => ({
+      ...preset,
+      label: preset.label === "Title and year" ? "Title + year" : preset.label === "Title, year, IMDb" || preset.label === "Title, year, TVDb" ? "Title + ID" : preset.label
+    })),
+    {
+      label: "Custom pattern",
+      value: "__custom__",
+      hint: "Build your own",
+      description: "Use tokens to create a format that fits your library."
+    }
+  ];
 
-  function insertToken(token: string) {
-    const separator = value.trim().length === 0 || value.endsWith(" ") || value.endsWith("\\") ? "" : " ";
-    onChange(`${value}${separator}${token}`);
-  }
-
-  function handleChange(nextValue: string) {
-    if (presets.some((preset) => preset.value === nextValue)) setTokensOpen(false);
+  function choosePreset(nextValue: string) {
+    if (nextValue === "__custom__") {
+      setCustomSelected(true);
+      onCustomModeChange?.(true, isCustom ? value : "", value);
+      if (!isCustom) onChange("");
+      return;
+    }
+    setCustomSelected(false);
+    onCustomModeChange?.(false);
     onChange(nextValue);
   }
 
   return (
-    <div className={cn("grid gap-1.5", className)}>
-      <PresetField
-        value={value}
-        onChange={handleChange}
-        options={presets.map((preset, index) => ({
-          value: preset.value,
-          label: `${preset.label}${index === 0 ? " — recommended" : ""}`
-        }))}
-        customLabel="Custom pattern"
-        customPlaceholder={placeholder}
-      />
-      <div className="flex min-w-0 items-baseline gap-2 px-1 text-[length:var(--type-caption)]">
-        <span className="shrink-0 text-muted-foreground">Example</span>
-        <code className="truncate text-foreground">{example || "Choose a style or add a custom pattern."}</code>
+    <div className={cn("grid gap-3", className)}>
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="text-[length:var(--type-caption)] font-medium text-foreground">Format</span>
+        <span className="text-[length:var(--type-caption)] text-muted-foreground">Choose how Deluno names these files and folders.</span>
       </div>
-      {isCustom ? (
-        <div className="rounded-[8px] border border-hairline bg-background/25">
-          <button
-            type="button"
-            onClick={() => setTokensOpen((open) => !open)}
-            className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-[length:var(--type-caption)] text-muted-foreground hover:text-foreground"
-            aria-expanded={tokensOpen}
-          >
-            <span className="flex items-center gap-2">
-              <Wand2 className="h-3.5 w-3.5" />
-              Insert tokens
-            </span>
-            <ChevronDown className={cn("h-4 w-4 transition-transform", tokensOpen && "rotate-180")} />
-          </button>
-          {tokensOpen ? (
-            <div className="flex flex-wrap gap-1.5 border-t border-hairline p-2">
-              {tokens.map((token) => (
-                <Button key={token.value} type="button" variant="outline" size="sm" onClick={() => insertToken(token.value)}>
-                  {token.label}
-                </Button>
-              ))}
-            </div>
-          ) : null}
+      <div
+        role="radiogroup"
+        aria-label={`${kind} naming style`}
+        className="overflow-hidden rounded-[10px] border border-hairline bg-surface-1"
+      >
+        {options.map((option, index) => {
+          const active = selectedValue === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-label={option.label}
+              aria-checked={active}
+              onClick={() => choosePreset(option.value)}
+              className={cn(
+                "flex w-full items-start gap-3 border-b border-hairline px-3.5 py-3 text-left transition-colors last:border-b-0 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                active ? "bg-primary/[0.08]" : "hover:bg-surface-2/70"
+              )}
+            >
+              <span className={cn("mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border", active ? "border-primary bg-primary text-primary-foreground" : "border-hairline bg-background text-transparent")}>
+                <Check aria-hidden className="h-3 w-3" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className={cn("flex items-center gap-2 text-[length:var(--type-caption)] font-semibold", active ? "text-primary" : "text-foreground")}>
+                  <span className="truncate">{option.label}</span>
+                  {index === 0 ? <span className="shrink-0 text-[length:var(--type-micro)] font-semibold uppercase tracking-[0.08em] text-primary/70">Recommended</span> : null}
+                </span>
+                <span className="mt-0.5 block text-[length:var(--type-caption)] leading-snug text-muted-foreground">{option.description}</span>
+              </span>
+              {showExamples ? (
+                <span className="hidden max-w-[42%] shrink-0 text-right md:block">
+                  <span className="block text-[length:var(--type-micro)] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70">Example</span>
+                  <code className="mt-0.5 block truncate text-[length:var(--type-caption)] text-foreground">{option.hint}</code>
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+
+      {showExamples ? (
+        <div className="flex min-w-0 items-baseline gap-3 text-[length:var(--type-caption)]">
+          <span className="shrink-0 font-semibold uppercase tracking-[0.08em] text-muted-foreground/70">Preview</span>
+          <code className="truncate text-foreground">{example || "Choose a style to see a preview."}</code>
         </div>
       ) : null}
     </div>
   );
 }
 
-function previewFormat(format: string) {
+export function NamingPatternEditor({ kind, value, onChange, placeholder }: { kind: NamingFormatKind; value: string; onChange: (value: string) => void; placeholder?: string }) {
+  const tokens = TOKENS[kind];
+
+  function insertToken(token: string) {
+    const separator = value.trim().length === 0 || value.endsWith(" ") || value.endsWith("\\") ? "" : " ";
+    onChange(`${value}${separator}${token}`);
+  }
+
+  return (
+    <div className="grid gap-[var(--grid-gap)]">
+      <div className="grid gap-1.5">
+        <span className="text-[length:var(--type-caption)] font-medium text-foreground">Pattern</span>
+        <Input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} aria-label="Custom pattern" />
+      </div>
+      <div className="grid gap-2 border-t border-hairline pt-[var(--grid-gap)]">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <span className="text-[length:var(--type-caption)] font-medium text-foreground">Available tokens</span>
+          <span className="text-[length:var(--type-caption)] text-muted-foreground">Insert values into the pattern.</span>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {tokens.map((token) => (
+            <Button key={token.value} type="button" variant="outline" size="sm" onClick={() => insertToken(token.value)}>
+              {token.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function namingStyleLabel(kind: NamingFormatKind, value: string) {
+  const preset = PRESETS[kind].find((option) => option.value === value);
+  if (!preset) return value.trim() ? "Custom pattern" : "Choose a style";
+  if (preset.label === "Title and year") return "Title + year";
+  if (preset.label === "Title, year, IMDb" || preset.label === "Title, year, TVDb") return "Title + ID";
+  return preset.label;
+}
+
+export function previewNamingFormat(format: string) {
   return format
     .replaceAll("{Movie Title}", "Arrival")
     .replaceAll("{Release Year}", "2016")

@@ -115,12 +115,6 @@ export function SettingsQualityPage() {
       <ListCard title="Upgrade behaviour" count="What happens after a file is already in the library">
         <div className="grid gap-[var(--grid-gap)] p-[var(--card-pad-x)]">
           <SwitchRow
-            label="Stop at the profile cutoff"
-            description="Stop upgrading once the current file has reached the quality profile's target tier."
-            checked={model.upgradeStop.stopWhenCutoffMet}
-            onCheckedChange={(checked) => setModel((current) => ({ ...current, upgradeStop: { ...current.upgradeStop, stopWhenCutoffMet: checked } }))}
-          />
-          <SwitchRow
             label="Require a score improvement at the same quality"
             description="Only replace an equally ranked release when its release score is better."
             checked={model.upgradeStop.requireCustomFormatGainForSameQuality}
