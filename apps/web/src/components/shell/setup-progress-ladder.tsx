@@ -15,16 +15,16 @@ export function SetupProgressLadder({ status }: { status: SetupStatusModel }) {
     >
       <div aria-hidden className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-primary/10 blur-[80px]" />
       <div className="relative">
-        <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
+        <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+          <div className="min-w-0">
             <p className="flex items-center gap-2 text-[length:var(--type-caption)] font-bold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
               Setup progress
             </p>
-            <h2 className="mt-0.5 truncate font-display text-[length:var(--type-title-sm)] font-semibold tracking-tight text-foreground">{heading}</h2>
-            <p className="mt-1 max-w-3xl truncate text-[length:var(--type-body-sm)] leading-relaxed text-muted-foreground">{status.summary}</p>
+            <h2 className="mt-0.5 font-display text-[length:var(--type-title-sm)] font-semibold leading-tight tracking-tight text-foreground">{heading}</h2>
+            <p className="mt-1 max-w-3xl text-[length:var(--type-body-sm)] leading-relaxed text-muted-foreground">{status.summary}</p>
           </div>
-          <span className="tabular max-w-full shrink-0 truncate rounded-full border border-hairline bg-surface-2 px-2.5 py-1 text-[length:var(--type-caption)] font-semibold text-muted-foreground">
+          <span className="tabular justify-self-start whitespace-nowrap rounded-full border border-hairline bg-surface-2 px-2.5 py-1 text-[length:var(--type-caption)] font-semibold text-muted-foreground sm:justify-self-end">
             {count}
           </span>
         </div>
