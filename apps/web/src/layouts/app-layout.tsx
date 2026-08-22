@@ -74,8 +74,8 @@ const routeMeta = [
   { match: (path: string) => path.startsWith("/indexers"), title: "Connections", subtitle: "Search sources and download clients Deluno uses" },
   { match: (path: string) => path.startsWith("/search-cycles") || path.startsWith("/settings/automation"), title: "Automation", subtitle: "What Deluno searches for on a schedule, and what it does when a download fails" },
   { match: (path: string) => path.startsWith("/activity"), title: "Activity", subtitle: "The permanent record of what happened and why" },
-  { match: (path: string) => path.startsWith("/settings/policy-sets") || path.startsWith("/settings/profiles") || path.startsWith("/settings/quality") || path.startsWith("/settings/custom-formats"), title: "Media plans", subtitle: "The plan Deluno follows for quality, size, releases, and upgrades" },
-  { match: (path: string) => path.startsWith("/settings/lists"), title: "Import lists", subtitle: "Bring movies and shows in from watchlists and curated feeds" },
+  { match: (path: string) => path.startsWith("/settings/policy-sets") || path.startsWith("/settings/profiles") || path.startsWith("/settings/quality") || path.startsWith("/settings/custom-formats"), title: "Media Plans", subtitle: "The plan Deluno follows for quality, size, releases, and upgrades" },
+  { match: (path: string) => path.startsWith("/settings/lists"), title: "Import Lists", subtitle: "Bring movies and shows in from watchlists and curated feeds" },
   { match: (path: string) => path.startsWith("/settings/general") || path.startsWith("/settings/notifications") || path.startsWith("/settings/ui") || path.startsWith("/settings/migration"), title: "Preferences", subtitle: "How you want Deluno to behave, look, and tell you things" },
   // Every /settings route is named by settingsPageMeta, which is the single
   // source of truth for settings page names. This used to be a handful of

@@ -1189,7 +1189,7 @@ function SetupComplete({ result }: { result: SetupCompletion }) {
       <SummaryStrip
         cells={[
           { label: "Libraries", value: result.libraries.join(" + ") || "None" },
-          { label: "Quality profiles", value: result.qualityProfiles.join(" + ") || "Existing" },
+          { label: "Quality Profiles", value: result.qualityProfiles.join(" + ") || "Existing" },
           { label: "Release rules", value: result.customFormatCount > 0 ? `${result.customFormatCount} created` : "Reused existing" },
           { label: "Indexer", value: result.indexerName ?? "Later", help: result.indexerName ? "connected" : "add one when you are ready" },
           { label: "First title", value: result.firstTitle ?? "Skipped", help: result.clientName ? `via ${result.clientName}` : "no download client yet" }

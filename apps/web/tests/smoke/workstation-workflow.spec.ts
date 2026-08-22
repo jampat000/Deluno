@@ -213,13 +213,14 @@ test.describe("dashboard workflow", () => {
   test("keeps Media Management as an expandable sidebar hierarchy", async ({ page }, testInfo) => {
     await authenticateAndNavigate(page, "/settings");
 
-    await expect(page.getByRole("heading", { name: "Media Management" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Setup overview" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Setup Overview" })).toBeVisible();
     if (testInfo.project.name === "mobile") {
       await page.getByRole("button", { name: "More destinations" }).click();
       await expect(page.getByLabel("Panel").getByRole("link", { name: "Media Management", exact: true })).toBeVisible();
       return;
     }
+
+    await expect(page.locator("aside").getByRole("navigation", { name: "Media Management" })).toBeVisible();
 
     // Every configuration area sets `tabsInToolbar`, so the sidebar shows one
     // row per area and the page's own toolbar is how you move between siblings.
@@ -365,7 +366,7 @@ test.describe("dashboard workflow", () => {
     await authenticateAndNavigate(page, "/settings/policy-sets");
 
     // List → drawer: the page is a list of plans; "New plan" opens the editor drawer.
-    await expect(page.getByRole("heading", { name: "Media plans", exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Media Plans", exact: true }).first()).toBeVisible();
     await page.getByRole("button", { name: "New plan" }).first().click();
     await expect(page.getByRole("dialog", { name: "New media plan" })).toBeVisible();
 
@@ -387,11 +388,11 @@ test.describe("dashboard workflow", () => {
     const navigation = testInfo.project.name === "mobile"
       ? page.getByLabel("Panel")
       : page.locator("aside").getByRole("navigation", { name: "Media Management" });
-    const importLists = navigation.getByRole("link", { name: "Import lists", exact: true });
+    const importLists = navigation.getByRole("link", { name: "Import Lists", exact: true });
     await expect(importLists).toHaveAttribute("href", "/settings/lists");
     await importLists.click();
 
-    await expect(page.getByRole("heading", { name: "Import lists", exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Import Lists", exact: true }).first()).toBeVisible();
     await page.getByRole("button", { name: "New list" }).first().click();
     const drawer = page.getByRole("dialog", { name: "New import list" });
     await expect(drawer.getByText(/Paste a public list URL/)).toBeVisible();
@@ -536,8 +537,8 @@ test.describe("dashboard workflow", () => {
     // One toolbar for the whole area: Indexers · Download clients · Library routing.
     const tabs = page.getByRole("navigation", { name: "Sections" });
     await expect(tabs.getByRole("link", { name: "Indexers", exact: true })).toBeVisible();
-    await expect(tabs.getByRole("link", { name: "Download clients", exact: true })).toBeVisible();
-    await expect(tabs.getByRole("link", { name: "Library routing", exact: true })).toBeVisible();
+    await expect(tabs.getByRole("link", { name: "Download Clients", exact: true })).toBeVisible();
+    await expect(tabs.getByRole("link", { name: "Library Routing", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Indexers", exact: true })).toBeVisible();
   });
 
@@ -558,7 +559,7 @@ test.describe("dashboard workflow", () => {
   test("keeps activity as a readable history", async ({ page }) => {
     await authenticateAndNavigate(page, "/activity");
 
-    await expect(page.getByRole("heading", { name: "Job queue" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Sent to downloads" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Job Queue" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Sent to Downloads" })).toBeVisible();
   });
 });

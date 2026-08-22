@@ -1,5 +1,5 @@
 /**
- * Automation & recovery — list → drawer plus one page-level form.
+ * Automation & Recovery — list → drawer plus one page-level form.
  *
  *   PageToolbar (Resume/Pause automation)
  *   SummaryStrip (automation · searching · due · source checks · sent)

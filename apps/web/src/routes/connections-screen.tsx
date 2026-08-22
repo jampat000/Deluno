@@ -479,7 +479,7 @@ export function IndexersPage() {
           <ListCard title="Permissions">
             <ListTable columns={[{ label: "Permission" }, { label: "Applies to" }, { label: "Status", width: LIST_TRACK.status, mobile: true }, { label: "On", width: LIST_TRACK.toggle, mobile: true }]} chevron={false}>
               <ListRow>
-                <ListNameCell name="Remove items from the client queue" sub="A confirmed, manual Remove on Transfers. Automatic cleanup is configured in Automation & recovery." />
+              <ListNameCell name="Remove items from the client queue" sub="A confirmed, manual Remove on Transfers. Automatic cleanup is configured in Automation & Recovery." />
                 <ListCell primary="All download clients" secondary="SABnzbd, qBittorrent, …" />
                 <ListCell mobile>
                   <Chip tone={settings.removeCompletedDownloads ? "ok" : "muted"}>{settings.removeCompletedDownloads ? "Allowed" : "Blocked"}</Chip>

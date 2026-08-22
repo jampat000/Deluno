@@ -129,7 +129,7 @@ export const navigationCommands: CommandItem[] = [
   },
   {
     id: "nav.system",
-    label: "System & settings",
+    label: "System & Settings",
     keywords: ["logs", "tasks", "diagnostics"],
     group: "navigation",
     icon: Cpu,
@@ -213,7 +213,7 @@ export const settingsCommands: CommandItem[] = [
   },
   {
     id: "settings.automation",
-    label: "Automation & recovery",
+    label: "Automation & Recovery",
     keywords: ["search", "retries", "failed downloads", "upgrades", "scheduling", "recovery"],
     group: "navigation",
     icon: RefreshCw,
@@ -229,7 +229,7 @@ export const settingsCommands: CommandItem[] = [
   },
   {
     id: "settings.profiles",
-    label: "Media Plans · Quality profiles",
+    label: "Media Plans · Quality Profiles",
     keywords: ["quality", "profiles", "policy", "upgrades"],
     group: "navigation",
     icon: Stars,
@@ -237,7 +237,7 @@ export const settingsCommands: CommandItem[] = [
   },
   {
     id: "settings.quality",
-    label: "Media Plans · Size rules",
+    label: "Media Plans · Size Rules",
     keywords: ["quality", "resolution", "bitrate", "size limits", "sizes"],
     group: "navigation",
     icon: SlidersHorizontal,
@@ -245,7 +245,7 @@ export const settingsCommands: CommandItem[] = [
   },
   {
     id: "settings.custom-formats",
-    label: "Media Plans · Release preferences",
+    label: "Media Plans · Release Preferences",
     keywords: ["quality", "scoring", "release", "format", "rules"],
     group: "navigation",
     icon: Wand2,
@@ -253,7 +253,7 @@ export const settingsCommands: CommandItem[] = [
   },
   {
     id: "settings.lists",
-    label: "Discover media · Import lists",
+    label: "Discover Media · Import Lists",
     keywords: ["automation", "imdb", "trakt", "intake", "source", "auto import", "lists"],
     group: "navigation",
     icon: ListChecks,
@@ -261,7 +261,7 @@ export const settingsCommands: CommandItem[] = [
   },
   {
     id: "settings.notifications",
-    label: "System & settings · Notifications",
+    label: "System & Settings · Notifications",
     keywords: ["webhook", "alerts", "events", "notifications"],
     group: "navigation",
     icon: Activity,
@@ -269,7 +269,7 @@ export const settingsCommands: CommandItem[] = [
   },
   {
     id: "settings.migration",
-    label: "System & settings · Migration",
+    label: "System & Settings · Migration",
     keywords: ["radarr", "sonarr", "import", "migration", "configuration"],
     group: "navigation",
     icon: FolderTree,
@@ -277,7 +277,7 @@ export const settingsCommands: CommandItem[] = [
   },
   {
     id: "settings.guided-setup",
-    label: "System & settings · Guided setup",
+    label: "System & Settings · Guided Setup",
     keywords: ["setup", "wizard", "first time", "configuration"],
     group: "navigation",
     icon: Sparkles,
@@ -370,7 +370,7 @@ export const globalShortcuts: ShortcutItem[] = [
   { keys: ["g", "a"], label: "Go to Activity", group: "Navigation" },
   { keys: ["g", "c"], label: "Go to Schedule", group: "Navigation" },
   { keys: ["g", "s"], label: "Go to Media Management", group: "Navigation" },
-  { keys: ["g", "y"], label: "Go to System & settings", group: "Navigation" },
+  { keys: ["g", "y"], label: "Go to System & Settings", group: "Navigation" },
   { keys: ["j"], label: "Focus next row", group: "Table" },
   { keys: ["k"], label: "Focus previous row", group: "Table" },
   { keys: ["x"], label: "Select focused row", group: "Table" },

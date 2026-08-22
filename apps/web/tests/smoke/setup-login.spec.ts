@@ -141,10 +141,10 @@ test.describe("first-run and auth screens", () => {
   test("setup overview shows the complete ordered journey and keeps import lists optional", async ({ page }) => {
     await authenticateAndNavigate(page, "/settings");
 
-    await expect(page.getByRole("heading", { name: "Setup overview" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Find & download" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "First acquisition" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Discover media" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Setup Overview" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Find & Download" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "First Acquisition" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Discover Media" })).toBeVisible();
     await expect(page.getByText(/Optionally configure import lists/)).toBeVisible();
     await expect(page.getByText(/required steps complete/)).toBeVisible();
   });

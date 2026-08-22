@@ -1,5 +1,5 @@
 /**
- * Media plans — reference implementation of the list → drawer grammar.
+ * Media Plans — reference implementation of the list → drawer grammar.
  *
  *   PageToolbar (tabs · New plan)
  *   ListCard (rows: name · quality · releases · used by · status · on · ›)
@@ -63,7 +63,7 @@ const OVERRIDE_RETRY_OPTIONS = [
   { label: "Daily", value: "24" }
 ];
 
-const PLAN_TABS = configurationNavAreas.find((area) => area.label === "Media plans")?.items ?? [];
+const PLAN_TABS = configurationNavAreas.find((area) => area.label === "Media Plans")?.items ?? [];
 
 interface SettingsPolicySetsLoaderData {
   libraries: LibraryItem[];
@@ -366,7 +366,7 @@ export function SettingsPolicySetsPage() {
       />
 
       <ListCard
-        title="Media plans"
+        title="Media Plans"
         count={`${policySets.length} ${policySets.length === 1 ? "plan" : "plans"} · ${policySets.filter((plan) => plan.isEnabled).length} enabled`}
         filter={policySets.length > 3 ? { value: filter, onChange: setFilter, placeholder: "Filter plans" } : undefined}
       >
@@ -522,7 +522,7 @@ export function SettingsPolicySetsPage() {
                   ? `${selectedProfile.allowedQualities.split(",").map((value) => value.trim()).filter(Boolean).join(" → ")} · stops at ${selectedProfile.cutoffQuality}`
                   : availableProfiles.length
                     ? "Which release tiers are allowed and where upgrades stop."
-                    : `No ${form.mediaType === "tv" ? "TV" : "movie"} quality profiles yet — create one under Quality profiles.`
+                    : `No ${form.mediaType === "tv" ? "TV" : "movie"} quality profiles yet — create one under Quality Profiles.`
               }
             >
               <Select
@@ -554,7 +554,7 @@ export function SettingsPolicySetsPage() {
           aside={form.customFormatIds.length ? `${form.customFormatIds.length} ${form.customFormatIds.length === 1 ? "rule" : "rules"} selected` : undefined}
         >
           {availableCustomFormats.length ? (
-            <div role="group" aria-label="Release preferences" className="flex flex-wrap gap-1.5">
+            <div role="group" aria-label="Release Preferences" className="flex flex-wrap gap-1.5">
               {availableCustomFormats.map((format) => {
                 const active = form.customFormatIds.includes(format.id);
                 return (

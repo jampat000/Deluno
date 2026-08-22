@@ -478,7 +478,7 @@ export function SettingsLibrariesPage() {
           </Disclosure>
           <SwitchRow
             label="Search automatically"
-            description="Look for missing files and upgrades on the schedule in Automation & recovery."
+            description="Look for missing files and upgrades on the schedule in Automation & Recovery."
             checked={form.autoSearchEnabled}
             onCheckedChange={(checked) => setForm((current) => ({ ...current, autoSearchEnabled: checked }))}
           />

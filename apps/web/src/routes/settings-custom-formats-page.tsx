@@ -1,5 +1,5 @@
 /**
- * Release preferences — list → drawer plus one page-level form.
+ * Release Preferences — list → drawer plus one page-level form.
  *
  *   PageToolbar (Media Plans tabs · All/Movies/TV · Test a release · New rule)
  *   ListCard  presets      (row → drawer: what it contains · Apply)
@@ -53,7 +53,7 @@ import type { PlatformSettingsPatch } from "../lib/api/settings";
 import { useApiMutation } from "../lib/use-api-mutation";
 import { authedFetch } from "../lib/use-auth";
 
-const TABS = configurationNavAreas.find((area) => area.label === "Media plans")?.items ?? [];
+const TABS = configurationNavAreas.find((area) => area.label === "Media Plans")?.items ?? [];
 
 /** Scores users actually reach for. Anything at or under -10000 blocks a release outright. */
 const SCORE_OPTIONS = [

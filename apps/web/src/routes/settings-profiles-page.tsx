@@ -1,11 +1,11 @@
 /**
- * Quality profiles — list → drawer.
+ * Quality Profiles — list → drawer.
  *
  *   PageToolbar (Media Plans tabs · New profile)
  *   ListCard  (name · allowed tiers · stops at · used by · status · ›)
  *   Drawer    (Start from · Basics · Quality tiers · Formats [Fine-tune] · Used by · Delete)
  *
- * Tier vocabulary comes from /api/quality-model — the same names Size rules and
+ * Tier vocabulary comes from /api/quality-model — the same names Size Rules and
  * the decision engine use — so a profile's allowed/cutoff values always resolve.
  *
  * Contracts: GET/POST /api/quality-profiles, PUT/DELETE /api/quality-profiles/{id},
@@ -44,7 +44,7 @@ import { authedFetch } from "../lib/use-auth";
 import { useUnsavedChanges } from "../hooks/use-unsaved-changes";
 import { cn } from "../lib/utils";
 
-const TABS = configurationNavAreas.find((area) => area.label === "Media plans")?.items ?? [];
+const TABS = configurationNavAreas.find((area) => area.label === "Media Plans")?.items ?? [];
 
 /**
  * Starters expressed in the backend's own tier names, each linked to the TRaSH
@@ -444,7 +444,7 @@ export function SettingsProfilesPage() {
               })}
             </div>
           ) : (
-            <p className="text-[length:var(--type-caption)] text-muted-foreground">No {form.mediaType === "tv" ? "TV" : "movie"} formats yet — add them under Release preferences.</p>
+            <p className="text-[length:var(--type-caption)] text-muted-foreground">No {form.mediaType === "tv" ? "TV" : "movie"} formats yet — add them under Release Preferences.</p>
           )}
           <Disclosure title="Fine-tune" summary="Unknown-quality handling" open={fineTuneOpen} onOpenChange={setFineTuneOpen}>
             <SwitchRow label="Upgrade files of unknown quality" description="Replace files Deluno can't identify when a matching release appears." checked={form.upgradeUnknownItems} onCheckedChange={(checked) => setForm((current) => ({ ...current, upgradeUnknownItems: checked }))} />

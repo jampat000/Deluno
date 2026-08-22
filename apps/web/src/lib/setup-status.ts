@@ -110,7 +110,7 @@ export function buildSetupStatus(input: SetupStatusInput): SetupStatusModel {
     {
       id: "connections",
       number: 3,
-      title: "Find & download",
+      title: "Find & Download",
       description: "Connect and test the search sources that find releases and the download clients that receive approved work.",
       status: connectionStatus(enabledIndexers.length, healthyIndexers.length, enabledClients.length, healthyClients.length),
       complete: connectionsReady,
@@ -124,7 +124,7 @@ export function buildSetupStatus(input: SetupStatusInput): SetupStatusModel {
     {
       id: "automation",
       number: 4,
-      title: "Automation & recovery",
+      title: "Automation & Recovery",
       description: "Decide when Deluno searches, upgrades, retries failed downloads, and alerts you when decisions need attention.",
       status: automationStatus(input.settings.autoStartJobs, autoLibraries),
       complete: automationReady,
@@ -138,7 +138,7 @@ export function buildSetupStatus(input: SetupStatusInput): SetupStatusModel {
     {
       id: "workflow",
       number: 5,
-      title: "First acquisition",
+      title: "First Acquisition",
       description: "Run one complete search, dispatch, download, import, and catalogue flow before calling setup operationally ready.",
       status: input.settings.workflowVerified ? "End-to-end acquisition verified" : "First end-to-end acquisition not verified",
       complete: input.settings.workflowVerified,
@@ -152,7 +152,7 @@ export function buildSetupStatus(input: SetupStatusInput): SetupStatusModel {
     {
       id: "discovery",
       number: 6,
-      title: "Discover media",
+      title: "Discover Media",
       description: "Optionally configure import lists or watchlists with provenance, exclusions, and reviewable sync results.",
       status: enabledIntakeSources.length > 0 ? `${plural(enabledIntakeSources.length, "import list")} enabled` : "Optional - not configured",
       complete: enabledIntakeSources.length > 0,

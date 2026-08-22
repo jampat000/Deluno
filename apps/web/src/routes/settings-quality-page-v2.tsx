@@ -1,5 +1,5 @@
 /**
- * Size rules — a page-level form on the shared grammar.
+ * Size Rules — a page-level form on the shared grammar.
  *
  *   PageToolbar (Media Plans tabs · Movies / TV)
  *   ListCard (one media type at a time, tiers grouped into collapsible
@@ -27,7 +27,7 @@ import { fetchJson, type QualityModelSnapshot, type QualityTierDefinition } from
 import { cn } from "../lib/utils";
 import type { DrawerSaveState } from "../components/ui/drawer";
 
-const TABS = configurationNavAreas.find((area) => area.label === "Media plans")?.items ?? [];
+const TABS = configurationNavAreas.find((area) => area.label === "Media Plans")?.items ?? [];
 
 interface LoaderData {
   qualityModel: QualityModelSnapshot;

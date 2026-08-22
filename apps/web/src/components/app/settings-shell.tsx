@@ -41,30 +41,30 @@ export const configurationNavAreas = [
     tabsInToolbar: true,
     items: [
       { to: "/indexers/indexers", label: "Indexers", end: false },
-      { to: "/indexers/download-clients", label: "Download clients", end: false },
-      { to: "/indexers/library-routing", label: "Library routing", end: false }
+      { to: "/indexers/download-clients", label: "Download Clients", end: false },
+      { to: "/indexers/library-routing", label: "Library Routing", end: false }
     ]
   },
   {
     match: (path: string) => path.startsWith("/settings/policy-sets") || path.startsWith("/settings/profiles") || path.startsWith("/settings/quality") || path.startsWith("/settings/custom-formats"),
-    label: "Media plans",
+    label: "Media Plans",
     icon: "plans",
     to: "/settings/policy-sets",
     tabsInToolbar: true,
     items: [
       { to: "/settings/policy-sets", label: "Plans", end: false },
-      { to: "/settings/profiles", label: "Quality profiles", end: false },
-      { to: "/settings/quality", label: "Size rules", end: false },
-      { to: "/settings/custom-formats", label: "Release preferences", end: false }
+      { to: "/settings/profiles", label: "Quality Profiles", end: false },
+      { to: "/settings/quality", label: "Size Rules", end: false },
+      { to: "/settings/custom-formats", label: "Release Preferences", end: false }
     ]
   },
   {
     match: (path: string) => path.startsWith("/settings/lists"),
-    label: "Import lists",
+    label: "Import Lists",
     icon: "discover",
     to: "/settings/lists",
     tabsInToolbar: true,
-    items: [{ to: "/settings/lists", label: "Import lists", end: false }]
+    items: [{ to: "/settings/lists", label: "Import Lists", end: false }]
   }
 ] as const;
 
@@ -82,8 +82,8 @@ export const systemHealthNavItems = [
   { to: "/system/audit", label: "Audit", end: false },
   { to: "/system/backups", label: "Backups", end: false },
   { to: "/system/updates", label: "Updates", end: false },
-  { to: "/system/api", label: "API access", end: false },
-  { to: "/system/docs", label: "Help & guides", end: false }
+  { to: "/system/api", label: "API Access", end: false },
+  { to: "/system/docs", label: "Help & Guides", end: false }
 ] as const;
 
 /**
@@ -140,7 +140,7 @@ export const settingsPageMeta = [
   },
   {
     match: (path: string) => path === "/settings",
-    title: "Setup overview",
+    title: "Setup Overview",
     description:
       "Guided configuration for your media library, quality policy, automation, and runtime behaviour."
   },
@@ -170,38 +170,38 @@ export const settingsPageMeta = [
   },
   {
     match: (path: string) => path.startsWith("/settings/policy-sets"),
-    title: "Media plans",
+    title: "Media Plans",
     description: "Configure the quality, size, release, language, and upgrade rules Deluno follows.",
     // List → drawer pages carry their own toolbar; the topbar already names the page.
     chrome: "none"
   },
   {
     match: (path: string) => path.startsWith("/settings/profiles"),
-    title: "Quality profiles",
+    title: "Quality Profiles",
     description: "Quality ladders and cutoff targets used by Media Plans.",
     chrome: "none"
   },
   {
     match: (path: string) => path.startsWith("/settings/quality"),
-    title: "Size rules",
+    title: "Size Rules",
     description: "File-size boundaries Media Plans use to reject releases that are too small or too large.",
     chrome: "none"
   },
   {
     match: (path: string) => path.startsWith("/settings/custom-formats"),
-    title: "Release preferences",
+    title: "Release Preferences",
     description: "Preference rules for source, codec, HDR, language, group, and custom-format scoring used by Media Plans.",
     chrome: "none"
   },
   {
     match: (path: string) => path.startsWith("/settings/lists"),
-    title: "Import lists",
+    title: "Import Lists",
     description: "Watchlists and curated lists that can add the movies or shows you want Deluno to manage.",
     chrome: "none"
   },
   {
     match: (path: string) => path.startsWith("/settings/automation"),
-    title: "Automation & recovery",
+    title: "Automation & Recovery",
     description: "Control scheduled searches, retries, upgrades, and what happens after a failed download.",
     chrome: "none"
   },
@@ -290,7 +290,7 @@ export function SettingsWorkspaceLayout() {
   }
 
   return (
-    <SettingsShell title={meta.title} description={meta.description}>
+    <SettingsShell description={meta.description}>
       <SettingsWorkspaceContext.Provider value>
         <Outlet />
       </SettingsWorkspaceContext.Provider>
@@ -315,13 +315,9 @@ export function SystemWorkspaceLayout() {
 }
 
 export function SettingsShell({
-  eyebrow = "Media Management",
-  title,
   description,
   children
 }: {
-  eyebrow?: string;
-  title: string;
   description: string;
   children: ReactNode;
 }) {
@@ -334,29 +330,19 @@ export function SettingsShell({
   return (
     <div className="space-y-[var(--page-gap)]">
       <GlossaryModal open={glossaryOpen} onOpenChange={setGlossaryOpen} />
-      <div className="max-w-4xl">
-        <div className="min-w-0">
-          {/* A real heading, not a styled paragraph: a screen-reader user
-              navigates by jumping between headings, and while this was a <p>
-              there was nothing in the settings body to jump to at all. The page
-              name itself is the topbar's h1 and is not repeated here, so this
-              sits at h2. */}
-          <h2 className="text-[length:var(--section-eyebrow-size)] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-            {eyebrow}
-          </h2>
-          <div className="mt-2 flex items-center gap-3">
-            <button
-              onClick={() => setGlossaryOpen(true)}
-              className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-              title="Open glossary"
-            >
-              <HelpCircle className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-        <p className="mt-3 max-w-3xl text-[length:var(--section-subtitle-size)] leading-relaxed text-muted-foreground">
+      <div className="flex max-w-4xl items-start justify-between gap-[var(--grid-gap)]">
+        <p className="max-w-3xl text-[length:var(--section-subtitle-size)] leading-relaxed text-muted-foreground">
           {description}
         </p>
+        <button
+          type="button"
+          onClick={() => setGlossaryOpen(true)}
+          className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          title="Open glossary"
+          aria-label="Open glossary"
+        >
+          <HelpCircle className="h-5 w-5" />
+        </button>
       </div>
 
       <div className="min-w-0 space-y-[var(--page-gap)]">

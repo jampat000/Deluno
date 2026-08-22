@@ -1,5 +1,5 @@
 /**
- * Import lists — list → drawer.
+ * Import Lists — list → drawer.
  *
  *   PageToolbar (New list)
  *   ListCard  (name · list · adds to · last sync · status · on · ›)
@@ -338,7 +338,7 @@ export function SettingsListsPage() {
         }
       />
 
-      <ListCard title="Import lists" count={intakeSources.length ? `${intakeSources.length} ${intakeSources.length === 1 ? "list" : "lists"} · ${intakeSources.filter((item) => item.isEnabled).length} enabled` : undefined}>
+      <ListCard title="Import Lists" count={intakeSources.length ? `${intakeSources.length} ${intakeSources.length === 1 ? "list" : "lists"} · ${intakeSources.filter((item) => item.isEnabled).length} enabled` : undefined}>
         {intakeSources.length === 0 ? (
           <ListEmpty
             title="No import lists yet"
