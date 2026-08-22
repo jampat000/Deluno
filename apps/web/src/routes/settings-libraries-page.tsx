@@ -177,6 +177,7 @@ export function SettingsLibrariesPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!isOpen || busy) return;
+    const creating = mode.kind === "create";
     const nextErrors: typeof errors = {};
     if (!form.name.trim()) nextErrors.name = "Give this library a name.";
     if (!form.rootPath.trim()) nextErrors.rootPath = "Choose a folder for this library.";
@@ -187,7 +188,7 @@ export function SettingsLibrariesPage() {
     setSaveState("saving");
     try {
       let library: LibraryItem;
-      if (mode.kind === "create") {
+      if (creating) {
         const response = await authedFetch("/api/libraries", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -234,9 +235,13 @@ export function SettingsLibrariesPage() {
       const settled = formFromLibrary(fresh);
       setForm(settled);
       setInitialForm(settled);
-      if (mode.kind === "create") setMode({ kind: "edit", id: library.id });
-      setSaveState("saved");
-      setSaveMessage(mode.kind === "create" ? "Library created" : "Saved just now");
+      if (creating) {
+        toast.success(`${settled.name} library created`);
+        closeDrawer();
+      } else {
+        setSaveState("saved");
+        setSaveMessage("Saved just now");
+      }
       revalidator.revalidate();
     } catch (error) {
       setSaveState("error");

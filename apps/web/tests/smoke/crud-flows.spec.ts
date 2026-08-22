@@ -579,6 +579,29 @@ test.describe("library editing", () => {
     }
   });
 
+  test("closes the library drawer after creating a library", async ({ page }) => {
+    const name = `Smoke-UI-Library-${Date.now()}`;
+    const rootPath = path.join(seededRoot, "ui-created");
+    mkdirSync(rootPath, { recursive: true });
+    let createdId: string | undefined;
+
+    try {
+      await page.goto("/settings/libraries");
+      await page.getByRole("button", { name: "New library", exact: true }).first().click();
+      const drawer = page.getByRole("dialog", { name: "New library" });
+      await drawer.getByLabel("Library name").fill(name);
+      await drawer.getByLabel("Library folder").fill(rootPath);
+      await drawer.getByRole("button", { name: "Create library", exact: true }).click();
+
+      await expect(drawer).toBeHidden();
+      await expect(page.getByText(name, { exact: true }).first()).toBeVisible();
+      createdId = (await libraries(page)).find((item) => item.name === name)?.id;
+      expect(createdId).toBeDefined();
+    } finally {
+      if (createdId) await page.request.delete(`/api/libraries/${createdId}`, { headers: authHeaders() });
+    }
+  });
+
   test("removes a library only after the explicit confirmation", async ({ page }) => {
     const { name, library } = await seedLibrary(page);
     await page.goto("/settings/libraries");
