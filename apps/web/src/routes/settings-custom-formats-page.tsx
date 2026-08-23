@@ -25,7 +25,7 @@ import { Input } from "../components/ui/input";
 import { ListCard, ListCell, ListEmpty, ListNameCell, ListRow, ListTable, LIST_TRACK } from "../components/ui/list-card";
 import { ListGroupHeader, MediaTypeFilter, mediaTypeLabel, useMediaTypeSplit } from "../components/ui/media-type-split";
 import { PageFooter } from "../components/ui/page-footer";
-import { PageToolbar } from "../components/ui/page-toolbar";
+import { PageToolbar, PageToolbarAction } from "../components/ui/page-toolbar";
 import { PresetField } from "../components/ui/preset-field";
 import { SegmentedControl } from "../components/ui/segmented-control";
 import { Select } from "../components/ui/select";
@@ -351,10 +351,7 @@ export function SettingsCustomFormatsPage() {
               <FlaskConical className="h-4 w-4" />
               Test a release
             </Button>
-            <Button type="button" onClick={() => openRule(null)}>
-              <Plus className="h-4 w-4" />
-              New rule
-            </Button>
+            <PageToolbarAction onClick={() => openRule(null)}>New rule</PageToolbarAction>
           </>
         }
       />

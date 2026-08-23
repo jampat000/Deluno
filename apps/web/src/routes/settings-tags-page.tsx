@@ -10,7 +10,7 @@ import { Drawer, DrawerDanger, DrawerFooter, DrawerSection, type DrawerSaveState
 import { Field, FieldRow } from "../components/ui/field";
 import { Input } from "../components/ui/input";
 import { ListCard, ListCell, ListEmpty, ListRow, ListTable } from "../components/ui/list-card";
-import { PageToolbar } from "../components/ui/page-toolbar";
+import { PageToolbar, PageToolbarAction } from "../components/ui/page-toolbar";
 import { Select } from "../components/ui/select";
 import { Textarea } from "../components/ui/textarea";
 import { toast } from "../components/shell/toaster";
@@ -139,10 +139,7 @@ export function SettingsTagsPage() {
       <PageToolbar
         tabs={librarySetupNavItems}
         actions={
-          <Button type="button" onClick={() => open(null)}>
-            <Plus className="h-4 w-4" />
-            New tag
-          </Button>
+          <PageToolbarAction onClick={() => open(null)}>New tag</PageToolbarAction>
         }
       />
 

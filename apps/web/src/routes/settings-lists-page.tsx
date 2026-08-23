@@ -21,7 +21,7 @@ import { Drawer, DrawerDanger, DrawerFooter, DrawerSection, type DrawerSaveState
 import { Field, FieldRow } from "../components/ui/field";
 import { Input } from "../components/ui/input";
 import { ListCard, ListCell, ListEmpty, ListNameCell, ListRow, ListTable, LIST_TRACK } from "../components/ui/list-card";
-import { PageToolbar } from "../components/ui/page-toolbar";
+import { PageToolbar, PageToolbarAction } from "../components/ui/page-toolbar";
 import { PresetField } from "../components/ui/preset-field";
 import { SegmentedControl } from "../components/ui/segmented-control";
 import { Select } from "../components/ui/select";
@@ -331,10 +331,7 @@ export function SettingsListsPage() {
     <div className="grid gap-[var(--page-gap)]">
       <PageToolbar
         actions={
-          <Button type="button" onClick={openCreate}>
-            <Plus className="h-4 w-4" />
-            New list
-          </Button>
+          <PageToolbarAction onClick={openCreate}>New list</PageToolbarAction>
         }
       />
 

@@ -132,10 +132,13 @@ const systemNavItems = [
  * was "Media Management" in the topbar and "Setup overview" in the body.
  */
 export const settingsPageMeta = [
+  // Every page in this workspace keeps the same area identity in the topbar.
+  // Page-specific guidance belongs in the page header or card below it; the
+  // shell should not appear to change context when the user changes tabs.
   {
     match: (path: string) => path.startsWith("/settings/processing"),
     title: "Media Management",
-    description: "Optional: let an external processor finish a file before Deluno imports and renames it.",
+    description: "Manage where your media lives, how it is named, and how it moves through Deluno.",
     chrome: "none"
   },
   {
@@ -147,25 +150,25 @@ export const settingsPageMeta = [
   {
     match: (path: string) => path.startsWith("/settings/import-policy"),
     title: "Media Management",
-    description: "Choose how Deluno handles completed downloads before they enter your library.",
+    description: "Manage where your media lives, how it is named, and how it moves through Deluno.",
     chrome: "none"
   },
   {
     match: (path: string) => path.startsWith("/settings/media-management"),
     title: "Media Management",
-    description: "Choose how Deluno names and presents your media.",
+    description: "Manage where your media lives, how it is named, and how it moves through Deluno.",
     chrome: "none"
   },
   {
     match: (path: string) => path.startsWith("/settings/libraries"),
     title: "Media Management",
-    description: "Create the movie and TV libraries Deluno manages, and choose where each one lives.",
+    description: "Manage where your media lives, how it is named, and how it moves through Deluno.",
     chrome: "none"
   },
   {
     match: (path: string) => path.startsWith("/settings/destination-rules"),
     title: "Media Management",
-    description: "Choose where completed movies and TV shows finally live after Deluno imports and names them.",
+    description: "Manage where your media lives, how it is named, and how it moves through Deluno.",
     chrome: "none"
   },
   {
@@ -214,13 +217,13 @@ export const settingsPageMeta = [
   {
     match: (path: string) => path.startsWith("/settings/metadata"),
     title: "Media Management",
-    description: "Language, ratings region, artwork, and optional files saved beside your media.",
+    description: "Manage where your media lives, how it is named, and how it moves through Deluno.",
     chrome: "none"
   },
   {
     match: (path: string) => path.startsWith("/settings/tags"),
     title: "Media Management",
-    description: "Labels used for filtering, routing, policies, and user organisation.",
+    description: "Manage where your media lives, how it is named, and how it moves through Deluno.",
     chrome: "none"
   },
   {

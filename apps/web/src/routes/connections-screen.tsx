@@ -25,7 +25,7 @@ import { Chip } from "../components/ui/chip";
 import { ConfirmDialog } from "../components/ui/confirm-dialog";
 import { Drawer, DrawerFooter, type DrawerSaveState } from "../components/ui/drawer";
 import { ListCard, ListCell, ListEmpty, ListNameCell, ListRow, ListTable, LIST_TRACK } from "../components/ui/list-card";
-import { PageToolbar } from "../components/ui/page-toolbar";
+import { PageToolbar, PageToolbarAction } from "../components/ui/page-toolbar";
 import { Switch } from "../components/ui/switch";
 import { toast } from "../components/shell/toaster";
 import { useUnsavedChanges } from "../hooks/use-unsaved-changes";
@@ -380,15 +380,9 @@ export function IndexersPage() {
 
   const toolbarAction =
     section === "indexers" ? (
-      <Button type="button" onClick={() => openIndexer(null)}>
-        <Plus className="h-4 w-4" />
-        New indexer
-      </Button>
+      <PageToolbarAction onClick={() => openIndexer(null)}>New indexer</PageToolbarAction>
     ) : section === "clients" ? (
-      <Button type="button" onClick={() => openClient(null)}>
-        <Plus className="h-4 w-4" />
-        New client
-      </Button>
+      <PageToolbarAction onClick={() => openClient(null)}>New client</PageToolbarAction>
     ) : null;
 
   return (

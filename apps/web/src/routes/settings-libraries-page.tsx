@@ -20,7 +20,7 @@ import { Drawer, DrawerDanger, DrawerFooter, DrawerSection, type DrawerSaveState
 import { Field, FieldRow } from "../components/ui/field";
 import { Input } from "../components/ui/input";
 import { ListCard, ListCell, ListEmpty, ListNameCell, ListRow, ListTable, LIST_TRACK } from "../components/ui/list-card";
-import { PageToolbar } from "../components/ui/page-toolbar";
+import { PageToolbar, PageToolbarAction } from "../components/ui/page-toolbar";
 import { PathInput } from "../components/ui/path-input";
 import { SegmentedControl } from "../components/ui/segmented-control";
 import { Select } from "../components/ui/select";
@@ -301,17 +301,11 @@ export function SettingsLibrariesPage() {
 
   return (
     <div className="grid gap-[var(--page-gap)]">
-      <PageToolbar tabs={setupTabs} />
+      <PageToolbar tabs={setupTabs} actions={<PageToolbarAction onClick={openCreate}>New library</PageToolbarAction>} />
 
       <ListCard
         title="Libraries"
         count={`${libraries.length} ${libraries.length === 1 ? "library" : "libraries"} · where Deluno stores and organises your media`}
-        actions={
-          <Button type="button" size="sm" onClick={openCreate}>
-            <Plus className="h-3.5 w-3.5" />
-            New library
-          </Button>
-        }
       >
         {libraries.length === 0 ? (
           <ListEmpty

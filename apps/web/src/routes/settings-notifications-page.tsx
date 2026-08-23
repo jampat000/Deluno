@@ -18,7 +18,7 @@ import { Drawer, DrawerDanger, DrawerFooter, DrawerSection, type DrawerSaveState
 import { Field, FieldRow } from "../components/ui/field";
 import { Input } from "../components/ui/input";
 import { ListCard, ListCell, ListEmpty, ListNameCell, ListRow, ListTable, LIST_TRACK } from "../components/ui/list-card";
-import { PageToolbar } from "../components/ui/page-toolbar";
+import { PageToolbar, PageToolbarAction } from "../components/ui/page-toolbar";
 import { systemSettingsNavItems } from "../components/app/settings-shell";
 import { Select } from "../components/ui/select";
 import { Switch, SwitchRow } from "../components/ui/switch";
@@ -194,10 +194,7 @@ export function SettingsNotificationsPage() {
       <PageToolbar
         tabs={systemSettingsNavItems}
         actions={
-          <Button type="button" onClick={() => open(null)}>
-            <Plus className="h-4 w-4" />
-            New webhook
-          </Button>
+          <PageToolbarAction onClick={() => open(null)}>New webhook</PageToolbarAction>
         }
       />
 

@@ -19,7 +19,7 @@ import { Field, FieldRow } from "../components/ui/field";
 import { Input } from "../components/ui/input";
 import { ListCard, ListCell, ListEmpty, ListNameCell, ListRow, ListTable, LIST_TRACK } from "../components/ui/list-card";
 import { PageFooter } from "../components/ui/page-footer";
-import { PageToolbar } from "../components/ui/page-toolbar";
+import { PageToolbar, PageToolbarAction } from "../components/ui/page-toolbar";
 import { PathInput } from "../components/ui/path-input";
 import { Select } from "../components/ui/select";
 import { SwitchRow } from "../components/ui/switch";
@@ -478,7 +478,7 @@ function ProcessingWorkflowPage() {
 
   return (
     <div className="grid gap-[var(--page-gap)]">
-      <PageToolbar tabs={librarySetupNavItems} actions={<Button type="button" variant="outline" onClick={openCallback}><Plus className="h-4 w-4" />New callback</Button>} />
+      <PageToolbar tabs={librarySetupNavItems} actions={<PageToolbarAction onClick={openCallback}>New callback</PageToolbarAction>} />
 
       <ListCard title="Import workflow" count="Standard import, or wait for a processor to clean the file first">
         {libraries.length === 0 ? (

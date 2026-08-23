@@ -1,8 +1,9 @@
 import * as React from "react";
-import { Check } from "lucide-react";
+import { Check, Plus } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { titleCaseLabel } from "../../lib/title-case";
 import { cn } from "../../lib/utils";
+import { Button, type ButtonProps } from "./button";
 
 export interface ToolbarTab {
   to: string;
@@ -28,6 +29,20 @@ interface PageToolbarProps {
   className?: string;
 }
 
+export interface PageToolbarActionProps extends Omit<ButtonProps, "children"> {
+  children: React.ReactNode;
+}
+
+/** The shared primary action treatment for collection-page toolbar rails. */
+export function PageToolbarAction({ children, className, ...props }: PageToolbarActionProps) {
+  return (
+    <Button type="button" size="sm" className={cn("shrink-0 px-3.5", className)} {...props}>
+      <Plus aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+      {children}
+    </Button>
+  );
+}
+
 /**
  * The first row of every collection page: 40px, section rail left, actions right.
  * The topbar already names the page, so there is no H1 here.
@@ -40,13 +55,15 @@ export function PageToolbar({ tabs, left, actions, className }: PageToolbarProps
       {tabs?.length ? (
         <nav
           aria-label="Sections"
-          className="relative isolate no-scrollbar flex h-[var(--toolbar-height)] min-w-0 flex-1 items-center overflow-x-auto rounded-xl border border-hairline/80 bg-card/45 px-1.5 shadow-[0_12px_28px_hsl(var(--foreground)/0.04)] dark:border-white/[0.08] dark:bg-white/[0.02]"
+          className="relative isolate no-scrollbar flex h-[var(--toolbar-height)] min-w-0 flex-1 items-center overflow-x-auto border-y border-hairline/80 bg-gradient-to-r from-primary/[0.025] via-card/25 to-primary/[0.025] dark:border-white/[0.08] dark:via-white/[0.02]"
         >
+          <span aria-hidden="true" className="pointer-events-none absolute left-0 top-1/2 h-px w-[18%] bg-gradient-to-r from-transparent to-foreground/[0.08]" />
+          <span aria-hidden="true" className="pointer-events-none absolute right-0 top-1/2 h-px w-[18%] bg-gradient-to-l from-transparent to-foreground/[0.08]" />
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-8 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent"
           />
-          <div className="relative mx-auto flex h-full min-w-max items-center gap-1">
+          <div className="relative mx-auto grid h-full min-w-max grid-flow-col auto-cols-[clamp(10.5rem,13vw,12.25rem)] items-stretch">
             {tabs.map((tab) => {
               const isActive = isTabActive(location.pathname, tab);
               const isComplete = tab.status === "complete";
@@ -57,23 +74,23 @@ export function PageToolbar({ tabs, left, actions, className }: PageToolbarProps
                   to={tab.to}
                   end={tab.end}
                   className={cn(
-                    "group relative flex h-[calc(var(--toolbar-height)-0.5rem)] shrink-0 items-center gap-2 rounded-lg border border-transparent px-3.5 text-left transition-[background-color,border-color,color,box-shadow,transform] duration-200",
+                    "group relative flex h-full items-center justify-center gap-2 border-x border-t border-transparent px-3 text-center transition-[background-color,border-color,color,box-shadow,transform] duration-200",
                     "focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     isActive
-                      ? "border-primary/20 bg-primary/[0.12] font-semibold text-foreground shadow-[0_4px_14px_hsl(var(--primary)/0.08)] after:absolute after:inset-x-3 after:bottom-0.5 after:h-0.5 after:rounded-full after:bg-primary"
+                      ? "border-primary/20 bg-gradient-to-b from-primary/[0.14] via-primary/[0.05] to-transparent font-semibold text-foreground shadow-[0_-10px_24px_hsl(var(--primary)/0.08)] after:absolute after:inset-x-4 after:bottom-[-1px] after:h-0.5 after:rounded-full after:bg-primary"
                       : isComplete
-                        ? "bg-success/[0.05] text-foreground hover:bg-success/[0.09]"
-                        : "text-muted-foreground hover:bg-card/70 hover:text-foreground"
+                        ? "text-foreground/80 hover:bg-success/[0.05]"
+                        : "text-muted-foreground hover:bg-card/60 hover:text-foreground"
                   )}
                 >
                   <span
                     className={cn(
-                      "relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition-[background-color,border-color,color,transform,box-shadow] duration-200 group-hover:-translate-y-px [&>svg]:h-3.5 [&>svg]:w-3.5",
+                      "relative z-10 flex h-5 w-5 shrink-0 items-center justify-center transition-[color,transform,filter] duration-200 group-hover:-translate-y-px [&>svg]:h-4 [&>svg]:w-4",
                       isActive
-                        ? "border-primary/55 bg-gradient-accent text-primary-foreground shadow-[0_0_0_3px_hsl(var(--primary)/0.1),0_6px_14px_hsl(var(--primary)/0.2)]"
+                        ? "text-primary drop-shadow-[0_0_8px_hsl(var(--primary)/0.55)]"
                         : isComplete
-                          ? "border-success/35 bg-success/10 text-success"
-                          : "border-hairline bg-background/70 text-muted-foreground group-hover:border-primary/35 group-hover:bg-card group-hover:text-foreground"
+                          ? "text-success"
+                          : "text-muted-foreground group-hover:text-foreground"
                     )}
                     aria-hidden="true"
                   >
@@ -90,7 +107,9 @@ export function PageToolbar({ tabs, left, actions, className }: PageToolbarProps
       ) : (
         <span />
       )}
-      {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+      <div className="flex w-[clamp(15rem,28vw,26rem)] shrink-0 items-center justify-end gap-2">
+        {actions}
+      </div>
     </div>
   );
 }
