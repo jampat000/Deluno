@@ -16,11 +16,11 @@ export interface ToolbarTab {
 
 export type ToolbarAccent = "yellow" | "green" | "blue" | "orange";
 
-const TOOLBAR_ACCENT_COLOURS: Record<ToolbarAccent, string> = {
-  yellow: "hsl(47 100% 68%)",
-  green: "hsl(145 78% 52%)",
-  blue: "hsl(207 96% 62%)",
-  orange: "hsl(28 96% 58%)"
+export const TOOLBAR_ACCENT_COLOURS: Record<ToolbarAccent, string> = {
+  yellow: "47 100% 68%",
+  green: "145 78% 52%",
+  blue: "207 96% 62%",
+  orange: "28 96% 58%"
 };
 
 interface PageToolbarProps {
@@ -60,7 +60,7 @@ export function PageToolbarAction({ children, className, ...props }: PageToolbar
  */
 export function PageToolbar({ tabs, left, actions, accent, className }: PageToolbarProps) {
   const location = useLocation();
-  const accentStyle = accent ? ({ "--toolbar-accent": TOOLBAR_ACCENT_COLOURS[accent] } as React.CSSProperties) : undefined;
+  const accentStyle = accent ? ({ "--toolbar-accent": `hsl(${TOOLBAR_ACCENT_COLOURS[accent]})` } as React.CSSProperties) : undefined;
 
   return (
     <div className={cn("flex min-h-[var(--toolbar-height)] items-center justify-between gap-[var(--grid-gap)] border-b border-hairline/80 dark:border-white/[0.08]", className)} style={accentStyle}>

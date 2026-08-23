@@ -11,7 +11,7 @@ import {
   SunMedium,
 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useHotkeys } from "react-hotkeys-hook";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -31,6 +31,7 @@ import { SignalRProvider } from "../lib/use-signalr";
 import { cn } from "../lib/utils";
 import { configurationNavAreas, maintenanceNavItems, settingsPageMeta } from "../components/app/settings-shell";
 import { DelunoNavGlyph, type DelunoNavGlyphKind } from "../components/shell/deluno-nav-glyph";
+import { TOOLBAR_ACCENT_COLOURS, type ToolbarAccent } from "../components/ui/page-toolbar";
 
 /** The shape both sidebar area lists share. */
 interface NavArea {
@@ -38,8 +39,18 @@ interface NavArea {
   label: string;
   icon: DelunoNavGlyphKind;
   to: string;
+  accent: ToolbarAccent;
   tabsInToolbar: boolean;
   items: readonly { to: string; label: string; end: boolean }[];
+}
+
+function navAccentStyle(accent: ToolbarAccent) {
+  const colour = TOOLBAR_ACCENT_COLOURS[accent];
+  return {
+    "--nav-accent": `hsl(${colour})`,
+    "--nav-accent-soft": `hsl(${colour} / 0.14)`,
+    "--nav-accent-border": `hsl(${colour} / 0.3)`
+  } as CSSProperties;
 }
 
 function isEditableTarget(target: EventTarget | null) {
@@ -476,25 +487,26 @@ function AreaRow({
 }) {
   const showChildren = !area.tabsInToolbar && area.items.some((item) => item.to !== area.to);
   const areaIsActive = area.match(pathname);
+  const accentStyle = navAccentStyle(area.accent);
 
   return (
-    <div>
+    <div style={accentStyle}>
       <div className="flex min-h-[var(--shell-pill-height)] items-center gap-1">
         <NavLink
           to={area.to}
           className={({ isActive }) => cn(
             "group relative flex min-h-[var(--shell-pill-height)] min-w-0 flex-1 items-center gap-2.5 rounded-lg px-[var(--shell-nav-inset)] text-[length:var(--shell-nav-size)] font-semibold transition-colors duration-150",
-            isActive || areaIsActive ? "bg-primary/14 text-foreground" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+            isActive || areaIsActive ? "bg-[var(--nav-accent-soft)] text-[var(--nav-accent)]" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
           )}
         >
           {({ isActive }) => <>
-            <span aria-hidden className={cn("absolute left-0 h-[calc(var(--shell-pill-height)*0.55)] w-[3px] rounded-r-full transition-colors", isActive || areaIsActive ? "bg-primary" : "bg-transparent")} />
+            <span aria-hidden className={cn("absolute left-0 h-[calc(var(--shell-pill-height)*0.55)] w-[3px] rounded-r-full transition-colors", isActive || areaIsActive ? "bg-[var(--nav-accent)]" : "bg-transparent")} />
             <span
               className={cn(
                 "flex h-[var(--shell-icon-col)] w-[var(--shell-icon-col)] shrink-0 items-center justify-center rounded-[8px] border transition-colors",
                 isActive || areaIsActive
-                  ? "border-primary/25 bg-primary/15 text-primary"
-                  : "border-hairline/70 bg-surface-2/70 text-muted-foreground group-hover:border-primary/20 group-hover:text-foreground"
+                  ? "border-[var(--nav-accent-border)] bg-[var(--nav-accent-soft)] text-[var(--nav-accent)]"
+                  : "border-hairline/70 bg-surface-2/70 text-muted-foreground group-hover:border-[var(--nav-accent-border)] group-hover:text-[var(--nav-accent)]"
               )}
             >
               <DelunoNavGlyph kind={area.icon} className="h-[var(--shell-icon-size)] w-[var(--shell-icon-size)]" />
@@ -510,7 +522,7 @@ function AreaRow({
             onClick={onToggle}
             className="flex h-[var(--shell-pill-height)] w-10 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted/50 hover:text-foreground"
           >
-            <ChevronRight className={cn("h-4 w-4 transition-transform duration-200", open && "rotate-90 text-primary")} />
+            <ChevronRight className={cn("h-4 w-4 transition-transform duration-200", open && "rotate-90 text-[var(--nav-accent)]")} />
           </button>
         ) : null}
       </div>
@@ -524,11 +536,11 @@ function AreaRow({
               title={item.label}
               className={({ isActive }) => cn(
                 "flex min-h-7 min-w-0 items-center gap-2 rounded-lg px-2.5 py-1.5 text-[length:calc(var(--shell-nav-size)*0.9)] font-medium transition",
-                isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                isActive ? "bg-[var(--nav-accent-soft)] text-[var(--nav-accent)]" : "text-muted-foreground hover:bg-muted/40 hover:text-[var(--nav-accent)]"
               )}
             >
               {({ isActive }) => <>
-                <span aria-hidden className={cn("h-1.5 w-1.5 shrink-0 rounded-full", isActive ? "bg-primary" : "bg-muted-foreground/35")} />
+                <span aria-hidden className={cn("h-1.5 w-1.5 shrink-0 rounded-full", isActive ? "bg-[var(--nav-accent)]" : "bg-muted-foreground/35")} />
                 <span className="min-w-0 truncate">{item.label}</span>
               </>}
             </NavLink>

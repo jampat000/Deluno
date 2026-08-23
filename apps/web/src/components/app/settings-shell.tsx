@@ -30,6 +30,7 @@ export const configurationNavAreas = [
     label: "Media Management",
     icon: "library",
     to: "/settings/libraries",
+    accent: "yellow",
     tabsInToolbar: true,
     items: librarySetupNavItems
   },
@@ -38,6 +39,7 @@ export const configurationNavAreas = [
     label: "Connections",
     icon: "connections",
     to: "/indexers/indexers",
+    accent: "green",
     tabsInToolbar: true,
     items: [
       { to: "/indexers/indexers", label: "Indexers", end: false },
@@ -50,6 +52,7 @@ export const configurationNavAreas = [
     label: "Media Plans",
     icon: "plans",
     to: "/settings/policy-sets",
+    accent: "blue",
     tabsInToolbar: true,
     items: [
       { to: "/settings/policy-sets", label: "Plans", end: false },
@@ -63,6 +66,7 @@ export const configurationNavAreas = [
     label: "Import Lists",
     icon: "discover",
     to: "/settings/lists",
+    accent: "orange",
     tabsInToolbar: true,
     items: [{ to: "/settings/lists", label: "Import Lists", end: false }]
   }
@@ -98,6 +102,7 @@ export const maintenanceNavItems = [
     label: "Preferences",
     icon: "setup",
     to: "/settings/general",
+    accent: "blue",
     tabsInToolbar: true,
     items: systemSettingsNavItems
   },
@@ -106,6 +111,7 @@ export const maintenanceNavItems = [
     label: "System",
     icon: "system",
     to: "/system",
+    accent: "orange",
     tabsInToolbar: true,
     items: systemHealthNavItems
   }
