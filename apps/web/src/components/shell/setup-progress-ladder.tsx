@@ -29,13 +29,13 @@ export function SetupProgressLadder({ status }: { status: SetupStatusModel }) {
           </span>
         </div>
 
-        <ol className="no-scrollbar mt-4 flex min-w-0 items-stretch overflow-x-auto pb-1">
+        <ol className="mt-4 grid min-w-0 gap-2 sm:grid-cols-2 2xl:flex 2xl:items-stretch 2xl:gap-0 2xl:overflow-x-auto 2xl:pb-1">
           {status.steps.map((step, index) => {
             const nextStep = status.steps[index + 1];
             const leadsToCurrent = Boolean(nextStep && step.complete && nextStep.id === currentStepId);
 
             return (
-            <li key={step.id} className="flex min-w-[11.5rem] flex-1 items-stretch first:pl-0 last:pr-0 sm:min-w-0">
+            <li key={step.id} className="flex min-w-0 flex-col items-stretch 2xl:min-w-[11.5rem] 2xl:flex-1 2xl:flex-row first:pl-0 last:pr-0">
               <Link
                 to={step.to}
                 aria-label={`${step.number}. ${step.title}: ${stepStateLabel(step)}`}
@@ -66,8 +66,8 @@ export function SetupProgressLadder({ status }: { status: SetupStatusModel }) {
                 </span>
               </Link>
               {nextStep ? (
-                <span aria-hidden="true" className={cn("flex w-7 shrink-0 items-center justify-center", leadsToCurrent ? "text-success" : "text-muted-foreground/30")}>
-                  <ArrowRight className={cn("h-4 w-4", leadsToCurrent && "motion-safe:animate-pulse")} />
+                <span aria-hidden="true" className={cn("flex h-7 w-full shrink-0 items-center justify-center 2xl:h-auto 2xl:w-7", leadsToCurrent ? "text-success" : "text-muted-foreground/30")}>
+                  <ArrowRight className={cn("h-4 w-4 rotate-90 2xl:rotate-0", leadsToCurrent && "motion-safe:animate-pulse")} />
                 </span>
               ) : null}
             </li>
