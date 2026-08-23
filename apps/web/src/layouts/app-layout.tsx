@@ -506,10 +506,10 @@ function AreaRow({
                 "flex h-[var(--shell-icon-col)] w-[var(--shell-icon-col)] shrink-0 items-center justify-center rounded-[8px] border transition-colors",
                 isActive || areaIsActive
                   ? "border-[var(--nav-accent-border)] bg-transparent text-[var(--nav-accent)]"
-                  : "border-hairline/70 bg-surface-2/70 text-muted-foreground group-hover:border-[var(--nav-accent-border)] group-hover:text-[var(--nav-accent)]"
+                  : "border-hairline/70 bg-surface-2/70 text-[var(--nav-accent)] opacity-75 group-hover:border-[var(--nav-accent-border)] group-hover:opacity-100"
               )}
             >
-              <DelunoNavGlyph kind={area.icon} inheritColor={isActive || areaIsActive} className="h-[var(--shell-icon-size)] w-[var(--shell-icon-size)]" />
+              <DelunoNavGlyph kind={area.icon} className="h-[var(--shell-icon-size)] w-[var(--shell-icon-size)]" />
             </span>
             <span className="min-w-0 flex-1 truncate">{area.label}</span>
           </>}
@@ -622,10 +622,10 @@ function SidebarItem({
                 "flex h-[var(--shell-icon-col)] w-[var(--shell-icon-col)] shrink-0 items-center justify-center rounded-[8px] border transition-colors",
                 isActive
                 ? "border-[var(--nav-accent-border)] bg-transparent text-[var(--nav-accent)]"
-                : "border-hairline/70 bg-surface-2/70 text-muted-foreground group-hover:border-[var(--nav-accent-border)] group-hover:text-[var(--nav-accent)]"
+                : "border-hairline/70 bg-surface-2/70 text-[var(--nav-accent)] opacity-75 group-hover:border-[var(--nav-accent-border)] group-hover:opacity-100"
             )}
           >
-            <DelunoNavGlyph kind={item.icon} inheritColor={isActive} className="h-[var(--shell-icon-size)] w-[var(--shell-icon-size)]" />
+            <DelunoNavGlyph kind={item.icon} className="h-[var(--shell-icon-size)] w-[var(--shell-icon-size)]" />
           </span>
           <span className="min-w-0 flex-1 whitespace-nowrap">{item.label}</span>
           {count > 0 ? (
