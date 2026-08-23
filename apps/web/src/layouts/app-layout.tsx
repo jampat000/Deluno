@@ -61,16 +61,16 @@ function isEditableTarget(target: EventTarget | null) {
 }
 
 const libraryNav = [
-  { to: "/", label: "Dashboard", icon: "dashboard", end: true, attention: "none" as const },
-  { to: "/movies", label: "Movies", icon: "movies", end: false, attention: "movies" as const },
-  { to: "/tv", label: "TV Shows", icon: "shows", end: false, attention: "tv" as const },
-  { to: "/calendar", label: "Schedule", icon: "schedule", end: false, attention: "none" as const }
+  { to: "/", label: "Dashboard", icon: "dashboard", end: true, attention: "none" as const, accent: "blue" as const },
+  { to: "/movies", label: "Movies", icon: "movies", end: false, attention: "movies" as const, accent: "yellow" as const },
+  { to: "/tv", label: "TV Shows", icon: "shows", end: false, attention: "tv" as const, accent: "yellow" as const },
+  { to: "/calendar", label: "Schedule", icon: "schedule", end: false, attention: "none" as const, accent: "blue" as const }
 ] as const;
 
 const operationsNav = [
-  { to: "/queue", label: "Transfers", icon: "transfers", end: false, attention: "activity" as const },
-  { to: "/search-cycles", label: "Automation", icon: "automation", end: false, attention: "none" as const },
-  { to: "/activity", label: "Activity", icon: "activity", end: false, attention: "activity" as const }
+  { to: "/queue", label: "Transfers", icon: "transfers", end: false, attention: "activity" as const, accent: "orange" as const },
+  { to: "/search-cycles", label: "Automation", icon: "automation", end: false, attention: "none" as const, accent: "orange" as const },
+  { to: "/activity", label: "Activity", icon: "activity", end: false, attention: "activity" as const, accent: "green" as const }
 ] as const;
 
 const densityChoices: Density[] = ["compact", "comfortable", "spacious", "expanded"];
@@ -496,7 +496,7 @@ function AreaRow({
           to={area.to}
           className={({ isActive }) => cn(
             "group relative flex min-h-[var(--shell-pill-height)] min-w-0 flex-1 items-center gap-2.5 rounded-lg px-[var(--shell-nav-inset)] text-[length:var(--shell-nav-size)] font-semibold transition-colors duration-150",
-            isActive || areaIsActive ? "bg-[var(--nav-accent-soft)] text-[var(--nav-accent)]" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+            isActive || areaIsActive ? "text-[var(--nav-accent)]" : "text-muted-foreground hover:text-[var(--nav-accent)]"
           )}
         >
           {({ isActive }) => <>
@@ -505,7 +505,7 @@ function AreaRow({
               className={cn(
                 "flex h-[var(--shell-icon-col)] w-[var(--shell-icon-col)] shrink-0 items-center justify-center rounded-[8px] border transition-colors",
                 isActive || areaIsActive
-                  ? "border-[var(--nav-accent-border)] bg-[var(--nav-accent-soft)] text-[var(--nav-accent)]"
+                  ? "border-[var(--nav-accent-border)] bg-transparent text-[var(--nav-accent)]"
                   : "border-hairline/70 bg-surface-2/70 text-muted-foreground group-hover:border-[var(--nav-accent-border)] group-hover:text-[var(--nav-accent)]"
               )}
             >
@@ -536,7 +536,7 @@ function AreaRow({
               title={item.label}
               className={({ isActive }) => cn(
                 "flex min-h-7 min-w-0 items-center gap-2 rounded-lg px-2.5 py-1.5 text-[length:calc(var(--shell-nav-size)*0.9)] font-medium transition",
-                isActive ? "bg-[var(--nav-accent-soft)] text-[var(--nav-accent)]" : "text-muted-foreground hover:bg-muted/40 hover:text-[var(--nav-accent)]"
+                isActive ? "text-[var(--nav-accent)]" : "text-muted-foreground hover:text-[var(--nav-accent)]"
               )}
             >
               {({ isActive }) => <>
@@ -597,17 +597,20 @@ function SidebarItem({
   item,
   count
 }: {
-  item: { to: string; label: string; icon: DelunoNavGlyphKind; end: boolean };
+  item: { to: string; label: string; icon: DelunoNavGlyphKind; end: boolean; accent: ToolbarAccent };
   count: number;
 }) {
+  const accentStyle = navAccentStyle(item.accent);
+
   return (
     <NavLink
       to={item.to}
       end={item.end}
+      style={accentStyle}
       className={({ isActive }) =>
         cn(
           "group relative flex min-h-[var(--shell-pill-height)] items-center gap-2.5 rounded-lg px-[var(--shell-nav-inset)] text-[length:var(--shell-nav-size)] font-semibold transition-colors duration-150",
-          isActive ? "bg-primary/14 text-foreground" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+          isActive ? "text-[var(--nav-accent)]" : "text-muted-foreground hover:text-[var(--nav-accent)]"
         )
       }
     >
@@ -616,17 +619,17 @@ function SidebarItem({
           <span aria-hidden className={cn("absolute left-0 h-[calc(var(--shell-pill-height)*0.55)] w-[3px] rounded-r-full transition-colors", isActive ? "bg-primary" : "bg-transparent")} />
           <span
             className={cn(
-              "flex h-[var(--shell-icon-col)] w-[var(--shell-icon-col)] shrink-0 items-center justify-center rounded-[8px] border transition-colors",
-              isActive
-                ? "border-primary/25 bg-primary/15 text-primary"
-                : "border-hairline/70 bg-surface-2/70 text-muted-foreground group-hover:border-primary/20 group-hover:text-foreground"
+                "flex h-[var(--shell-icon-col)] w-[var(--shell-icon-col)] shrink-0 items-center justify-center rounded-[8px] border transition-colors",
+                isActive
+                ? "border-[var(--nav-accent-border)] bg-transparent text-[var(--nav-accent)]"
+                : "border-hairline/70 bg-surface-2/70 text-muted-foreground group-hover:border-[var(--nav-accent-border)] group-hover:text-[var(--nav-accent)]"
             )}
           >
             <DelunoNavGlyph kind={item.icon} className="h-[var(--shell-icon-size)] w-[var(--shell-icon-size)]" />
           </span>
           <span className="min-w-0 flex-1 whitespace-nowrap">{item.label}</span>
           {count > 0 ? (
-            <span className={cn("flex h-[calc(var(--shell-pill-height)*0.42)] min-w-[calc(var(--shell-pill-height)*0.42)] shrink-0 items-center justify-center rounded-full px-1.5 font-mono text-[length:var(--shell-nav-badge-size)] font-bold", isActive ? "bg-primary text-primary-foreground" : "bg-surface-2 text-muted-foreground")}>
+            <span className={cn("flex h-[calc(var(--shell-pill-height)*0.42)] min-w-[calc(var(--shell-pill-height)*0.42)] shrink-0 items-center justify-center rounded-full px-1.5 font-mono text-[length:var(--shell-nav-badge-size)] font-bold", isActive ? "bg-[var(--nav-accent)] text-background" : "bg-surface-2 text-muted-foreground")}>
               {count}
             </span>
           ) : null}
