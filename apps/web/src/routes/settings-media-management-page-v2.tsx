@@ -22,9 +22,8 @@ import { PageFooter } from "../components/ui/page-footer";
 import { PageToolbar } from "../components/ui/page-toolbar";
 import { PathInput } from "../components/ui/path-input";
 import { Select } from "../components/ui/select";
-import { SummaryStrip } from "../components/ui/summary-strip";
 import { SwitchRow } from "../components/ui/switch";
-import { NamingFormatField, NamingPatternEditor, namingStyleLabel, previewNamingFormat, type NamingFormatKind } from "../components/app/naming-format-field";
+import { NamingFormatField, NamingPatternEditor, previewNamingFormat, type NamingFormatKind } from "../components/app/naming-format-field";
 import { librarySetupNavItems } from "../components/app/settings-shell";
 import { toast } from "../components/shell/toaster";
 import { settingsOverviewLoader } from "./settings-overview-page";
@@ -158,13 +157,6 @@ function FileHandlingPage() {
     <form onSubmit={handleSubmit} className="flex flex-col gap-[var(--page-gap)]" noValidate>
       <PageToolbar tabs={librarySetupNavItems} />
 
-      <SummaryStrip
-        cells={[
-          { label: "Folders", value: namingStyleLabel("movie-folder", form.movieFolderFormat) === namingStyleLabel("series-folder", form.seriesFolderFormat) ? namingStyleLabel("movie-folder", form.movieFolderFormat) : "Mixed styles", help: "Movies and TV shows" },
-          { label: "Episodes", value: namingStyleLabel("episode-file", form.episodeFileFormat), help: "Imported episode files" },
-        ]}
-      />
-
       <ListCard title="Naming" count="The names people see in your library">
         <div className="grid md:grid-cols-[minmax(0,1.45fr)_minmax(22rem,0.8fr)]">
           <div className="divide-y divide-hairline">
@@ -290,14 +282,6 @@ function ImportPolicyPage() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-[var(--page-gap)]" noValidate>
       <PageToolbar tabs={librarySetupNavItems} />
-
-      <SummaryStrip
-        cells={[
-          { label: "Import", value: form.renameOnImport ? "Organise on import" : "Keep original names", help: form.renameOnImport ? "Naming rules are applied" : "Files are left unchanged" },
-          { label: "Seeding", value: form.useHardlinks ? "Use hardlinks" : "Copy files", help: form.useHardlinks ? "Keep seeding without a second full copy" : "Create a separate library copy" },
-          { label: "Upgrades", value: qualityModel.upgradeStop.stopWhenCutoffMet ? "Stop at cutoff" : "Keep searching", help: qualityModel.upgradeStop.stopWhenCutoffMet ? "Keep monitoring, but do not seek a better release" : "Continue searching for better releases" }
-        ]}
-      />
 
       <ListCard title="Import Policy" count="What happens when a download is ready">
         <ImportPolicyFields

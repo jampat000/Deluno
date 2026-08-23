@@ -2,7 +2,6 @@
  * Interface — a page-level form on the shared grammar.
  *
  *   PageToolbar (System settings tabs)
- *   SummaryStrip (theme · density · movies view · TV view)
  *   ListCard  appearance    (theme, density — density applies live)
  *   ListCard  default views (movies, TV)
  *   PageFooter (pinned: status · Discard · Save)
@@ -16,10 +15,9 @@ import { ListCard } from "../components/ui/list-card";
 import { PageFooter } from "../components/ui/page-footer";
 import { PageToolbar } from "../components/ui/page-toolbar";
 import { SegmentedControl } from "../components/ui/segmented-control";
-import { SummaryStrip } from "../components/ui/summary-strip";
 import { systemSettingsNavItems } from "../components/app/settings-shell";
 import { useUnsavedChanges } from "../hooks/use-unsaved-changes";
-import { densityDisplayName, isDensity, useDensity, type Density } from "../lib/use-density";
+import { isDensity, useDensity, type Density } from "../lib/use-density";
 import type { DrawerSaveState } from "../components/ui/drawer";
 import { settingsOverviewLoader } from "./settings-overview-page";
 import type { LibraryItem, PlatformSettingsSnapshot, QualityProfileItem } from "../lib/api";
@@ -105,15 +103,6 @@ export function SettingsUiPage() {
     <form onSubmit={handleSubmit} className="flex flex-col gap-[var(--page-gap)]" noValidate>
       <PageToolbar tabs={systemSettingsNavItems} />
 
-      <SummaryStrip
-        cells={[
-          { label: "Theme", value: titleCase(settings.uiTheme), help: settings.uiTheme === "system" ? "follows your device" : "always this way" },
-          { label: "Density", value: densityDisplayName(settings.uiDensity), help: "spacing, type and control scale" },
-          { label: "Movies open as", value: titleCase(settings.defaultMovieView), help: "for new library views" },
-          { label: "TV opens as", value: titleCase(settings.defaultShowView), help: "for new library views" }
-        ]}
-      />
-
       <ListCard title="Appearance" count="Density applies as you pick it, so you can see it before you save">
         <div className="grid gap-[var(--grid-gap)] p-[var(--card-pad-x)]">
           <Field label="Theme" help="Follow the device, or pin Deluno to dark or light." className="max-w-[24rem]">
@@ -184,8 +173,4 @@ function formFrom(settings: PlatformSettingsSnapshot): UiForm {
     movieView: settings.defaultMovieView,
     showView: settings.defaultShowView
   };
-}
-
-function titleCase(value: string) {
-  return value ? value.charAt(0).toUpperCase() + value.slice(1) : "—";
 }

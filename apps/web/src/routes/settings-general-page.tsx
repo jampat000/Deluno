@@ -2,7 +2,6 @@
  * General — a page-level form on the shared grammar.
  *
  *   PageToolbar (System settings tabs)
- *   SummaryStrip (instance · address · authentication · last saved)
  *   ListCard  instance and host (page form)
  *   PageFooter (pinned: status · Discard · Save)
  *
@@ -16,7 +15,6 @@ import { ListCard } from "../components/ui/list-card";
 import { PageFooter } from "../components/ui/page-footer";
 import { PageToolbar } from "../components/ui/page-toolbar";
 import { PresetField } from "../components/ui/preset-field";
-import { SummaryStrip } from "../components/ui/summary-strip";
 import { systemSettingsNavItems } from "../components/app/settings-shell";
 import { useUnsavedChanges } from "../hooks/use-unsaved-changes";
 import type { DrawerSaveState } from "../components/ui/drawer";
@@ -89,15 +87,6 @@ export function SettingsGeneralPage() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-[var(--page-gap)]" noValidate>
       <PageToolbar tabs={systemSettingsNavItems} />
-
-      <SummaryStrip
-        cells={[
-          { label: "Instance", value: settings.appInstanceName || "Deluno", help: "shown in the topbar and notifications" },
-          { label: "Listening on", value: `${settings.hostBindAddress}:${settings.hostPort}`, help: settings.hostBindAddress === "127.0.0.1" ? "this machine only" : "reachable from your network" },
-          { label: "Sign-in", value: "Required", help: "every session must authenticate" },
-          { label: "Last saved", value: formatWhen(settings.updatedUtc), help: "general settings" }
-        ]}
-      />
 
       <ListCard title="Instance and host" count="How this installation names and serves itself">
         <div className="grid gap-[var(--grid-gap)] p-[var(--card-pad-x)]">
@@ -178,8 +167,4 @@ function formFrom(settings: PlatformSettingsSnapshot): GeneralForm {
     hostPort: String(settings.hostPort),
     urlBase: settings.urlBase
   };
-}
-
-function formatWhen(value: string) {
-  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value));
 }
