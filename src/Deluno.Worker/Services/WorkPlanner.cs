@@ -518,6 +518,7 @@ public sealed class WorkPlanner(
                 files = Directory
                     .EnumerateFiles(library.ProcessorOutputPath!, "*.*", SearchOption.TopDirectoryOnly)
                     .Where(IsImportableVideoFile)
+                    .Where(ProcessorOutputReadiness.IsReady)
                     .OrderByDescending(File.GetLastWriteTimeUtc)
                     .Take(10)
                     .ToArray();
@@ -623,6 +624,7 @@ public sealed class WorkPlanner(
 
             var candidates = FindCorrelatedProcessorOutputs(library.ProcessorOutputPath!, handoff.SourcePath)
                 .Where(path => !knownImportSources.Contains(NormalizeSourceKey(path)))
+                .Where(ProcessorOutputReadiness.IsReady)
                 .ToArray();
             if (candidates.Length != 1)
             {
@@ -728,6 +730,7 @@ public sealed class WorkPlanner(
 
                 matches.AddRange(Directory.EnumerateFiles(expectedDirectory, "*.*", SearchOption.AllDirectories)
                     .Where(IsImportableVideoFile)
+                    .Where(ProcessorOutputReadiness.IsReady)
                     .OrderByDescending(File.GetLastWriteTimeUtc)
                     .Take(2));
             }
