@@ -157,7 +157,7 @@ function FileHandlingPage() {
     <form onSubmit={handleSubmit} className="flex flex-col gap-[var(--page-gap)]" noValidate>
       <PageToolbar tabs={librarySetupNavItems} />
 
-      <ListCard title="Naming" count="The names people see in your library">
+      <ListCard title="Naming" count="The titles people see in your library">
         <div className="grid md:grid-cols-[minmax(0,1.45fr)_minmax(22rem,0.8fr)]">
           <div className="divide-y divide-hairline">
             <div className="grid gap-[var(--grid-gap)] p-[var(--card-pad-x)]">
