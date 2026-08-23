@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { titleCaseLabel } from "../../lib/title-case";
 import { cn } from "../../lib/utils";
@@ -55,48 +55,30 @@ export function PageToolbar({ tabs, left, actions, className }: PageToolbarProps
       {tabs?.length ? (
         <nav
           aria-label="Sections"
-          className="relative isolate no-scrollbar flex h-[var(--toolbar-height)] min-w-0 flex-1 items-center overflow-x-auto border-y border-hairline/80 bg-gradient-to-r from-primary/[0.025] via-card/25 to-primary/[0.025] dark:border-white/[0.08] dark:via-white/[0.02]"
+          className="no-scrollbar flex h-16 min-w-0 flex-1 items-stretch overflow-x-auto border-y border-hairline/80 bg-transparent dark:border-white/[0.08]"
         >
-          <span aria-hidden="true" className="pointer-events-none absolute left-0 top-1/2 h-px w-[18%] bg-gradient-to-r from-transparent to-foreground/[0.08]" />
-          <span aria-hidden="true" className="pointer-events-none absolute right-0 top-1/2 h-px w-[18%] bg-gradient-to-l from-transparent to-foreground/[0.08]" />
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent"
-          />
-          <div className="relative mx-auto grid h-full min-w-max grid-flow-col auto-cols-[clamp(10.5rem,13vw,12.25rem)] items-stretch">
+          <div className="flex h-full min-w-max items-stretch gap-[calc(var(--grid-gap)*2)] px-3">
             {tabs.map((tab) => {
               const isActive = isTabActive(location.pathname, tab);
               const isComplete = tab.status === "complete";
+              const tabLabel = typeof tab.label === "string" ? titleCaseLabel(tab.label) : undefined;
 
               return (
                 <NavLink
                   key={tab.to}
                   to={tab.to}
                   end={tab.end}
+                  aria-label={tabLabel ? `${tabLabel}${isComplete ? " — complete" : ""}` : undefined}
+                  data-status={isComplete ? "complete" : "pending"}
                   className={cn(
-                    "group relative flex h-full items-center justify-center gap-2 border-x border-t border-transparent px-3 text-center transition-[background-color,border-color,color,box-shadow,transform] duration-200",
+                    "group relative flex h-full shrink-0 items-center px-1 pt-px text-[length:var(--type-body-sm)] font-medium leading-none transition-colors duration-200",
                     "focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     isActive
-                      ? "border-primary/20 bg-gradient-to-b from-primary/[0.14] via-primary/[0.05] to-transparent font-semibold text-foreground shadow-[0_-10px_24px_hsl(var(--primary)/0.08)] after:absolute after:inset-x-4 after:bottom-[-1px] after:h-0.5 after:rounded-full after:bg-primary"
-                      : isComplete
-                        ? "text-foreground/80 hover:bg-success/[0.05]"
-                        : "text-muted-foreground hover:bg-card/60 hover:text-foreground"
+                      ? "font-semibold text-foreground after:absolute after:inset-x-0 after:bottom-2.5 after:h-0.5 after:bg-primary"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <span
-                    className={cn(
-                      "relative z-10 flex h-5 w-5 shrink-0 items-center justify-center transition-[color,transform,filter] duration-200 group-hover:-translate-y-px [&>svg]:h-4 [&>svg]:w-4",
-                      isActive
-                        ? "text-primary drop-shadow-[0_0_8px_hsl(var(--primary)/0.55)]"
-                        : isComplete
-                          ? "text-success"
-                          : "text-muted-foreground group-hover:text-foreground"
-                    )}
-                    aria-hidden="true"
-                  >
-                    {isComplete ? <Check aria-hidden="true" /> : tab.icon ?? <span className="h-1.5 w-1.5 rounded-full bg-current" />}
-                  </span>
-                  <span className="whitespace-nowrap text-[length:var(--type-body-sm)] leading-tight">{typeof tab.label === "string" ? titleCaseLabel(tab.label) : tab.label}</span>
+                  <span className="whitespace-nowrap">{tabLabel ?? tab.label}</span>
                 </NavLink>
               );
             })}
