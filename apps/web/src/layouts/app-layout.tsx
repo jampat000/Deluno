@@ -509,7 +509,7 @@ function AreaRow({
                   : "border-hairline/70 bg-surface-2/70 text-muted-foreground group-hover:border-[var(--nav-accent-border)] group-hover:text-[var(--nav-accent)]"
               )}
             >
-              <DelunoNavGlyph kind={area.icon} className="h-[var(--shell-icon-size)] w-[var(--shell-icon-size)]" />
+              <DelunoNavGlyph kind={area.icon} inheritColor={isActive || areaIsActive} className="h-[var(--shell-icon-size)] w-[var(--shell-icon-size)]" />
             </span>
             <span className="min-w-0 flex-1 truncate">{area.label}</span>
           </>}
@@ -625,7 +625,7 @@ function SidebarItem({
                 : "border-hairline/70 bg-surface-2/70 text-muted-foreground group-hover:border-[var(--nav-accent-border)] group-hover:text-[var(--nav-accent)]"
             )}
           >
-            <DelunoNavGlyph kind={item.icon} className="h-[var(--shell-icon-size)] w-[var(--shell-icon-size)]" />
+            <DelunoNavGlyph kind={item.icon} inheritColor={isActive} className="h-[var(--shell-icon-size)] w-[var(--shell-icon-size)]" />
           </span>
           <span className="min-w-0 flex-1 whitespace-nowrap">{item.label}</span>
           {count > 0 ? (

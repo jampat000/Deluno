@@ -114,6 +114,7 @@ export function MobileShellNav({ attention, user, onLogout }: MobileShellNavProp
                       <span className="relative flex h-[var(--control-height-icon)] w-[var(--control-height-icon)] shrink-0 items-center justify-center rounded-xl transition-colors">
                         <DelunoNavGlyph
                           kind={tab.icon}
+                          inheritColor={isActive}
                           className={cn("h-[calc(var(--shell-icon-size)+0.35rem)] w-[calc(var(--shell-icon-size)+0.35rem)]", isActive ? "text-[var(--nav-accent)]" : "text-muted-foreground")}
                         />
                         {"attention" in tab && tab.attention ? (
@@ -213,6 +214,7 @@ export function MobileShellNav({ attention, user, onLogout }: MobileShellNavProp
                         >
                           <DelunoNavGlyph
                             kind={item.icon as DelunoNavGlyphKind}
+                            inheritColor={isActive}
                             className={cn("h-5 w-5 shrink-0", isActive ? "text-[var(--nav-accent)]" : "text-muted-foreground")}
                           />
                           <span className="flex-1">{item.label}</span>
@@ -287,7 +289,7 @@ function MobileAreaRow({
             )}
           >
             <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg", isActive ? "border border-[var(--nav-accent-border)] text-[var(--nav-accent)]" : "bg-muted/35 text-muted-foreground")}>
-              <DelunoNavGlyph kind={area.icon} className="h-4 w-4" />
+              <DelunoNavGlyph kind={area.icon} inheritColor={isActive} className="h-4 w-4" />
             </span>
             <span className="min-w-0 truncate">{area.label}</span>
           </NavLink>
