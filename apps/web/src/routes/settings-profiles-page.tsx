@@ -306,7 +306,7 @@ export function SettingsProfilesPage() {
         }
       />
 
-      <ListCard title="Quality profiles" count={qualityProfiles.length ? `${qualityProfiles.length} ${qualityProfiles.length === 1 ? "profile" : "profiles"}` : undefined}>
+      <ListCard title="Quality profiles" count={qualityProfiles.length ? `${qualityProfiles.length} ${qualityProfiles.length === 1 ? "profile" : "profiles"} · quality ladders used by media plans` : undefined}>
         {qualityProfiles.length === 0 ? (
           <ListEmpty
             title="No quality profiles yet"

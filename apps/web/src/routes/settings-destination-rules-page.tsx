@@ -292,7 +292,7 @@ export function SettingsDestinationRulesPage() {
         }
       />
 
-      <ListCard title="Final Destinations" count={destinationRules.length ? `${destinationRules.length} ${destinationRules.length === 1 ? "rule" : "rules"} · ${destinationRules.filter((rule) => rule.isEnabled).length} enabled · first match wins` : undefined}>
+      <ListCard title="Final Destinations" count={destinationRules.length ? `${destinationRules.length} ${destinationRules.length === 1 ? "rule" : "rules"} · ${destinationRules.filter((rule) => rule.isEnabled).length} enabled · route exceptions before the library folder` : undefined}>
         {destinationRules.length === 0 ? (
           <ListEmpty
             title="No destination rules"

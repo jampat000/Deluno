@@ -305,7 +305,7 @@ export function SettingsLibrariesPage() {
 
       <ListCard
         title="Libraries"
-        count={`${libraries.length} ${libraries.length === 1 ? "library" : "libraries"}`}
+        count={`${libraries.length} ${libraries.length === 1 ? "library" : "libraries"} · where Deluno stores and organises your media`}
         actions={
           <Button type="button" size="sm" onClick={openCreate}>
             <Plus className="h-3.5 w-3.5" />

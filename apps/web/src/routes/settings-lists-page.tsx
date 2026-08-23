@@ -338,7 +338,7 @@ export function SettingsListsPage() {
         }
       />
 
-      <ListCard title="Import Lists" count={intakeSources.length ? `${intakeSources.length} ${intakeSources.length === 1 ? "list" : "lists"} · ${intakeSources.filter((item) => item.isEnabled).length} enabled` : undefined}>
+      <ListCard title="Import Lists" count={intakeSources.length ? `${intakeSources.length} ${intakeSources.length === 1 ? "list" : "lists"} · ${intakeSources.filter((item) => item.isEnabled).length} enabled · add titles from watchlists and feeds` : undefined}>
         {intakeSources.length === 0 ? (
           <ListEmpty
             title="No import lists yet"

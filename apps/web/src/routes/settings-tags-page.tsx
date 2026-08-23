@@ -146,7 +146,7 @@ export function SettingsTagsPage() {
         }
       />
 
-      <ListCard title="Tags" count={tags.length ? `${tags.length} ${tags.length === 1 ? "tag" : "tags"}` : undefined}>
+      <ListCard title="Tags" count={tags.length ? `${tags.length} ${tags.length === 1 ? "tag" : "tags"} · shared labels for routing and organisation` : undefined}>
         {tags.length === 0 ? (
           <ListEmpty
             title="No tags yet"

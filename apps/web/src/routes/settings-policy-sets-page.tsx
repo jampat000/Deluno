@@ -367,7 +367,7 @@ export function SettingsPolicySetsPage() {
 
       <ListCard
         title="Media Plans"
-        count={`${policySets.length} ${policySets.length === 1 ? "plan" : "plans"} · ${policySets.filter((plan) => plan.isEnabled).length} enabled`}
+        count={`${policySets.length} ${policySets.length === 1 ? "plan" : "plans"} · ${policySets.filter((plan) => plan.isEnabled).length} enabled · quality, release and search rules per library`}
         filter={policySets.length > 3 ? { value: filter, onChange: setFilter, placeholder: "Filter plans" } : undefined}
       >
         {policySets.length === 0 ? (

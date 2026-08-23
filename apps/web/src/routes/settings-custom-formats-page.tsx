@@ -378,7 +378,7 @@ export function SettingsCustomFormatsPage() {
         </ListTable>
       </ListCard>
 
-      <ListCard title="Release rules" count={customFormats.length ? `${customFormats.length} ${customFormats.length === 1 ? "rule" : "rules"}` : undefined}>
+      <ListCard title="Release rules" count={customFormats.length ? `${customFormats.length} ${customFormats.length === 1 ? "rule" : "rules"} · score or reject releases` : undefined}>
         {customFormats.length === 0 ? (
           <ListEmpty
             title="No release rules yet"

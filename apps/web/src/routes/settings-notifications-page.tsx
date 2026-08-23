@@ -201,7 +201,7 @@ export function SettingsNotificationsPage() {
         }
       />
 
-      <ListCard title="Webhooks" count={webhooks.length ? `${webhooks.length} ${webhooks.length === 1 ? "webhook" : "webhooks"} · ${webhooks.filter((webhook) => webhook.isEnabled).length} enabled` : undefined}>
+      <ListCard title="Webhooks" count={webhooks.length ? `${webhooks.length} ${webhooks.length === 1 ? "webhook" : "webhooks"} · ${webhooks.filter((webhook) => webhook.isEnabled).length} enabled · send Deluno events to other tools` : undefined}>
         {webhooks.length === 0 ? (
           <ListEmpty
             title="No webhooks yet"

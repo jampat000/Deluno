@@ -253,6 +253,9 @@ test.describe("dashboard workflow", () => {
       await expect(navigator.locator(`a[href="${destination}"]`)).toHaveCount(1);
     }
 
+    await page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Library & Storage", exact: true }).click();
+    await expect(page.getByText("where Deluno stores and organises your media", { exact: false })).toBeVisible();
+
     await page.goto("/indexers");
     await expect(navigator.getByRole("link", { name: "Connections", exact: true })).toBeVisible();
     await page.goto("/search-cycles");
