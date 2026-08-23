@@ -68,12 +68,13 @@ export function buildSetupStatus(input: SetupStatusInput): SetupStatusModel {
   const movieLibraries = input.libraries.filter((library) => library.mediaType === "movies").length;
   const tvLibraries = input.libraries.filter((library) => library.mediaType === "tv").length;
   const autoLibraries = input.libraries.filter((library) => library.autoSearchEnabled).length;
-  const configuredLibraries = input.libraries.filter((library) => Boolean(library.rootPath?.trim())).length;
   const enabledIntakeSources = (input.intakeSources ?? []).filter((source) => source.isEnabled);
   const hasHealthyIndexer = healthyIndexers.length > 0;
   const hasHealthyClient = healthyClients.length > 0;
   const connectionsReady = hasHealthyIndexer && hasHealthyClient;
   const automationReady = input.settings.autoStartJobs && autoLibraries > 0;
+  const readyLibraries = input.libraries.filter((library) => isLibraryReady(library, input.settings));
+  const mediaManagementReady = input.libraries.length > 0 && readyLibraries.length === input.libraries.length;
 
   const steps: SetupStatusStep[] = [
     {
@@ -82,16 +83,24 @@ export function buildSetupStatus(input: SetupStatusInput): SetupStatusModel {
       title: "Media Management",
       description: "Set up your movie and TV libraries, storage paths, naming, and import behaviour.",
       status:
-        configuredLibraries === 0
+        input.libraries.length === 0
           ? "Not configured"
-          : `${plural(movieLibraries, "movie library")} - ${plural(tvLibraries, "TV library")}`,
-      complete: configuredLibraries > 0,
-      state: configuredLibraries > 0 ? "complete" : "not-started",
+          : mediaManagementReady
+            ? `${plural(movieLibraries, "movie library")} - ${plural(tvLibraries, "TV library")}`
+            : `${readyLibraries.length}/${input.libraries.length} libraries ready`,
+      complete: mediaManagementReady,
+      state: mediaManagementReady ? "complete" : input.libraries.length > 0 ? "failed" : "not-started",
       optional: false,
       to: "/settings/libraries",
-      action: configuredLibraries === 0 ? "Configure media management" : "Review media management",
+      action: mediaManagementReady
+        ? "Review media management"
+        : input.libraries.length > 0
+          ? "Finish media management"
+          : "Configure media management",
       attentionTitle: "Media management not configured",
-      attentionText: "Create at least one movie or TV library and choose its final folder."
+      attentionText: input.libraries.length === 0
+        ? "Create at least one movie or TV library and choose its final folder."
+        : "Finish every library's destination, naming, and import workflow before treating media management as ready."
     },
     {
       id: "media-plans",
@@ -269,4 +278,19 @@ function plural(count: number, singular: string, pluralLabel = `${singular}s`) {
 
 function isHealthy(status: string) {
   return status === "healthy";
+}
+
+function isLibraryReady(library: LibraryItem, settings: PlatformSettingsSnapshot) {
+  if (!library.rootPath?.trim()) return false;
+
+  const mediaType = library.mediaType?.toLowerCase();
+  const namingReady = mediaType === "movies"
+    ? Boolean(settings.movieFolderFormat?.trim())
+    : mediaType === "tv"
+      ? Boolean(settings.seriesFolderFormat?.trim()) && Boolean(settings.episodeFileFormat?.trim())
+      : false;
+  if (!namingReady) return false;
+
+  const workflow = (library.importWorkflow ?? "standard").trim().toLowerCase();
+  return workflow !== "refine-before-import" || Boolean(library.processorOutputPath?.trim());
 }
