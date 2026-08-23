@@ -14,6 +14,15 @@ export interface ToolbarTab {
   status?: "complete" | "pending";
 }
 
+export type ToolbarAccent = "yellow" | "green" | "blue" | "orange";
+
+const TOOLBAR_ACCENT_COLOURS: Record<ToolbarAccent, string> = {
+  yellow: "hsl(47 100% 68%)",
+  green: "hsl(145 78% 52%)",
+  blue: "hsl(207 96% 62%)",
+  orange: "hsl(28 96% 58%)"
+};
+
 interface PageToolbarProps {
   /** Sub-pages of this area. Rendered as a consistent navigation rail. */
   tabs?: readonly ToolbarTab[];
@@ -26,6 +35,8 @@ interface PageToolbarProps {
   left?: React.ReactNode;
   /** At most two: one primary ("New …") and one secondary. */
   actions?: React.ReactNode;
+  /** The accent used by the matching sidebar area. */
+  accent?: ToolbarAccent;
   className?: string;
 }
 
@@ -47,11 +58,12 @@ export function PageToolbarAction({ children, className, ...props }: PageToolbar
  * The first row of every collection page: 40px, section rail left, actions right.
  * The topbar already names the page, so there is no H1 here.
  */
-export function PageToolbar({ tabs, left, actions, className }: PageToolbarProps) {
+export function PageToolbar({ tabs, left, actions, accent, className }: PageToolbarProps) {
   const location = useLocation();
+  const accentStyle = accent ? ({ "--toolbar-accent": TOOLBAR_ACCENT_COLOURS[accent] } as React.CSSProperties) : undefined;
 
   return (
-    <div className={cn("flex min-h-[var(--toolbar-height)] items-center justify-between gap-[var(--grid-gap)] border-b border-hairline/80 dark:border-white/[0.08]", className)}>
+    <div className={cn("flex min-h-[var(--toolbar-height)] items-center justify-between gap-[var(--grid-gap)] border-b border-hairline/80 dark:border-white/[0.08]", className)} style={accentStyle}>
       {tabs?.length ? (
         <nav
           aria-label="Sections"
@@ -74,7 +86,10 @@ export function PageToolbar({ tabs, left, actions, className }: PageToolbarProps
                     "group relative flex h-full shrink-0 items-center px-1 pt-px text-[length:var(--type-body-sm)] font-medium leading-none transition-colors duration-200",
                     "focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     isActive
-                      ? "font-semibold text-foreground after:absolute after:inset-x-0 after:bottom-2.5 after:h-0.5 after:bg-primary"
+                      ? cn(
+                          "font-semibold after:absolute after:inset-x-0 after:bottom-2.5 after:h-0.5",
+                          accent ? "text-[var(--toolbar-accent)] after:bg-[var(--toolbar-accent)]" : "text-foreground after:bg-primary"
+                        )
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >

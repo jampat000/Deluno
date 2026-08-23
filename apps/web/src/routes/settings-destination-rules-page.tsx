@@ -278,6 +278,7 @@ export function SettingsDestinationRulesPage() {
     <div className="grid gap-[var(--page-gap)]">
       <PageToolbar
         tabs={librarySetupNavItems}
+        accent="yellow"
         actions={
           <>
             <Button type="button" variant="outline" onClick={openTest}>

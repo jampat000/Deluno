@@ -215,7 +215,7 @@ export function SettingsMetadataPage() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-[var(--page-gap)]" noValidate>
-      <PageToolbar tabs={librarySetupNavItems} />
+      <PageToolbar tabs={librarySetupNavItems} accent="yellow" />
 
       <ListCard title="What Deluno saves" count="Language, region, and the files kept beside your media">
         <div className="grid gap-[var(--grid-gap)] p-[var(--card-pad-x)]">

@@ -193,6 +193,7 @@ export function SettingsNotificationsPage() {
     <div className="grid gap-[var(--page-gap)]">
       <PageToolbar
         tabs={systemSettingsNavItems}
+        accent="yellow"
         actions={
           <PageToolbarAction onClick={() => open(null)}>New webhook</PageToolbarAction>
         }

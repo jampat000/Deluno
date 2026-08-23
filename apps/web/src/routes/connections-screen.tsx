@@ -387,7 +387,7 @@ export function IndexersPage() {
 
   return (
     <div className="grid gap-[var(--page-gap)]">
-      <PageToolbar tabs={TABS} actions={toolbarAction} />
+      <PageToolbar tabs={TABS} accent="green" actions={toolbarAction} />
 
       {section === "indexers" ? (
         <ListCard title="Indexers" count={indexers.length ? `${indexers.length} ${indexers.length === 1 ? "indexer" : "indexers"} · ${healthyIndexers}/${enabledIndexers} healthy` : undefined}>

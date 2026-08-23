@@ -138,6 +138,7 @@ export function SettingsTagsPage() {
     <div className="grid gap-[var(--page-gap)]">
       <PageToolbar
         tabs={librarySetupNavItems}
+        accent="yellow"
         actions={
           <PageToolbarAction onClick={() => open(null)}>New tag</PageToolbarAction>
         }

@@ -309,7 +309,7 @@ export function SettingsWorkspaceLayout() {
 export function SystemWorkspaceLayout() {
   return (
     <div className="flex flex-col gap-[var(--page-gap)]">
-      <PageToolbar tabs={systemHealthNavItems} />
+      <PageToolbar tabs={systemHealthNavItems} accent="yellow" />
       <SystemWorkspaceContext.Provider value>
         <Outlet />
       </SystemWorkspaceContext.Provider>

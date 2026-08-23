@@ -155,7 +155,7 @@ function FileHandlingPage() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-[var(--page-gap)]" noValidate>
-      <PageToolbar tabs={librarySetupNavItems} />
+      <PageToolbar tabs={librarySetupNavItems} accent="yellow" />
 
       <ListCard title="Naming" count="The titles people see in your library">
         <div className="grid md:grid-cols-[minmax(0,1.45fr)_minmax(22rem,0.8fr)]">
@@ -281,7 +281,7 @@ function ImportPolicyPage() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-[var(--page-gap)]" noValidate>
-      <PageToolbar tabs={librarySetupNavItems} />
+      <PageToolbar tabs={librarySetupNavItems} accent="yellow" />
 
       <ListCard title="Import Policy" count="What happens when a download is ready">
         <ImportPolicyFields
@@ -479,7 +479,7 @@ function ProcessingWorkflowPage() {
 
   return (
     <div className="grid gap-[var(--page-gap)]">
-      <PageToolbar tabs={librarySetupNavItems} actions={<PageToolbarAction variant="outline" onClick={openCallback}>Connect processor</PageToolbarAction>} />
+      <PageToolbar tabs={librarySetupNavItems} accent="yellow" actions={<PageToolbarAction variant="outline" onClick={openCallback}>Connect processor</PageToolbarAction>} />
 
       <ListCard title="Import workflow" count="Standard import, or wait for a processor to clean the file first">
         {libraries.length === 0 ? (

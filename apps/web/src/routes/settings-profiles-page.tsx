@@ -295,6 +295,7 @@ export function SettingsProfilesPage() {
     <div className="grid gap-[var(--page-gap)]">
       <PageToolbar
         tabs={TABS}
+        accent="yellow"
         actions={
           <>
             <MediaTypeFilter value={split.scope} onValueChange={split.setScope} counts={split.counts} />
