@@ -40,7 +40,7 @@ export function SetupProgressLadder({ status }: { status: SetupStatusModel }) {
                 to={step.to}
                 aria-label={`${step.number}. ${step.title}: ${stepStateLabel(step)}`}
                 className={cn(
-                  "group relative flex min-w-0 flex-1 items-center gap-2.5 rounded-xl border px-2.5 py-2 transition-[background-color,border-color,box-shadow,transform] duration-200 hover:-translate-y-px dark:bg-white/[0.02]",
+                  "group relative flex min-w-0 flex-1 items-center gap-2.5 rounded-xl border px-2.5 py-2 transition-[background-color,border-color,box-shadow] duration-200 dark:bg-white/[0.02]",
                   step.state === "complete"
                     ? "border-success/30 bg-success/[0.06] hover:border-success/50 hover:bg-success/[0.1]"
                     : step.state === "failed"
