@@ -41,7 +41,7 @@ export function PageToolbar({ tabs, left, actions, className }: PageToolbarProps
       {tabs?.length ? (
         <nav
           aria-label="Sections"
-          className="relative isolate no-scrollbar flex h-[var(--toolbar-height)] min-w-0 flex-1 items-center overflow-x-auto rounded-xl border border-hairline/80 bg-card/45 px-1.5 shadow-[0_12px_28px_hsl(var(--foreground)/0.04)] dark:border-white/[0.08] dark:bg-white/[0.02]"
+          className="relative isolate no-scrollbar flex h-[var(--toolbar-height)] min-w-0 flex-1 items-center overflow-x-auto rounded-xl border border-hairline/80 bg-card/45 shadow-[0_12px_28px_hsl(var(--foreground)/0.04)] dark:border-white/[0.08] dark:bg-white/[0.02]"
         >
           <span
             aria-hidden="true"
