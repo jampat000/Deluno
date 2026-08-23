@@ -10,7 +10,7 @@
  */
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useLoaderData, useLocation, useRevalidator } from "react-router-dom";
-import { Loader2, Plus, Wifi } from "lucide-react";
+import { Loader2, Wifi } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Chip, type ChipProps } from "../components/ui/chip";
 import { ConfirmDialog } from "../components/ui/confirm-dialog";
@@ -323,7 +323,7 @@ function ImportPolicyFields({
         <SwitchRow label="Stop upgrading when cutoff is met" description="Keep monitoring missing media and future episodes, but stop searching for a better release once the cutoff quality is reached." checked={qualityModel.upgradeStop.stopWhenCutoffMet} onCheckedChange={onStopWhenCutoffMetChange} />
       </div>
       <div className="border-t border-hairline p-[var(--card-pad-x)] md:col-span-2">
-        <Field label="Default completed-file location" optional help="Fallback for manual imports and downloads not linked to a client.">
+        <Field label="Default completed downloads folder" optional help="Fallback for manual imports and downloads not linked to a client. Libraries can override this.">
           <PathInput value={form.downloadsPath ?? ""} onChange={(value) => onFormChange((current) => ({ ...current, downloadsPath: value }))} browseTitle="Choose downloads folder" />
         </Field>
       </div>
@@ -360,7 +360,7 @@ interface CallbackForm {
 type ProcessingDrawer = { kind: "closed" } | { kind: "library"; id: string } | { kind: "callback" };
 
 function ProcessingWorkflowPage() {
-  const { libraries, processorConnections } = useLoaderData() as LoaderData;
+  const { libraries, processorConnections, settings } = useLoaderData() as LoaderData;
   const revalidator = useRevalidator();
 
   const [drawer, setDrawer] = useState<ProcessingDrawer>({ kind: "closed" });
@@ -374,6 +374,7 @@ function ProcessingWorkflowPage() {
   const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   const editingLibrary = drawer.kind === "library" ? libraries.find((library) => library.id === drawer.id) ?? null : null;
+  const completedDownloadsPath = editingLibrary?.downloadsPath?.trim() || settings.downloadsPath?.trim() || "Download client default";
   const dirty =
     drawer.kind === "library"
       ? JSON.stringify(workflow) !== JSON.stringify(workflowInitial)
@@ -430,9 +431,9 @@ function ProcessingWorkflowPage() {
         setMessage("Saved just now");
       } else if (drawer.kind === "callback") {
         const response = await authedFetch("/api/integrations/processors/connections", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(callback) });
-        if (!response.ok) throw new Error("Callback could not be saved.");
+        if (!response.ok) throw new Error("Processor connection could not be saved.");
         setCallback(emptyCallback());
-        setMessage("Callback saved");
+        setMessage("Processor connected");
         closeDrawer();
       }
       setSaveState("saved");
@@ -461,7 +462,7 @@ function ProcessingWorkflowPage() {
   async function testCallback(connection: ProcessorConnectionItem) {
     await run(`test:${connection.id}`, async () => {
       const response = await authedFetch(`/api/integrations/processors/connections/${connection.id}/test`, { method: "POST" });
-      if (!response.ok) throw new Error("Callback test failed.");
+      if (!response.ok) throw new Error("Processor connection test failed.");
       const result = (await response.json()) as ProcessorConnectionTestResult;
       toast.success(`${connection.name}: ${result.message}`);
     });
@@ -469,8 +470,8 @@ function ProcessingWorkflowPage() {
   async function removeCallback(connection: ProcessorConnectionItem) {
     await run(`remove:${connection.id}`, async () => {
       const response = await authedFetch(`/api/integrations/processors/connections/${connection.id}`, { method: "DELETE" });
-      if (!response.ok && response.status !== 204) throw new Error("Callback could not be removed.");
-    }, `${connection.name} removed`);
+      if (!response.ok && response.status !== 204) throw new Error("Processor connection could not be disconnected.");
+    }, `${connection.name} disconnected`);
     setConfirmRemove(null);
   }
 
@@ -478,7 +479,7 @@ function ProcessingWorkflowPage() {
 
   return (
     <div className="grid gap-[var(--page-gap)]">
-      <PageToolbar tabs={librarySetupNavItems} actions={<PageToolbarAction onClick={openCallback}>New callback</PageToolbarAction>} />
+      <PageToolbar tabs={librarySetupNavItems} actions={<PageToolbarAction variant="outline" onClick={openCallback}>Connect processor</PageToolbarAction>} />
 
       <ListCard title="Import workflow" count="Standard import, or wait for a processor to clean the file first">
         {libraries.length === 0 ? (
@@ -491,7 +492,7 @@ function ProcessingWorkflowPage() {
               return (
                 <ListRow key={library.id} onClick={() => openLibrary(library)} selected={drawer.kind === "library" && drawer.id === library.id}>
                   <ListNameCell name={library.name} sub={library.mediaType === "tv" ? "TV shows" : "Movies"} />
-                  <ListCell primary={refined ? "Process before import" : "Standard import"} secondary={refined ? library.processorName || "Watches the folder — no callback" : "Straight to the library"} />
+                  <ListCell primary={refined ? "Process before import" : "Standard import"} secondary={refined ? library.processorName || "Watches the folder — no processor" : "Straight to the library"} />
                   <ListCell mono primary={refined ? library.processorOutputPath || <span className="font-sans text-warning">Not set</span> : <span className="font-sans text-muted-foreground">—</span>} secondary={refined ? `Waits up to ${Math.round((library.processorTimeoutMinutes || 360) / 60)} h` : undefined} />
                   <ListCell primary={refined ? FAILURE_OPTIONS.find((option) => option.value === library.processorFailureMode)?.label ?? library.processorFailureMode : <span className="text-muted-foreground">—</span>} />
                   <ListCell mobile>
@@ -504,19 +505,19 @@ function ProcessingWorkflowPage() {
         )}
       </ListCard>
 
-      <ListCard title="Completion callbacks" count="Optional — only when your automation can tell Deluno a file is ready">
+      <ListCard title="Processor connections" count="Optional — only when an external processor needs to notify Deluno">
         {processorConnections.length === 0 ? (
           <ListEmpty
-            title="No callback configured"
-            description="This is the normal setup: Deluno watches the processed-files folder directly and never needs to call your processor, or be called by it."
-            actions={<Button type="button" size="sm" variant="outline" onClick={openCallback}><Plus className="h-3.5 w-3.5" />New callback</Button>}
+            title="No processor connected"
+            description="This is the normal setup: Deluno watches the processed output folder directly. Connect a processor only when it needs to notify Deluno that a cleaned file is ready."
+            actions={<Button type="button" size="sm" variant="outline" onClick={openCallback}>Connect processor</Button>}
           />
         ) : (
           <ListTable columns={[{ label: "Name" }, { label: "Type" }, { label: "Notifies", width: "minmax(0,1.4fr)" }, { label: "Health", width: LIST_TRACK.status, mobile: true }, { label: "", width: "150px", srOnly: true, mobile: true }]} chevron={false}>
             {processorConnections.map((connection) => (
               <ListRow key={connection.id}>
                 <ListNameCell name={connection.name} sub={connection.secretConfigured ? "Token saved" : "No token"} />
-                <ListCell primary={connection.provider === "fileflows-webhook" ? "FileFlows webhook" : "Generic callback"} />
+                <ListCell primary={connection.provider === "fileflows-webhook" ? "FileFlows webhook" : "Generic processor notification"} />
                 <ListCell mono primary={connection.submissionUrl || "—"} />
                 <ListCell mobile>
                   <Chip tone={healthTone(connection.healthStatus)}>{connection.healthStatus}</Chip>
@@ -543,10 +544,10 @@ function ProcessingWorkflowPage() {
         onOpenChange={(open) => {
           if (!open) requestClose();
         }}
-        title={drawer.kind === "callback" ? "New completion callback" : editingLibrary?.name ?? "Import workflow"}
-        description={drawer.kind === "callback" ? "Let existing automation tell Deluno the moment a processed file is ready." : `Import workflow · ${editingLibrary?.rootPath ?? ""}`}
+        title={drawer.kind === "callback" ? "Connect a processor" : editingLibrary?.name ?? "Import workflow"}
+        description={drawer.kind === "callback" ? "Connect an external processor so it can notify Deluno when a cleaned file is ready." : `Import workflow · ${editingLibrary?.rootPath ?? ""}`}
         onSubmit={handleSubmit}
-        footer={<DrawerFooter state={footerState} message={message} saveLabel={drawer.kind === "callback" ? "Save callback" : "Save workflow"} onCancel={requestClose} disabled={busy !== null || (drawer.kind === "library" && isRefined && !workflow.processorOutputPath.trim())} />}
+        footer={<DrawerFooter state={footerState} message={message} saveLabel={drawer.kind === "callback" ? "Connect processor" : "Save workflow"} onCancel={requestClose} disabled={busy !== null || (drawer.kind === "library" && isRefined && !workflow.processorOutputPath.trim())} />}
       >
         {drawer.kind === "library" ? (
           <>
@@ -557,7 +558,14 @@ function ProcessingWorkflowPage() {
             </DrawerSection>
             {isRefined ? (
               <DrawerSection title="Processing">
-                <Field label="Processed-files folder Deluno can see" help="Your processor writes cleaned files here. Deluno imports one only when it matches a waiting download.">
+                <div className="grid gap-1.5">
+                  <p className="text-[length:var(--type-body-sm)] font-medium leading-tight text-foreground">Completed downloads folder</p>
+                  <div className="flex min-h-[var(--control-height)] items-center rounded-[10px] border border-hairline bg-surface-1 px-[var(--field-pad-x)] font-mono text-[length:var(--type-caption)] text-muted-foreground">
+                    <span className="truncate">{completedDownloadsPath}</span>
+                  </div>
+                  <p className="text-[length:var(--type-caption)] leading-snug text-muted-foreground">Inherited from Library &amp; Storage. This is the processor input; change it there if this library uses a different completed-download folder.</p>
+                </div>
+                <Field label="Processed output folder" help="A separate folder where your processor writes cleaned files. Deluno watches it, matches the output to the waiting download, then imports it.">
                   <PathInput value={workflow.processorOutputPath} onChange={(value) => setWorkflow((current) => ({ ...current, processorOutputPath: value }))} browseTitle="Choose processed-output folder" />
                 </Field>
                 <FieldRow>
@@ -568,8 +576,8 @@ function ProcessingWorkflowPage() {
                     <Select value={workflow.processorFailureMode} onChange={(event) => setWorkflow((current) => ({ ...current, processorFailureMode: event.target.value }))} options={FAILURE_OPTIONS} />
                   </Field>
                 </FieldRow>
-                <Field label="Completion callback" optional help="Leave as watched-folder unless your automation can notify Deluno with the hand-off id.">
-                  <Select value={workflow.processorName} onChange={(event) => setWorkflow((current) => ({ ...current, processorName: event.target.value }))} placeholder="No callback — watch the folder">
+                <Field label="Processor notification" optional help="Leave this blank when Deluno should watch the processed output folder itself.">
+                  <Select value={workflow.processorName} onChange={(event) => setWorkflow((current) => ({ ...current, processorName: event.target.value }))} placeholder="No processor — watch the folder">
                     {processorConnections.map((connection) => (
                       <option key={connection.id} value={connection.name}>
                         {connection.name}
@@ -595,7 +603,7 @@ function ProcessingWorkflowPage() {
                   <Select value={callback.provider} onChange={(event) => setCallback((current) => ({ ...current, provider: event.target.value }))} options={[{ value: "generic-webhook", label: "Generic processor webhook" }, { value: "fileflows-webhook", label: "FileFlows webhook" }]} />
                 </Field>
               </FieldRow>
-              <Field label="Notification URL" help="Deluno posts here when a completed download is waiting; your automation calls back with the same hand-off id.">
+              <Field label="Notification URL" help="Deluno posts here when a completed download is waiting; your processor replies with the same hand-off id.">
                 <Input value={callback.submissionUrl} onChange={(event) => setCallback((current) => ({ ...current, submissionUrl: event.target.value }))} placeholder="https://processor.example/webhooks/deluno" className="font-mono text-[length:var(--type-caption)]" autoComplete="off" spellCheck={false} />
               </Field>
             </DrawerSection>
@@ -608,7 +616,7 @@ function ProcessingWorkflowPage() {
                   <Input value={callback.authHeaderName} onChange={(event) => setCallback((current) => ({ ...current, authHeaderName: event.target.value }))} />
                 </Field>
               </FieldRow>
-              <SwitchRow label="Enabled" description="Disabled callbacks stay configured but are never called." checked={callback.isEnabled} onCheckedChange={(checked) => setCallback((current) => ({ ...current, isEnabled: checked }))} />
+              <SwitchRow label="Enabled" description="Disabled processor connections stay configured but are never used." checked={callback.isEnabled} onCheckedChange={(checked) => setCallback((current) => ({ ...current, isEnabled: checked }))} />
             </DrawerSection>
           </>
         ) : null}
@@ -620,8 +628,8 @@ function ProcessingWorkflowPage() {
           if (!open) setConfirmRemove(null);
         }}
         title={`Remove “${confirmRemove?.name}”?`}
-        description="Libraries pointing at it fall back to watching the processed folder until another callback is chosen."
-        confirmLabel="Remove callback"
+        description="Libraries pointing at it fall back to watching the processed output folder until another processor is connected."
+        confirmLabel="Disconnect processor"
         busy={busy?.startsWith("remove:") ?? false}
         onConfirm={() => confirmRemove && void removeCallback(confirmRemove)}
       />

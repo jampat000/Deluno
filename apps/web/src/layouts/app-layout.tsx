@@ -206,7 +206,7 @@ function AppLayoutContent() {
               className="w-full min-w-0"
               style={{
                 paddingInline: "var(--content-pad-inline)",
-                paddingTop: "var(--content-pad-block)",
+                paddingTop: location.pathname.startsWith("/settings/") ? "0px" : "var(--content-pad-block)",
                 paddingBottom: "var(--content-pad-block)"
               }}
             >

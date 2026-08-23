@@ -419,7 +419,7 @@ export function SettingsLibrariesPage() {
               browseTitle={`Choose ${typeLabel.toLowerCase()} library folder`}
             />
           </Field>
-          <Field label="Completed downloads folder" optional help="Leave blank to use the completed folder from your download client. Set only for a library-specific or processed-output folder.">
+          <Field label="Completed downloads folder" optional help="Leave blank to use the default in Import Policy. This is where completed downloads arrive; it is not the processor output folder.">
             <PathInput value={form.downloadsPath} onChange={(downloadsPath) => setForm((current) => ({ ...current, downloadsPath }))} browseTitle="Choose completed downloads folder" />
           </Field>
         </DrawerSection>

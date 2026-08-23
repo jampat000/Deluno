@@ -51,11 +51,11 @@ export function PageToolbar({ tabs, left, actions, className }: PageToolbarProps
   const location = useLocation();
 
   return (
-    <div className={cn("flex min-h-[var(--toolbar-height)] items-center justify-between gap-[var(--grid-gap)]", className)}>
+    <div className={cn("flex min-h-[var(--toolbar-height)] items-center justify-between gap-[var(--grid-gap)] border-b border-hairline/80 dark:border-white/[0.08]", className)}>
       {tabs?.length ? (
         <nav
           aria-label="Sections"
-          className="no-scrollbar flex h-16 min-w-0 flex-1 items-stretch overflow-x-auto border-y border-hairline/80 bg-transparent dark:border-white/[0.08]"
+          className="no-scrollbar flex h-16 min-w-0 flex-1 items-stretch overflow-x-auto bg-transparent"
         >
           <div className="flex h-full min-w-max items-stretch gap-[calc(var(--grid-gap)*2)] px-3">
             {tabs.map((tab) => {
