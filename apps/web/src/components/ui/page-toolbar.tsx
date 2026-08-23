@@ -46,8 +46,24 @@ export interface PageToolbarActionProps extends Omit<ButtonProps, "children"> {
 
 /** The shared primary action treatment for collection-page toolbar rails. */
 export function PageToolbarAction({ children, className, ...props }: PageToolbarActionProps) {
+  const { style, variant, ...buttonProps } = props;
+  const actionStyle = (variant ?? "default") === "default"
+    ? {
+        ...style,
+        backgroundImage: "linear-gradient(to bottom, var(--toolbar-accent), var(--toolbar-accent))",
+        color: "hsl(var(--background))"
+      }
+    : style;
+
   return (
-    <Button type="button" size="sm" className={cn("shrink-0 px-3.5", className)} {...props}>
+    <Button
+      type="button"
+      size="sm"
+      variant={variant}
+      style={actionStyle}
+      className={cn("shrink-0 px-3.5", className)}
+      {...buttonProps}
+    >
       <Plus aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
       {children}
     </Button>
@@ -60,7 +76,9 @@ export function PageToolbarAction({ children, className, ...props }: PageToolbar
  */
 export function PageToolbar({ tabs, left, actions, accent, className }: PageToolbarProps) {
   const location = useLocation();
-  const accentStyle = accent ? ({ "--toolbar-accent": `hsl(${TOOLBAR_ACCENT_COLOURS[accent]})` } as React.CSSProperties) : undefined;
+  const accentStyle = {
+    "--toolbar-accent": accent ? `hsl(${TOOLBAR_ACCENT_COLOURS[accent]})` : "hsl(var(--primary))"
+  } as React.CSSProperties;
 
   return (
     <div className={cn("flex min-h-[var(--toolbar-height)] items-center justify-between gap-[var(--grid-gap)] border-b border-hairline/80 dark:border-white/[0.08]", className)} style={accentStyle}>

@@ -616,7 +616,7 @@ function SidebarItem({
     >
       {({ isActive }) => (
         <>
-          <span aria-hidden className={cn("absolute left-0 h-[calc(var(--shell-pill-height)*0.55)] w-[3px] rounded-r-full transition-colors", isActive ? "bg-primary" : "bg-transparent")} />
+          <span aria-hidden className={cn("absolute left-0 h-[calc(var(--shell-pill-height)*0.55)] w-[3px] rounded-r-full transition-colors", isActive ? "bg-[var(--nav-accent)]" : "bg-transparent")} />
           <span
             className={cn(
                 "flex h-[var(--shell-icon-col)] w-[var(--shell-icon-col)] shrink-0 items-center justify-center rounded-[8px] border transition-colors",

@@ -315,7 +315,7 @@ export function SettingsWorkspaceLayout() {
 export function SystemWorkspaceLayout() {
   return (
     <div className="flex flex-col gap-[var(--page-gap)]">
-      <PageToolbar tabs={systemHealthNavItems} accent="yellow" />
+      <PageToolbar tabs={systemHealthNavItems} accent="orange" />
       <SystemWorkspaceContext.Provider value>
         <Outlet />
       </SystemWorkspaceContext.Provider>

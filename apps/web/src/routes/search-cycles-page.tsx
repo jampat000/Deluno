@@ -270,6 +270,7 @@ export function SearchCyclesPage() {
   return (
     <form onSubmit={submitCleanup} className="flex flex-col gap-[var(--page-gap)]" noValidate>
       <PageToolbar
+        accent="orange"
         actions={
           <>
             <MediaTypeFilter value={split.scope} onValueChange={split.setScope} counts={split.counts} />

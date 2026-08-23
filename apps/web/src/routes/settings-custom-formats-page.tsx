@@ -344,7 +344,7 @@ export function SettingsCustomFormatsPage() {
     <form onSubmit={submitSafeguards} className="flex flex-col gap-[var(--page-gap)]" noValidate>
       <PageToolbar
         tabs={TABS}
-        accent="yellow"
+        accent="blue"
         actions={
           <>
             <MediaTypeFilter value={split.scope} onValueChange={split.setScope} counts={split.counts} />

@@ -365,6 +365,7 @@ export function QueuePage() {
   return (
     <div className="flex flex-col gap-[var(--page-gap)]">
       <PageToolbar
+        accent="orange"
         actions={
           <>
             <Button type="button" variant="outline" onClick={() => revalidator.revalidate()} disabled={revalidator.state !== "idle"}>

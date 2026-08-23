@@ -354,7 +354,7 @@ export function SettingsPolicySetsPage() {
     <div className="grid gap-[var(--page-gap)]">
       <PageToolbar
         tabs={PLAN_TABS}
-        accent="yellow"
+        accent="blue"
         actions={
           <>
             <MediaTypeFilter value={split.scope} onValueChange={split.setScope} counts={split.counts} />

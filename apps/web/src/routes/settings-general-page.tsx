@@ -86,7 +86,7 @@ export function SettingsGeneralPage() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-[var(--page-gap)]" noValidate>
-      <PageToolbar tabs={systemSettingsNavItems} accent="yellow" />
+      <PageToolbar tabs={systemSettingsNavItems} accent="blue" />
 
       <ListCard title="Instance and host" count="How this installation names and serves itself">
         <div className="grid gap-[var(--grid-gap)] p-[var(--card-pad-x)]">

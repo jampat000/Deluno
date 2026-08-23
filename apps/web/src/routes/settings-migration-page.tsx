@@ -190,7 +190,7 @@ export function SettingsMigrationPage() {
     <form onSubmit={(event) => void handlePreview(event)} className="flex flex-col gap-[var(--page-gap)]" noValidate>
       <PageToolbar
         tabs={systemSettingsNavItems}
-        accent="yellow"
+        accent="blue"
         actions={
           <>
             <Button type="button" variant="outline" onClick={() => setPayloadJson(SAMPLE_PAYLOAD)}>
