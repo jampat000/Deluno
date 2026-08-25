@@ -29,8 +29,7 @@ const PRIMARY = [
 
 const DRAWER_LINKS = [
   { to: "/calendar", label: "Schedule", icon: "schedule", group: "Your Media" as const, accent: "blue" as const },
-  { to: "/search-cycles", label: "Automation", icon: "automation", group: "Happening Now" as const, accent: "orange" as const },
-  { to: "/activity", label: "Activity", icon: "activity", group: "Happening Now" as const, accent: "green" as const }
+  { to: "/activity", label: "Activity", icon: "activity", group: "Live operations" as const, accent: "green" as const }
 ] as const;
 
 function navAccentStyle(accent: ToolbarAccent) {
@@ -188,7 +187,7 @@ export function MobileShellNav({ attention, user, onLogout }: MobileShellNavProp
           aria-label="Additional destinations"
           className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-2 py-2"
         >
-          {(["Your Media", "Happening Now", "Setup", "Deluno"] as const).map((group) => (
+          {(["Your Media", "Live operations", "Setup", "Deluno"] as const).map((group) => (
             <div key={group} className="mb-3 last:mb-0">
               <p className="px-3 pb-1.5 pt-2 text-[length:var(--shell-subtle-size)] font-semibold uppercase tracking-wider text-muted-foreground/70">
                 {group}

@@ -9,7 +9,7 @@
  * GET/POST/DELETE /api/integrations/processors/connections (+ /{id}/test).
  */
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { useLoaderData, useLocation, useRevalidator } from "react-router-dom";
+import { Link, useLoaderData, useLocation, useNavigate, useRevalidator } from "react-router-dom";
 import { Loader2, Wifi } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Chip, type ChipProps } from "../components/ui/chip";
@@ -21,13 +21,14 @@ import { ListCard, ListCell, ListEmpty, ListNameCell, ListRow, ListTable, LIST_T
 import { PageFooter } from "../components/ui/page-footer";
 import { PageToolbar, PageToolbarAction } from "../components/ui/page-toolbar";
 import { PathInput } from "../components/ui/path-input";
+import { SegmentedControl } from "../components/ui/segmented-control";
 import { Select } from "../components/ui/select";
 import { SwitchRow } from "../components/ui/switch";
 import { NamingFormatField, NamingPatternEditor, previewNamingFormat, type NamingFormatKind } from "../components/app/naming-format-field";
 import { librarySetupNavItems } from "../components/app/settings-shell";
 import { toast } from "../components/shell/toaster";
 import { settingsOverviewLoader } from "./settings-overview-page";
-import { fetchJson, type LibraryItem, type PlatformSettingsSnapshot, type ProcessorConnectionItem, type ProcessorConnectionTestResult, type QualityModelSnapshot, type QualityProfileItem } from "../lib/api";
+import { fetchJson, type LibraryItem, type PlatformSettingsSnapshot, type ProcessorConnectionItem, type ProcessorConnectionTestResult, type QualityProfileItem } from "../lib/api";
 import type { PlatformSettingsPatch } from "../lib/api/settings";
 import { useApiMutation } from "../lib/use-api-mutation";
 import { authedFetch } from "../lib/use-auth";
@@ -45,22 +46,19 @@ const FAILURE_OPTIONS = [
   { value: "manual-review", label: "Send to manual review" },
   { value: "import-original", label: "Import the original file" }
 ];
-
 interface LoaderData {
   libraries: LibraryItem[];
   qualityProfiles: QualityProfileItem[];
-  qualityModel: QualityModelSnapshot;
   settings: PlatformSettingsSnapshot;
   processorConnections: ProcessorConnectionItem[];
 }
 
 export async function settingsMediaManagementLoader(): Promise<LoaderData> {
-  const [overview, processorConnections, qualityModel] = await Promise.all([
+  const [overview, processorConnections] = await Promise.all([
     settingsOverviewLoader(),
-    fetchJson<ProcessorConnectionItem[]>("/api/integrations/processors/connections"),
-    fetchJson<QualityModelSnapshot>("/api/quality-model")
+    fetchJson<ProcessorConnectionItem[]>("/api/integrations/processors/connections")
   ]);
-  return { ...overview, processorConnections, qualityModel };
+  return { ...overview, processorConnections };
 }
 
 export function SettingsMediaManagementPage() {
@@ -83,7 +81,7 @@ function customPatternMeta(kind: NamingFormatKind) {
   if (kind === "movie-folder") return { label: "Movie folders", placeholder: "{Movie Title} ({Release Year})" };
   if (kind === "series-folder") return { label: "TV show folders", placeholder: "{Series Title} ({Series Year})" };
   if (kind === "episode-file") return { label: "Episode files", placeholder: "{Series Title} - S{Season:00}E{Episode:00} - {Episode Title}" };
-  return { label: "Custom format", placeholder: "" };
+  return { label: "Custom format", placeholder: "{Title}" };
 }
 
 function updateCustomPattern(settings: PlatformSettingsSnapshot, kind: NamingFormatKind, value: string) {
@@ -140,8 +138,7 @@ function FileHandlingPage() {
         episodeFileFormat: form.episodeFileFormat,
         renameOnImport: form.renameOnImport,
         useHardlinks: form.useHardlinks,
-        cleanupEmptyFolders: form.cleanupEmptyFolders,
-        downloadsPath: form.downloadsPath ?? ""
+        cleanupEmptyFolders: form.cleanupEmptyFolders
       });
       setSaved(nextSettings);
       setForm(nextSettings);
@@ -206,7 +203,7 @@ function FileHandlingPage() {
         </div>
       </ListCard>
 
-      <PageFooter state={state} message={message} saveLabel="Save changes" onDiscard={() => { setForm(saved); setCustomDrawer(null); }} />
+      <PageFooter state={state} message={message} saveLabel="Save changes" />
 
       <Drawer
         open={customDrawer !== null}
@@ -233,16 +230,14 @@ function FileHandlingPage() {
 }
 
 function ImportPolicyPage() {
-  const { qualityModel: loadedQualityModel, settings } = useLoaderData() as LoaderData;
+  const { settings } = useLoaderData() as LoaderData;
   const settingsMutation = useApiMutation<PlatformSettingsPatch, PlatformSettingsSnapshot>("/api/settings", "PATCH");
-  const [savedQualityModel, setSavedQualityModel] = useState(loadedQualityModel);
-  const [qualityModel, setQualityModel] = useState(loadedQualityModel);
   const [saved, setSaved] = useState(settings);
   const [form, setForm] = useState(settings);
   const [saveState, setSaveState] = useState<Exclude<DrawerSaveState, "clean" | "dirty">>();
   const [message, setMessage] = useState<string | null>(null);
 
-  const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(saved) || JSON.stringify(qualityModel) !== JSON.stringify(savedQualityModel), [form, qualityModel, saved, savedQualityModel]);
+  const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(saved), [form, saved]);
   const state: DrawerSaveState = saveState === "saving" ? "saving" : dirty ? "dirty" : saveState ?? "clean";
   useUnsavedChanges(dirty);
   useEffect(() => {
@@ -254,23 +249,13 @@ function ImportPolicyPage() {
     if (state === "saving") return;
     setSaveState("saving");
     try {
-      const [nextSettings, nextQualityModel] = await Promise.all([
-        settingsMutation.mutate({
-          renameOnImport: form.renameOnImport,
-          useHardlinks: form.useHardlinks,
-          cleanupEmptyFolders: form.cleanupEmptyFolders,
-          downloadsPath: form.downloadsPath ?? ""
-        }),
-        fetchJson<QualityModelSnapshot>("/api/quality-model", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tiers: qualityModel.tiers, upgradeStop: qualityModel.upgradeStop })
-        })
-      ]);
+      const nextSettings = await settingsMutation.mutate({
+        renameOnImport: form.renameOnImport,
+        useHardlinks: form.useHardlinks,
+        cleanupEmptyFolders: form.cleanupEmptyFolders
+      });
       setSaved(nextSettings);
       setForm(nextSettings);
-      setSavedQualityModel(nextQualityModel);
-      setQualityModel(nextQualityModel);
       setSaveState("saved");
       setMessage("Saved just now");
     } catch (error) {
@@ -283,51 +268,39 @@ function ImportPolicyPage() {
     <form onSubmit={handleSubmit} className="flex flex-col gap-[var(--page-gap)]" noValidate>
       <PageToolbar tabs={librarySetupNavItems} accent="yellow" />
 
-      <ListCard title="Import Policy" count="What happens when a download is ready">
+      <ListCard title="Import Policy" count="What Deluno does after a download finishes">
         <ImportPolicyFields
           form={form}
-          qualityModel={qualityModel}
           onFormChange={(update) => setForm((current) => update(current))}
-          onStopWhenCutoffMetChange={(checked) => setQualityModel((current) => ({ ...current, upgradeStop: { ...current.upgradeStop, stopWhenCutoffMet: checked } }))}
         />
       </ListCard>
 
-      <PageFooter state={state} message={message} saveLabel="Save Import Policy" onDiscard={() => { setForm(saved); setQualityModel(savedQualityModel); }} />
+      <PageFooter state={state} message={message} saveLabel="Save import settings" />
     </form>
   );
 }
 
 function ImportPolicyFields({
   form,
-  qualityModel,
-  onFormChange,
-  onStopWhenCutoffMetChange
+  onFormChange
 }: {
   form: PlatformSettingsSnapshot;
-  qualityModel: QualityModelSnapshot;
   onFormChange: (update: (current: PlatformSettingsSnapshot) => PlatformSettingsSnapshot) => void;
-  onStopWhenCutoffMetChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="grid md:grid-cols-2">
-      <div className="border-b border-hairline p-[var(--card-pad-x)] md:border-r">
-        <SwitchRow label="Rename on import" description="Use the naming styles from Media Naming." checked={form.renameOnImport} onCheckedChange={(checked) => onFormChange((current) => ({ ...current, renameOnImport: checked }))} />
+    <>
+      <div className="grid divide-y divide-hairline md:grid-cols-3 md:divide-x md:divide-y-0">
+      <div className="p-[var(--card-pad-x)]">
+        <SwitchRow label="Rename files when imported" description="Apply the naming choices from Media Naming as the file enters the library." checked={form.renameOnImport} onCheckedChange={(checked) => onFormChange((current) => ({ ...current, renameOnImport: checked }))} />
       </div>
-      <div className="border-b border-hairline p-[var(--card-pad-x)]">
-        <SwitchRow label="Use hardlinks" description="Keep seeding without a second full copy." checked={form.useHardlinks} onCheckedChange={(checked) => onFormChange((current) => ({ ...current, useHardlinks: checked }))} />
+      <div className="p-[var(--card-pad-x)]">
+        <SwitchRow label="Keep seeding without a second copy" description="Use a hardlink when the drives support it, so the download client and library share one set of file data." checked={form.useHardlinks} onCheckedChange={(checked) => onFormChange((current) => ({ ...current, useHardlinks: checked }))} />
       </div>
-      <div className="border-b border-hairline p-[var(--card-pad-x)] md:border-r md:border-b-0">
-        <SwitchRow label="Clean up empty folders" description="Remove leftover folders after import." checked={form.cleanupEmptyFolders} onCheckedChange={(checked) => onFormChange((current) => ({ ...current, cleanupEmptyFolders: checked }))} />
+      <div className="p-[var(--card-pad-x)]">
+        <SwitchRow label="Remove empty folders after import" description="Clean up folders left empty by the import. Deluno never removes the download root." checked={form.cleanupEmptyFolders} onCheckedChange={(checked) => onFormChange((current) => ({ ...current, cleanupEmptyFolders: checked }))} />
       </div>
-      <div className="border-b border-hairline p-[var(--card-pad-x)] md:border-b-0">
-        <SwitchRow label="Stop upgrading when cutoff is met" description="Keep monitoring missing media and future episodes, but stop searching for a better release once the cutoff quality is reached." checked={qualityModel.upgradeStop.stopWhenCutoffMet} onCheckedChange={onStopWhenCutoffMetChange} />
       </div>
-      <div className="border-t border-hairline p-[var(--card-pad-x)] md:col-span-2">
-        <Field label="Default completed downloads folder" optional help="Fallback for manual imports and downloads not linked to a client. Libraries can override this.">
-          <PathInput value={form.downloadsPath ?? ""} onChange={(value) => onFormChange((current) => ({ ...current, downloadsPath: value }))} browseTitle="Choose downloads folder" />
-        </Field>
-      </div>
-    </div>
+    </>
   );
 }
 
@@ -348,6 +321,8 @@ interface WorkflowForm {
   processorOutputPath: string;
   processorTimeoutMinutes: string;
   processorFailureMode: string;
+  cleanupMode: string;
+  removeEmptySourceFolders: boolean;
 }
 interface CallbackForm {
   name: string;
@@ -360,7 +335,9 @@ interface CallbackForm {
 type ProcessingDrawer = { kind: "closed" } | { kind: "library"; id: string } | { kind: "callback" };
 
 function ProcessingWorkflowPage() {
-  const { libraries, processorConnections, settings } = useLoaderData() as LoaderData;
+  const { libraries, processorConnections } = useLoaderData() as LoaderData;
+  const location = useLocation();
+  const navigate = useNavigate();
   const revalidator = useRevalidator();
 
   const [drawer, setDrawer] = useState<ProcessingDrawer>({ kind: "closed" });
@@ -374,7 +351,9 @@ function ProcessingWorkflowPage() {
   const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   const editingLibrary = drawer.kind === "library" ? libraries.find((library) => library.id === drawer.id) ?? null : null;
-  const completedDownloadsPath = editingLibrary?.downloadsPath?.trim() || settings.downloadsPath?.trim() || "Download client default";
+  const isRefined = workflow.importWorkflow === "refine-before-import";
+  const selectedProcessor = workflow.processorName ? processorConnections.find((connection) => connection.name === workflow.processorName) : null;
+  const workflowReady = !isRefined || (Boolean(workflow.processorOutputPath.trim()) && (!workflow.processorName || Boolean(selectedProcessor?.isEnabled)));
   const dirty =
     drawer.kind === "library"
       ? JSON.stringify(workflow) !== JSON.stringify(workflowInitial)
@@ -382,7 +361,7 @@ function ProcessingWorkflowPage() {
         ? Boolean(callback.name.trim() || callback.submissionUrl.trim() || callback.secret.trim())
         : false;
   const footerState: DrawerSaveState = saveState === "saving" ? "saving" : dirty ? "dirty" : saveState ?? "clean";
-  const blocker = useUnsavedChanges(dirty);
+  useUnsavedChanges(dirty);
   useEffect(() => {
     if (dirty && (saveState === "saved" || saveState === "error")) setSaveState(undefined);
   }, [dirty, saveState]);
@@ -394,6 +373,16 @@ function ProcessingWorkflowPage() {
     setWorkflowInitial(next);
     setSaveState(undefined);
   }
+
+  useEffect(() => {
+    if (drawer.kind !== "closed") return;
+    const libraryId = new URLSearchParams(location.search).get("libraryId");
+    if (!libraryId) return;
+    const library = libraries.find((item) => item.id === libraryId);
+    if (!library) return;
+    openLibrary(library);
+    navigate("/settings/processing", { replace: true });
+  }, [drawer.kind, libraries, location.search, navigate]);
   function openCallback() {
     setDrawer({ kind: "callback" });
     setCallback(emptyCallback());
@@ -411,6 +400,11 @@ function ProcessingWorkflowPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy) return;
+    if (drawer.kind === "library" && isRefined && !workflowReady) {
+      setSaveState("error");
+      setMessage(workflow.processorOutputPath.trim() ? "Choose an enabled processor connection, or watch the output folder." : "Choose the folder where the processor will write cleaned files.");
+      return;
+    }
     setBusy("save");
     setSaveState("saving");
     try {
@@ -423,7 +417,9 @@ function ProcessingWorkflowPage() {
             processorName: workflow.processorName || null,
             processorOutputPath: workflow.processorOutputPath || null,
             processorTimeoutMinutes: Number(workflow.processorTimeoutMinutes || 360),
-            processorFailureMode: workflow.processorFailureMode
+            processorFailureMode: workflow.processorFailureMode,
+            cleanupMode: workflow.cleanupMode,
+            removeEmptySourceFolders: workflow.removeEmptySourceFolders
           })
         });
         if (!response.ok) throw new Error("Import workflow could not be saved.");
@@ -475,28 +471,28 @@ function ProcessingWorkflowPage() {
     setConfirmRemove(null);
   }
 
-  const isRefined = workflow.importWorkflow === "refine-before-import";
-
   return (
     <div className="grid gap-[var(--page-gap)]">
       <PageToolbar tabs={librarySetupNavItems} accent="yellow" actions={<PageToolbarAction variant="outline" onClick={openCallback}>Connect processor</PageToolbarAction>} />
 
-      <ListCard title="Import workflow" count="Standard import, or wait for a processor to clean the file first">
+      <ListCard title="Finished download workflow" count="Select a library to choose what happens next">
         {libraries.length === 0 ? (
           <ListEmpty title="No libraries yet" description="Create a library first; each one chooses whether completed downloads import straight away or wait for a processor." />
         ) : (
-          <ListTable columns={[{ label: "Library" }, { label: "Workflow" }, { label: "Processed folder", width: "minmax(0,1.4fr)" }, { label: "If it fails" }, { label: "Status", width: LIST_TRACK.status, mobile: true }]}>
+          <ListTable columns={[{ label: "Library" }, { label: "What happens" }, { label: "Processed folder", width: "minmax(0,1.4fr)" }, { label: "After import" }, { label: "If processing fails" }, { label: "Status", width: LIST_TRACK.status, mobile: true }]}>
             {libraries.map((library) => {
               const refined = (library.importWorkflow ?? "standard") === "refine-before-import";
-              const ready = !refined || Boolean(library.processorOutputPath);
+              const processor = library.processorName ? processorConnections.find((connection) => connection.name === library.processorName) : null;
+              const ready = !refined || (Boolean(library.processorOutputPath) && (!library.processorName || Boolean(processor?.isEnabled)));
               return (
                 <ListRow key={library.id} onClick={() => openLibrary(library)} selected={drawer.kind === "library" && drawer.id === library.id}>
                   <ListNameCell name={library.name} sub={library.mediaType === "tv" ? "TV shows" : "Movies"} />
-                  <ListCell primary={refined ? "Process before import" : "Standard import"} secondary={refined ? library.processorName || "Watches the folder — no processor" : "Straight to the library"} />
+                  <ListCell primary={refined ? "Process, then import" : "Import immediately"} secondary={refined ? library.processorName || "Waits for cleaned output" : "Use the finished download"} />
                   <ListCell mono primary={refined ? library.processorOutputPath || <span className="font-sans text-warning">Not set</span> : <span className="font-sans text-muted-foreground">—</span>} secondary={refined ? `Waits up to ${Math.round((library.processorTimeoutMinutes || 360) / 60)} h` : undefined} />
+                  <ListCell primary={(library.cleanupMode ?? "keep-source") === "remove-source-after-import" ? "Remove downloaded file" : "Keep downloaded file"} secondary={library.removeEmptySourceFolders ? "Also remove empty folders" : undefined} />
                   <ListCell primary={refined ? FAILURE_OPTIONS.find((option) => option.value === library.processorFailureMode)?.label ?? library.processorFailureMode : <span className="text-muted-foreground">—</span>} />
                   <ListCell mobile>
-                    <Chip tone={ready ? (refined ? "info" : "ok") : "warn"}>{refined ? (ready ? "Refined" : "Needs a folder") : "Standard"}</Chip>
+                    <Chip tone={ready ? (refined ? "info" : "ok") : "warn"}>{refined ? (ready ? "Ready" : "Needs a folder") : "Ready"}</Chip>
                   </ListCell>
                 </ListRow>
               );
@@ -505,11 +501,11 @@ function ProcessingWorkflowPage() {
         )}
       </ListCard>
 
-      <ListCard title="Processor connections" count="Optional — only when an external processor needs to notify Deluno">
+      <ListCard title="Processor connections" count="Optional — only when an external processor cleans files for Deluno">
         {processorConnections.length === 0 ? (
           <ListEmpty
             title="No processor connected"
-            description="This is the normal setup: Deluno watches the processed output folder directly. Connect a processor only when it needs to notify Deluno that a cleaned file is ready."
+            description="This is optional. Deluno can watch the processed output folder itself. Connect a processor when it needs to receive a job from Deluno and report back when the cleaned file is ready."
             actions={<Button type="button" size="sm" variant="outline" onClick={openCallback}>Connect processor</Button>}
           />
         ) : (
@@ -544,42 +540,44 @@ function ProcessingWorkflowPage() {
         onOpenChange={(open) => {
           if (!open) requestClose();
         }}
-        title={drawer.kind === "callback" ? "Connect a processor" : editingLibrary?.name ?? "Import workflow"}
-        description={drawer.kind === "callback" ? "Connect an external processor so it can notify Deluno when a cleaned file is ready." : `Import workflow · ${editingLibrary?.rootPath ?? ""}`}
+        title={drawer.kind === "callback" ? "Connect a processor" : "How to handle finished downloads"}
+        description={drawer.kind === "callback" ? "Deluno sends the processor a job, then the processor reports back when the cleaned file is ready." : `${editingLibrary?.name ?? "Library"} · ${editingLibrary?.rootPath ?? ""}`}
         onSubmit={handleSubmit}
-        footer={<DrawerFooter state={footerState} message={message} saveLabel={drawer.kind === "callback" ? "Connect processor" : "Save workflow"} onCancel={requestClose} disabled={busy !== null || (drawer.kind === "library" && isRefined && !workflow.processorOutputPath.trim())} />}
+        footer={<DrawerFooter state={footerState} message={message} saveLabel={drawer.kind === "callback" ? "Connect processor" : "Save workflow"} onCancel={requestClose} disabled={busy !== null || (drawer.kind === "library" && !workflowReady)} />}
       >
         {drawer.kind === "library" ? (
           <>
-            <DrawerSection title="Workflow">
-              <Field label="When a download finishes" help={isRefined ? "Deluno waits for a cleaned file in the processed folder, matches it to the download, then imports and renames it." : "Completed downloads go straight through destination routing, import, rename and metadata refresh."}>
-                <Select value={workflow.importWorkflow} onChange={(event) => setWorkflow((current) => ({ ...current, importWorkflow: event.target.value }))} options={[{ value: "standard", label: "Standard import" }, { value: "refine-before-import", label: "Process before import" }]} />
+            <DrawerSection title="Import timing">
+              <Field label="When a download finishes" help="Choose whether Deluno should use the download as soon as it is complete, or wait for an external processor such as FileFlows to produce a cleaned file.">
+                <SegmentedControl<"standard" | "refine-before-import">
+                  value={workflow.importWorkflow as "standard" | "refine-before-import"}
+                  onValueChange={(importWorkflow) => setWorkflow((current) => ({ ...current, importWorkflow }))}
+                  options={[{ value: "standard", label: "Import immediately" }, { value: "refine-before-import", label: "Wait for processing" }]}
+                  aria-label="Import timing"
+                />
               </Field>
+              <div className="rounded-[10px] border border-hairline bg-surface-1/40 px-3 py-2.5">
+                <p className="text-[length:var(--type-body-sm)] font-medium text-foreground">{isRefined ? "Deluno will wait for the cleaned file" : "Deluno will import the finished download"}</p>
+                <p className="mt-1 text-[length:var(--type-caption)] leading-relaxed text-muted-foreground">{isRefined ? "The file is not sent to your library until the output folder contains a matching processed file." : "Deluno places the finished file in this library, applies its naming rules, and then refreshes its details."}</p>
+              </div>
             </DrawerSection>
             {isRefined ? (
-              <DrawerSection title="Processing">
-                <div className="grid gap-1.5">
-                  <p className="text-[length:var(--type-body-sm)] font-medium leading-tight text-foreground">Completed downloads folder</p>
-                  <div className="flex min-h-[var(--control-height)] items-center rounded-[10px] border border-hairline bg-surface-1 px-[var(--field-pad-x)] font-mono text-[length:var(--type-caption)] text-muted-foreground">
-                    <span className="truncate">{completedDownloadsPath}</span>
-                  </div>
-                  <p className="text-[length:var(--type-caption)] leading-snug text-muted-foreground">Inherited from Library &amp; Storage. This is the processor input; change it there if this library uses a different completed-download folder.</p>
-                </div>
-                <Field label="Processed output folder" help="A separate folder where your processor writes cleaned files. Deluno watches it, matches the output to the waiting download, then imports it.">
+              <DrawerSection title="External processing">
+                <Field label="Processed output folder" help="A separate folder where your processor writes cleaned files. Deluno waits until the file is readable and stable, matches it to the waiting download, then imports it.">
                   <PathInput value={workflow.processorOutputPath} onChange={(value) => setWorkflow((current) => ({ ...current, processorOutputPath: value }))} browseTitle="Choose processed-output folder" />
                 </Field>
                 <FieldRow>
                   <Field label="Wait up to" help="Then Deluno asks you to review.">
                     <Select value={workflow.processorTimeoutMinutes} onChange={(event) => setWorkflow((current) => ({ ...current, processorTimeoutMinutes: event.target.value }))} options={TIMEOUT_OPTIONS} />
                   </Field>
-                  <Field label="If processing fails">
+                  <Field label="If processing fails" help="Deluno keeps the original out of the library unless you explicitly choose Import the original file.">
                     <Select value={workflow.processorFailureMode} onChange={(event) => setWorkflow((current) => ({ ...current, processorFailureMode: event.target.value }))} options={FAILURE_OPTIONS} />
                   </Field>
                 </FieldRow>
-                <Field label="Processor notification" optional help="Leave this blank when Deluno should watch the processed output folder itself.">
-                  <Select value={workflow.processorName} onChange={(event) => setWorkflow((current) => ({ ...current, processorName: event.target.value }))} placeholder="No processor — watch the folder">
+                <Field label="Completion signal" optional help="Leave this on folder watching unless a connected processor sends a completion message back to Deluno. A disabled connection cannot be selected.">
+                  <Select value={workflow.processorName} onChange={(event) => setWorkflow((current) => ({ ...current, processorName: event.target.value }))} placeholder="Watch the folder (no processor message)">
                     {processorConnections.map((connection) => (
-                      <option key={connection.id} value={connection.name}>
+                      <option key={connection.id} value={connection.name} disabled={!connection.isEnabled}>
                         {connection.name}
                         {connection.isEnabled ? "" : " (disabled)"}
                       </option>
@@ -587,14 +585,32 @@ function ProcessingWorkflowPage() {
                     {workflow.processorName && !processorConnections.some((connection) => connection.name === workflow.processorName) ? <option value={workflow.processorName}>{workflow.processorName} (existing)</option> : null}
                   </Select>
                 </Field>
-              </DrawerSection>
-            ) : null}
+                {workflow.processorName && !selectedProcessor?.isEnabled ? <p className="text-[length:var(--type-caption)] text-warning">This processor connection is disabled or missing. Enable it, choose folder watching, or select another connection before saving.</p> : null}
+                </DrawerSection>
+              ) : null}
+            <DrawerSection title="Source cleanup">
+              <Field label="After import" help="This is Deluno's own cleanup step after a successful import. It is separate from FileFlows, Cleanarr, or any other processor. The copy in your library stays.">
+                <SegmentedControl<"keep-source" | "remove-source-after-import">
+                  value={workflow.cleanupMode as "keep-source" | "remove-source-after-import"}
+                  onValueChange={(cleanupMode) => setWorkflow((current) => ({ ...current, cleanupMode }))}
+                  options={[{ value: "keep-source", label: "Keep source file" }, { value: "remove-source-after-import", label: "Remove after import" }]}
+                  aria-label="Source cleanup"
+                />
+              </Field>
+              <SwitchRow label="Remove empty source folders too" description={workflow.cleanupMode === "remove-source-after-import" ? "Only folders left empty by this import are removed. Deluno never removes the configured download root." : "Choose Remove after import to turn this on."} checked={workflow.removeEmptySourceFolders} onCheckedChange={(checked) => setWorkflow((current) => ({ ...current, removeEmptySourceFolders: checked }))} disabled={workflow.cleanupMode !== "remove-source-after-import"} />
+            </DrawerSection>
           </>
         ) : null}
 
         {drawer.kind === "callback" ? (
           <>
-            <DrawerSection title="Basics">
+            <div className="rounded-[10px] border border-info/25 bg-info/[0.05] px-3 py-2.5">
+              <p className="text-[length:var(--type-caption)] font-medium text-foreground">Two directions are involved</p>
+              <p className="mt-1 text-[length:var(--type-caption)] leading-relaxed text-muted-foreground">
+                Deluno sends a job to the processor URL below. When the cleaned file is ready, the processor sends an event back to Deluno using the callback path included in that job. For the return message, create a Deluno API key with <span className="font-medium text-foreground">Media automation</span> access under <Link to="/system/api" className="text-info underline underline-offset-2">System → API</Link>.
+              </p>
+            </div>
+            <DrawerSection title="Connection details">
               <FieldRow>
                 <Field label="Name" help="A name you'll recognise in Transfers.">
                   <Input value={callback.name} onChange={(event) => setCallback((current) => ({ ...current, name: event.target.value }))} placeholder="Processed media notifier" autoComplete="off" />
@@ -603,16 +619,16 @@ function ProcessingWorkflowPage() {
                   <Select value={callback.provider} onChange={(event) => setCallback((current) => ({ ...current, provider: event.target.value }))} options={[{ value: "generic-webhook", label: "Generic processor webhook" }, { value: "fileflows-webhook", label: "FileFlows webhook" }]} />
                 </Field>
               </FieldRow>
-              <Field label="Notification URL" help="Deluno posts here when a completed download is waiting; your processor replies with the same hand-off id.">
+              <Field label="Processor job URL" help="Deluno sends a job here when a download needs processing. Your processor reports back to Deluno when the cleaned file is ready.">
                 <Input value={callback.submissionUrl} onChange={(event) => setCallback((current) => ({ ...current, submissionUrl: event.target.value }))} placeholder="https://processor.example/webhooks/deluno" className="font-mono text-[length:var(--type-caption)]" autoComplete="off" spellCheck={false} />
               </Field>
             </DrawerSection>
             <DrawerSection title="Authentication">
               <FieldRow>
-                <Field label="Access token" optional help="Stored encrypted and sent only to this processor.">
+                <Field label="Token sent to the processor" optional help="Stored encrypted and sent only with Deluno's job request. This is not the Deluno API key used for the return message.">
                   <Input type="password" value={callback.secret} onChange={(event) => setCallback((current) => ({ ...current, secret: event.target.value }))} autoComplete="new-password" />
                 </Field>
-                <Field label="Token header" help="Authorization sends a Bearer token; use X-Api-Key when required.">
+                <Field label="Processor token header" help="Authorization sends a Bearer token; use X-Api-Key when the processor expects that header.">
                   <Input value={callback.authHeaderName} onChange={(event) => setCallback((current) => ({ ...current, authHeaderName: event.target.value }))} />
                 </Field>
               </FieldRow>
@@ -634,23 +650,17 @@ function ProcessingWorkflowPage() {
         onConfirm={() => confirmRemove && void removeCallback(confirmRemove)}
       />
       <ConfirmDialog
-        open={confirmDiscard || blocker.state === "blocked"}
+        open={confirmDiscard}
         onOpenChange={(open) => {
           if (open) return;
           setConfirmDiscard(false);
-          if (blocker.state === "blocked") blocker.reset();
         }}
         title="Discard unsaved changes?"
         description="Your edits haven't been saved."
         confirmLabel="Discard"
         onConfirm={() => {
           setConfirmDiscard(false);
-          if (blocker.state === "blocked") {
-            setDrawer({ kind: "closed" });
-            blocker.proceed();
-          } else {
-            closeDrawer();
-          }
+          closeDrawer();
         }}
       />
     </div>
@@ -660,7 +670,7 @@ function ProcessingWorkflowPage() {
 /* --------------------------------------------------------------- utils */
 
 function emptyWorkflow(): WorkflowForm {
-  return { importWorkflow: "standard", processorName: "", processorOutputPath: "", processorTimeoutMinutes: "360", processorFailureMode: "block" };
+  return { importWorkflow: "standard", processorName: "", processorOutputPath: "", processorTimeoutMinutes: "360", processorFailureMode: "block", cleanupMode: "keep-source", removeEmptySourceFolders: false };
 }
 function workflowFrom(library: LibraryItem): WorkflowForm {
   return {
@@ -668,7 +678,9 @@ function workflowFrom(library: LibraryItem): WorkflowForm {
     processorName: library.processorName ?? "",
     processorOutputPath: library.processorOutputPath ?? "",
     processorTimeoutMinutes: String(library.processorTimeoutMinutes || 360),
-    processorFailureMode: library.processorFailureMode ?? "block"
+    processorFailureMode: library.processorFailureMode ?? "block",
+    cleanupMode: library.cleanupMode ?? "keep-source",
+    removeEmptySourceFolders: library.removeEmptySourceFolders ?? false
   };
 }
 function emptyCallback(): CallbackForm {

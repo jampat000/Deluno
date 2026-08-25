@@ -213,6 +213,19 @@
     font-family: inherit;
   }
 
+  select {
+    color-scheme: light;
+  }
+
+  .dark select {
+    color-scheme: dark;
+  }
+
+  select option {
+    font-family: inherit;
+    font-size: var(--field-control-size);
+  }
+
   :where(button, [role="button"], a, input, select, textarea) {
     touch-action: manipulation;
   }
@@ -358,18 +371,41 @@
 }
 
 .density-label {
-  font-size: var(--field-label-size);
+  color: hsl(var(--foreground));
+  font-family: inherit;
+  font-size: var(--type-body-sm);
+  font-weight: 600;
+  letter-spacing: -0.006em;
   line-height: 1.35;
 }
 
 .density-help {
-  font-size: var(--field-help-size);
+  color: hsl(var(--muted-foreground));
+  font-size: var(--type-caption);
   line-height: 1.45;
-  }
+}
 
 .density-control-text {
+  font-family: inherit;
   font-size: var(--field-control-size);
+  font-weight: 450;
+  letter-spacing: -0.004em;
   line-height: 1.35;
+}
+
+/* One quiet, tactile surface for every shared form control. The select and
+   input primitives add their layout; this class owns the typography and the
+   small amount of depth that keeps controls from looking like browser defaults. */
+.deluno-control {
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.035);
+  transition:
+    border-color var(--dur-xs) var(--ease-standard),
+    background-color var(--dur-xs) var(--ease-standard),
+    box-shadow var(--dur-xs) var(--ease-standard);
+}
+
+.deluno-control:hover:not(:disabled):not([aria-disabled="true"]) {
+  border-color: hsl(var(--foreground) / 0.2);
 }
 
   .type-micro { font-size: var(--type-micro); line-height: 1.3; }
@@ -991,7 +1027,7 @@ html {
   /* Group divider inside a list — taller than a column header, shorter than a row. */
   --list-group-height: calc(40px * var(--density-scale));
   --toolbar-height: calc(40px * var(--density-scale));
-  --drawer-width: 600px;
+  --drawer-width: 760px;
   --drawer-header-height: 72px;
   --drawer-footer-height: 64px;
 
@@ -1074,7 +1110,7 @@ html {
   --shell-subtle-size: calc(12.5px * var(--font-scale));
   --shell-nav-size: calc(14px * var(--font-scale));
   --shell-nav-badge-size: calc(9.5px * var(--font-scale));
-  --shell-nav-text-min: calc(148px * var(--font-scale));
+  --shell-nav-text-min: calc(168px * var(--font-scale));
   --shell-pill-height: calc(42px * var(--density-scale));
   --shell-nav-pad-x: calc(15px * var(--density-scale));
   /* Centres the icon+label column in the rail rather than pinning it left.
@@ -1097,9 +1133,9 @@ html {
   --shell-icon-size: calc(15px * var(--density-scale));
   --shell-icon-size-sm: calc(14px * var(--density-scale));
   --sidebar-width: clamp(
-    calc(200px * var(--density-scale)),
-    calc((var(--tile-pad) * 1.15) + (var(--shell-nav-pad-x) * 2) + var(--shell-icon-col) + var(--shell-nav-text-min) + (28px * var(--density-scale))),
-    calc(276px * var(--density-scale))
+    calc(220px * var(--density-scale)),
+    max(280px, calc((var(--tile-pad) * 1.15) + (var(--shell-nav-pad-x) * 2) + var(--shell-icon-col) + var(--shell-nav-text-min) + (28px * var(--density-scale)))),
+    max(320px, calc(304px * var(--density-scale)))
   );
 
   --settings-nav-size: calc(14px * var(--font-scale));
@@ -1403,6 +1439,15 @@ html .text-\[64px\] {
 
 .animate-fade-in {
   animation: fade-in-up 0.22s var(--ease-emphasis) both;
+}
+
+@keyframes fade-in-stable {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.animate-fade-in-stable {
+  animation: fade-in-stable 0.16s var(--ease-standard) both;
 }
 
 /* ── PAGE ENTER / EXIT (used by framer-motion or CSS fallback) ── */

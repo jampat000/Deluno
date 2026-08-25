@@ -3,7 +3,7 @@
  *
  *   PageToolbar (System settings tabs)
  *   ListCard  instance and host (page form)
- *   PageFooter (pinned: status · Discard · Save)
+ *   PageFooter (pinned: status · Save)
  *
  * Contracts: PATCH /api/settings.
  */
@@ -128,7 +128,7 @@ export function SettingsGeneralPage() {
               />
             </Field>
           </FieldRow>
-          <Field label="URL base" optional help="Path prefix when Deluno sits behind a reverse proxy. Leave blank when it serves from the root." error={settingsMutation.fieldErrors.urlBase}>
+          <Field label="URL base" optional help="Path prefix when Deluno sits behind a reverse proxy. Leave empty when it serves from the root." error={settingsMutation.fieldErrors.urlBase}>
             <PresetField
               value={form.urlBase}
               onChange={(value) => setForm((current) => ({ ...current, urlBase: value }))}
@@ -149,7 +149,7 @@ export function SettingsGeneralPage() {
         </div>
       </ListCard>
 
-      <PageFooter state={state} message={message} saveLabel="Save general settings" onDiscard={() => setForm(savedForm)} />
+      <PageFooter state={state} message={message} saveLabel="Save general settings" />
     </form>
   );
 }

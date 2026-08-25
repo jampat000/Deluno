@@ -32,7 +32,8 @@ export function SetupProgressLadder({ status }: { status: SetupStatusModel }) {
         <ol className="mt-4 grid min-w-0 gap-2 sm:grid-cols-2 2xl:flex 2xl:items-stretch 2xl:gap-0 2xl:overflow-x-auto 2xl:pb-1">
           {status.steps.map((step, index) => {
             const nextStep = status.steps[index + 1];
-            const leadsToCurrent = Boolean(nextStep && step.complete && nextStep.id === currentStepId);
+            const nextRequiredStep = status.steps.slice(index + 1).find((candidate) => !candidate.optional);
+            const leadsToCurrent = Boolean(nextRequiredStep && step.complete && nextRequiredStep.id === currentStepId);
 
             return (
             <li key={step.id} className="flex min-w-0 flex-col items-stretch 2xl:min-w-[11.5rem] 2xl:flex-1 2xl:flex-row first:pl-0 last:pr-0">

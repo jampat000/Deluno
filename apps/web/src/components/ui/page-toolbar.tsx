@@ -14,13 +14,15 @@ export interface ToolbarTab {
   status?: "complete" | "pending";
 }
 
-export type ToolbarAccent = "yellow" | "green" | "blue" | "orange";
+export type ToolbarAccent = "yellow" | "green" | "blue" | "orange" | "violet" | "cyan";
 
 export const TOOLBAR_ACCENT_COLOURS: Record<ToolbarAccent, string> = {
   yellow: "47 100% 68%",
   green: "145 78% 52%",
   blue: "207 96% 62%",
-  orange: "28 96% 58%"
+  orange: "28 96% 58%",
+  violet: "270 92% 70%",
+  cyan: "188 92% 62%"
 };
 
 interface PageToolbarProps {
@@ -81,13 +83,13 @@ export function PageToolbar({ tabs, left, actions, accent, className }: PageTool
   } as React.CSSProperties;
 
   return (
-    <div className={cn("flex min-h-[var(--toolbar-height)] items-center justify-between gap-[var(--grid-gap)] border-b border-hairline/80 dark:border-white/[0.08]", className)} style={accentStyle}>
+    <div className={cn("flex h-[var(--toolbar-height)] min-h-[var(--toolbar-height)] items-center justify-between gap-[var(--grid-gap)] border-b border-hairline/80 dark:border-white/[0.08]", className)} style={accentStyle}>
       {tabs?.length ? (
         <nav
           aria-label="Sections"
-          className="no-scrollbar flex h-16 min-w-0 flex-1 items-stretch overflow-x-auto bg-transparent"
+          className="no-scrollbar flex h-[var(--toolbar-height)] min-w-0 flex-1 items-stretch overflow-x-auto bg-transparent"
         >
-          <div className="flex h-full min-w-max items-stretch gap-[calc(var(--grid-gap)*2)] px-3">
+          <div className="flex h-full min-w-max items-stretch gap-[var(--grid-gap)]">
             {tabs.map((tab) => {
               const isActive = isTabActive(location.pathname, tab);
               const isComplete = tab.status === "complete";
@@ -101,7 +103,7 @@ export function PageToolbar({ tabs, left, actions, accent, className }: PageTool
                   aria-label={tabLabel ? `${tabLabel}${isComplete ? " — complete" : ""}` : undefined}
                   data-status={isComplete ? "complete" : "pending"}
                   className={cn(
-                    "group relative flex h-full shrink-0 items-center px-1 pt-px text-[length:var(--type-body-sm)] font-medium leading-none transition-colors duration-200",
+                    "group relative flex h-full shrink-0 items-center pt-px text-[length:var(--type-body-sm)] font-medium leading-none transition-colors duration-200",
                     "focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     isActive
                       ? cn(
@@ -122,9 +124,7 @@ export function PageToolbar({ tabs, left, actions, accent, className }: PageTool
       ) : (
         <span />
       )}
-      <div className="flex w-[clamp(15rem,28vw,26rem)] shrink-0 items-center justify-end gap-2">
-        {actions}
-      </div>
+      {actions ? <div className="flex shrink-0 items-center justify-end gap-2">{actions}</div> : null}
     </div>
   );
 }

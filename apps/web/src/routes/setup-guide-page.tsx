@@ -71,9 +71,8 @@ interface GuideForm {
   mediaIntent: "movies" | "tv" | "both";
   movieRootPath: string;
   seriesRootPath: string;
-  downloadsPath: string;
   qualityPreset: "" | "balanced1080p" | "premium4k";
-  formatGoal: "" | "simpleClean" | "balanced" | "homeTheater" | "storageSaver" | "anime";
+  formatGoal: "" | "simpleClean" | "balanced" | "homeTheater" | "storageSaver";
   indexerName: string;
   indexerProtocol: "torznab" | "newznab" | "rss";
   indexerUrl: string;
@@ -118,7 +117,7 @@ type SetupCompletion = {
 function toSetupDraft(form: GuideForm) {
   return {
     mode: form.mode, mediaIntent: form.mediaIntent, movieRootPath: form.movieRootPath, seriesRootPath: form.seriesRootPath,
-    downloadsPath: form.downloadsPath, qualityPreset: form.qualityPreset, formatGoal: form.formatGoal,
+    qualityPreset: form.qualityPreset, formatGoal: form.formatGoal,
     indexerName: form.indexerName, indexerProtocol: form.indexerProtocol, indexerUrl: form.indexerUrl,
     clientName: form.clientName, clientProtocol: form.clientProtocol, clientHost: form.clientHost, clientPort: form.clientPort,
     backupEnabled: form.backupEnabled,
@@ -129,9 +128,9 @@ function toSetupDraft(form: GuideForm) {
 
 const STEPS: { id: StepId; label: string; copy: string }[] = [
   { id: "mode", label: "Your library", copy: "Choose what you want Deluno to manage." },
-  { id: "folders", label: "Folders", copy: "Tell Deluno where media and downloads live." },
-  { id: "quality", label: "Media plan", copy: "Choose the quality and release experience you want." },
-  { id: "services", label: "Connections", copy: "Connect search sources and downloads when you are ready." },
+  { id: "folders", label: "Folders", copy: "Tell Deluno where your media lives." },
+  { id: "quality", label: "Library Profiles", copy: "Choose the quality and release experience you want." },
+  { id: "services", label: "Find & Download", copy: "Connect search sources and downloads when you are ready." },
   { id: "finish", label: "Start", copy: "Create your plan and open the Dashboard." }
 ];
 
@@ -175,12 +174,6 @@ const FORMAT_GOALS = {
     copy: "Discourages huge files, remux-sized releases, generated HDR, and other storage-heavy matches.",
     bestFor: "NAS limits, remote users, slower upload links, and very large libraries."
   },
-  anime: {
-    label: "Anime friendly",
-    bundleId: "anime-balanced",
-    copy: "Adds anime release-group, dual-audio, uncensored, 10-bit, and raw-release handling.",
-    bestFor: "TV/anime libraries where normal release scoring is not enough."
-  }
 } as const;
 
 const INDEXER_SETUP_PRESETS = [
@@ -256,9 +249,8 @@ export function SetupGuidePage() {
     mediaIntent: data.draft.mediaIntent as GuideForm["mediaIntent"],
     movieRootPath: data.draft.movieRootPath || data.settings.movieRootPath || "",
     seriesRootPath: data.draft.seriesRootPath || data.settings.seriesRootPath || "",
-    downloadsPath: data.draft.downloadsPath || data.settings.downloadsPath || "",
     qualityPreset: data.draft.qualityPreset as GuideForm["qualityPreset"],
-    formatGoal: data.draft.formatGoal as GuideForm["formatGoal"],
+    formatGoal: data.draft.formatGoal === "anime" ? "balanced" : (data.draft.formatGoal as GuideForm["formatGoal"]),
     indexerName: data.draft.indexerName || data.indexers[0]?.name || "Primary indexer",
     indexerProtocol: (data.draft.indexerProtocol || data.indexers[0]?.protocol || "torznab") as GuideForm["indexerProtocol"],
     indexerUrl: data.draft.indexerUrl || data.indexers[0]?.baseUrl || "",
@@ -312,7 +304,7 @@ export function SetupGuidePage() {
     const checks = [
       { label: "Account created", done: true },
       { label: "Media root chosen", done: canCreateMovies || canCreateTv },
-      { label: "Quality profile chosen", done: hasQualityChoice },
+      { label: "Library Profile chosen", done: hasQualityChoice },
       { label: "Release scoring chosen", done: hasReleaseRuleChoice },
       { label: "Search source ready", done: hasReadyIndexer },
       { label: "Downloads ready", done: hasReadyClient }
@@ -387,7 +379,7 @@ export function SetupGuidePage() {
     setBusy(true);
     const createdEntities: CreatedEntity[] = [];
     try {
-      const settings = await saveSettings(data.settings, form);
+      await saveSettings(data.settings, form);
       const qualityProfileCache = [...data.qualityProfiles];
       const customFormatCache = [...data.customFormats];
       const movieCustomFormatIds = hasMovies ? await ensureCustomFormats(customFormatCache, "movies", form, createdEntities) : [];
@@ -397,10 +389,10 @@ export function SetupGuidePage() {
       const indexer = await ensureIndexer(data.indexers, form, serviceTest.indexer === "passed", createdEntities);
       const client = await ensureClient(data.clients, form, serviceTest.client === "passed", createdEntities);
       const movieLibrary = canCreateMovies
-        ? await ensureLibrary(data.libraries, "movies", form.movieRootPath, settings.downloadsPath, movieProfile?.id ?? null, form, createdEntities)
+        ? await ensureLibrary(data.libraries, "movies", form.movieRootPath, movieProfile?.id ?? null, form, createdEntities)
         : null;
       const tvLibrary = canCreateTv
-        ? await ensureLibrary(data.libraries, "tv", form.seriesRootPath, settings.downloadsPath, tvProfile?.id ?? null, form, createdEntities)
+        ? await ensureLibrary(data.libraries, "tv", form.seriesRootPath, tvProfile?.id ?? null, form, createdEntities)
         : null;
 
       await Promise.all([
@@ -776,9 +768,6 @@ function FoldersStep({ form, patch }: { form: GuideForm; patch: (patchValue: Par
             <PathInput value={form.seriesRootPath} onChange={(value) => patch({ seriesRootPath: value })} placeholder="D:\\Media\\TV or /media/tv" browseTitle="Choose TV root" />
           </FieldShell>
         ) : null}
-        <FieldShell icon={DownloadCloud} label="Downloads path" copy="Where your download client completes files before Deluno imports them.">
-          <PathInput value={form.downloadsPath} onChange={(value) => patch({ downloadsPath: value })} placeholder="D:\\Downloads or /downloads" browseTitle="Choose downloads folder" />
-        </FieldShell>
       </div>
     </div>
   );
@@ -1364,8 +1353,8 @@ function buildImportPreviewRows(form: GuideForm) {
     },
     {
       label: "Transfer",
-      value: form.backupEnabled ? "Hardlink-first + backups" : "Hardlink-first",
-      copy: "Imports prefer hardlinks when possible, then fall back to safe copy/move behaviour based on storage."
+      value: form.backupEnabled ? "Single-copy link first + backups" : "Single-copy link first",
+      copy: "Imports prefer a single-copy link (hardlink) when storage allows, then fall back to safe copy or move behaviour."
     }
   ];
 }
@@ -1394,7 +1383,7 @@ async function saveSettings(settings: PlatformSettingsSnapshot, form: GuideForm)
     appInstanceName: settings.appInstanceName || "Deluno",
     movieRootPath: form.movieRootPath.trim() || settings.movieRootPath,
     seriesRootPath: form.seriesRootPath.trim() || settings.seriesRootPath,
-    downloadsPath: form.downloadsPath.trim() || settings.downloadsPath,
+    downloadsPath: settings.downloadsPath,
     incompleteDownloadsPath: settings.incompleteDownloadsPath,
     autoStartJobs: true,
     enableNotifications: settings.enableNotifications,
@@ -1436,9 +1425,8 @@ function getFormatBundle(goal: SelectedFormatGoal): CustomFormatBundle | undefin
   return CUSTOM_FORMAT_BUNDLES.find((bundle) => bundle.id === FORMAT_GOALS[goal].bundleId);
 }
 
-function getEffectiveFormatGoal(mediaType: "movies" | "tv", form: GuideForm): SelectedFormatGoal | null {
+function getEffectiveFormatGoal(_mediaType: "movies" | "tv", form: GuideForm): SelectedFormatGoal | null {
   if (!form.formatGoal) return null;
-  if (form.formatGoal === "anime" && mediaType === "movies") return "balanced";
   return form.formatGoal;
 }
 
@@ -1622,7 +1610,6 @@ async function ensureLibrary(
   existing: LibraryItem[],
   mediaType: "movies" | "tv",
   rootPath: string,
-  downloadsPath: string | null,
   qualityProfileId: string | null,
   form: GuideForm,
   createdEntities: CreatedEntity[]
@@ -1638,7 +1625,7 @@ async function ensureLibrary(
       mediaType,
       purpose: "Main library",
       rootPath,
-      downloadsPath,
+      downloadsPath: null,
       qualityProfileId,
       autoSearchEnabled: true,
       missingSearchEnabled: true,

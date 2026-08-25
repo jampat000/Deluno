@@ -17,7 +17,7 @@ const workflowSections = [
     title: "Routing and Tags",
     badge: "Better than extra instances",
     body:
-      "Deluno separates Movies and TV by media type, library, category, destination rule, and dispatch metadata. Tags are optional policy labels for anime, kids, 4K, foreign-language media, processor workflows, or special root folders."
+      "Deluno separates Movies and TV by media type, library, category, destination rule, and dispatch metadata. Tags are optional policy labels for kids, 4K, foreign-language media, processor workflows, or special root folders."
   },
   {
     icon: DownloadCloud,
@@ -38,14 +38,14 @@ const workflowSections = [
     title: "Refine Before Import",
     badge: "Processor workflow",
     body:
-      "A library can wait for an external refiner or another processor to clean audio/subtitles before Deluno imports, hardlinks or moves, renames, refreshes metadata, and records recovery actions if processing stalls."
+      "A library can wait for an external refiner or another processor to clean audio/subtitles before Deluno imports, creates single-copy links (hardlinks) or moves, renames, refreshes metadata, and records recovery actions if processing stalls."
   },
   {
     icon: FolderTree,
     title: "Import Hygiene",
     badge: "Clean library",
     body:
-      "Imports should preview destination, validate with ffprobe when available, avoid duplicates, preserve hardlinks where requested, and keep Movies and TV in their correct folders without user guesswork."
+      "Imports should preview destination, validate with ffprobe when available, avoid duplicates, preserve single-copy links where requested, and keep Movies and TV in their correct folders without user guesswork."
   },
   {
     icon: ShieldCheck,
@@ -70,7 +70,7 @@ const lifecycle = [
   "Approved release is sent to the chosen external download client with category context.",
   "Queue telemetry tracks progress, speed, ETA, and failure state in one normalized model.",
   "Completed download is imported directly or held for processor output, depending on library workflow.",
-  "Deluno validates, moves or hardlinks, renames, refreshes metadata, and records an audit trail."
+  "Deluno validates, moves or creates single-copy links (hardlinks), renames, refreshes metadata, and records an audit trail."
 ];
 
 export function SystemDocsPage() {

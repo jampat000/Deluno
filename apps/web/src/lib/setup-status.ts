@@ -105,16 +105,16 @@ export function buildSetupStatus(input: SetupStatusInput): SetupStatusModel {
     {
       id: "media-plans",
       number: 2,
-      title: "Media Plan",
+      title: "Library Profiles",
       description: "Choose the quality, size, release, and upgrade behaviour Deluno will follow.",
-      status: activePlans > 0 ? `${plural(activePlans, "active Media Plan")} - ${plural(input.qualityProfiles.length, "quality profile")}` : "No active Media Plan",
+      status: activePlans > 0 ? `${plural(activePlans, "active library profile")} - ${plural(input.qualityProfiles.length, "quality profile")}` : "No library profile selected",
       complete: activePlans > 0,
       state: activePlans > 0 ? "complete" : "not-started",
       optional: false,
       to: "/settings/policy-sets",
-      action: activePlans > 0 ? "Review Media Plan" : "Choose Media Plan",
-      attentionTitle: "No Media Plan selected",
-      attentionText: "Choose a Media Plan so Deluno knows which releases to accept, hold, reject, and upgrade."
+      action: activePlans > 0 ? "Review Library Profiles" : "Choose Library Profiles",
+      attentionTitle: "No library profile selected",
+      attentionText: "Choose a Library Profile so Deluno knows which releases to accept, hold, reject, and upgrade."
     },
     {
       id: "connections",
@@ -145,22 +145,8 @@ export function buildSetupStatus(input: SetupStatusInput): SetupStatusModel {
       attentionText: automationAttentionText(input.settings.autoStartJobs, autoLibraries)
     },
     {
-      id: "workflow",
-      number: 5,
-      title: "First Acquisition",
-      description: "Run one complete search, dispatch, download, import, and catalogue flow before calling setup operationally ready.",
-      status: input.settings.workflowVerified ? "End-to-end acquisition verified" : "First end-to-end acquisition not verified",
-      complete: input.settings.workflowVerified,
-      state: input.settings.workflowVerified ? "complete" : "not-started",
-      optional: false,
-      to: "/movies",
-      action: input.settings.workflowVerified ? "Review first flow" : "Run first acquisition",
-      attentionTitle: "First workflow not verified",
-      attentionText: "Add or choose a title, dispatch a release, and verify that the completed download imports into the library."
-    },
-    {
       id: "discovery",
-      number: 6,
+      number: 5,
       title: "Discover Media",
       description: "Optionally configure import lists or watchlists with provenance, exclusions, and reviewable sync results.",
       status: enabledIntakeSources.length > 0 ? `${plural(enabledIntakeSources.length, "import list")} enabled` : "Optional - not configured",
@@ -171,6 +157,20 @@ export function buildSetupStatus(input: SetupStatusInput): SetupStatusModel {
       action: enabledIntakeSources.length > 0 ? "Review import lists" : "Configure import lists",
       attentionTitle: "Import lists are optional",
       attentionText: "Add import lists only if you want Deluno to discover titles for you. Manual title entry remains available."
+    },
+    {
+      id: "workflow",
+      number: 6,
+      title: "First Acquisition",
+      description: "Run one complete search, dispatch, download, import, and catalogue flow before calling setup operationally ready.",
+      status: input.settings.workflowVerified ? "End-to-end acquisition verified" : "First end-to-end acquisition not verified",
+      complete: input.settings.workflowVerified,
+      state: input.settings.workflowVerified ? "complete" : "not-started",
+      optional: false,
+      to: "/movies",
+      action: input.settings.workflowVerified ? "Review first flow" : "Run first acquisition",
+      attentionTitle: "First workflow not verified",
+      attentionText: "Add or choose a title, dispatch a release, and verify that the completed download imports into the library."
     }
   ];
 

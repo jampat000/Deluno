@@ -17,7 +17,7 @@ import {
   type HTMLMotionProps,
   type Variants
 } from "framer-motion";
-import { useOutlet } from "react-router-dom";
+import { useLocation, useOutlet } from "react-router-dom";
 
 /* ──────────────────────────────────────────────────────
    PAGE TRANSITION — wraps <Outlet /> in the layout
@@ -34,11 +34,12 @@ import { useOutlet } from "react-router-dom";
  */
 export function PageTransition() {
   const outlet = useOutlet();
+  const location = useLocation();
   // Route changes should replace the content in place. Exit/enter presence
   // kept the previous route mounted while the next one loaded, which made
   // fast menu clicks show ghost cards and partial frames underneath the new
   // page. Page-local motion remains available through Stagger/Reveal.
-  return <div className="min-h-[60vh]">{outlet}</div>;
+  return <div key={location.pathname} className="min-h-[60vh]">{outlet}</div>;
 }
 
 /* ──────────────────────────────────────────────────────

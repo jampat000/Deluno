@@ -11,8 +11,15 @@ export const librarySetupNavItems = [
   { to: "/settings/import-policy", label: "Import Policy", end: false, icon: <FileInput aria-hidden="true" /> },
   { to: "/settings/processing", label: "Processing Workflow", end: false, icon: <Workflow aria-hidden="true" /> },
   { to: "/settings/destination-rules", label: "Final Destinations", end: false, icon: <MapPinned aria-hidden="true" /> },
-  { to: "/settings/metadata", label: "Metadata & Sidecars", end: false, icon: <Image aria-hidden="true" /> },
+  { to: "/settings/metadata", label: "Metadata & Files", end: false, icon: <Image aria-hidden="true" /> },
   { to: "/settings/tags", label: "Tags", end: false, icon: <Tags aria-hidden="true" /> }
+] as const;
+
+export const automationNavItems = [
+  { to: "/search-cycles", label: "Automation", end: true },
+  { to: "/search-cycles/missing", label: "Missing Searches", end: false },
+  { to: "/search-cycles/upgrades", label: "Upgrades", end: false },
+  { to: "/search-cycles/failed-downloads", label: "Failed Downloads", end: false }
 ] as const;
 
 /**
@@ -35,8 +42,22 @@ export const configurationNavAreas = [
     items: librarySetupNavItems
   },
   {
+    match: (path: string) => path.startsWith("/settings/policy-sets") || path.startsWith("/settings/profiles") || path.startsWith("/settings/quality") || path.startsWith("/settings/custom-formats"),
+    label: "Quality Profiles",
+    icon: "plans",
+    to: "/settings/profiles",
+    accent: "blue",
+    tabsInToolbar: true,
+    items: [
+      { to: "/settings/profiles", label: "Quality Profiles", end: false },
+      { to: "/settings/quality", label: "Size Rules", end: false },
+      { to: "/settings/custom-formats", label: "Release Preferences", end: false },
+      { to: "/settings/policy-sets", label: "Library Profiles", end: false }
+    ]
+  },
+  {
     match: (path: string) => path.startsWith("/indexers"),
-    label: "Connections",
+    label: "Find & Download",
     icon: "connections",
     to: "/indexers/indexers",
     accent: "green",
@@ -48,25 +69,20 @@ export const configurationNavAreas = [
     ]
   },
   {
-    match: (path: string) => path.startsWith("/settings/policy-sets") || path.startsWith("/settings/profiles") || path.startsWith("/settings/quality") || path.startsWith("/settings/custom-formats"),
-    label: "Media Plans",
-    icon: "plans",
-    to: "/settings/policy-sets",
-    accent: "blue",
+    match: (path: string) => path.startsWith("/search-cycles") || path.startsWith("/settings/automation"),
+    label: "Automation & Recovery",
+    icon: "automation",
+    to: "/search-cycles",
+    accent: "orange",
     tabsInToolbar: true,
-    items: [
-      { to: "/settings/policy-sets", label: "Plans", end: false },
-      { to: "/settings/profiles", label: "Quality Profiles", end: false },
-      { to: "/settings/quality", label: "Size Rules", end: false },
-      { to: "/settings/custom-formats", label: "Release Preferences", end: false }
-    ]
+    items: automationNavItems
   },
   {
     match: (path: string) => path.startsWith("/settings/lists"),
-    label: "Import Lists",
+    label: "Discover Media",
     icon: "discover",
     to: "/settings/lists",
-    accent: "orange",
+    accent: "violet",
     tabsInToolbar: true,
     items: [{ to: "/settings/lists", label: "Import Lists", end: false }]
   }
@@ -111,7 +127,7 @@ export const maintenanceNavItems = [
     label: "System",
     icon: "system",
     to: "/system",
-    accent: "orange",
+    accent: "cyan",
     tabsInToolbar: true,
     items: systemHealthNavItems
   }
@@ -179,32 +195,32 @@ export const settingsPageMeta = [
   },
   {
     match: (path: string) => path.startsWith("/settings/policy-sets"),
-    title: "Media Plans",
-    description: "Configure the quality, size, release, language, and upgrade rules Deluno follows.",
+    title: "Library Profiles",
+    description: "Configure the reusable settings each library inherits for quality, searching, upgrades, and routing.",
     // List → drawer pages carry their own toolbar; the topbar already names the page.
     chrome: "none"
   },
   {
     match: (path: string) => path.startsWith("/settings/profiles"),
     title: "Quality Profiles",
-    description: "Quality ladders and cutoff targets used by Media Plans.",
+    description: "The complete quality standard used by Library Profiles: tiers, sizes, release preferences, exclusions, and upgrades.",
     chrome: "none"
   },
   {
     match: (path: string) => path.startsWith("/settings/quality"),
     title: "Size Rules",
-    description: "File-size boundaries Media Plans use to reject releases that are too small or too large.",
+    description: "File-size boundaries Library Profiles use to reject releases that are too small or too large.",
     chrome: "none"
   },
   {
     match: (path: string) => path.startsWith("/settings/custom-formats"),
     title: "Release Preferences",
-    description: "Preference rules for source, codec, HDR, language, group, and custom-format scoring used by Media Plans.",
+    description: "Preference rules for source, codec, HDR, language, group, and custom-format scoring used by Library Profiles.",
     chrome: "none"
   },
   {
     match: (path: string) => path.startsWith("/settings/lists"),
-    title: "Import Lists",
+    title: "Discover Media",
     description: "Watchlists and curated lists that can add the movies or shows you want Deluno to manage.",
     chrome: "none"
   },
@@ -315,7 +331,7 @@ export function SettingsWorkspaceLayout() {
 export function SystemWorkspaceLayout() {
   return (
     <div className="flex flex-col gap-[var(--page-gap)]">
-      <PageToolbar tabs={systemHealthNavItems} accent="orange" />
+      <PageToolbar tabs={systemHealthNavItems} accent="cyan" />
       <SystemWorkspaceContext.Provider value>
         <Outlet />
       </SystemWorkspaceContext.Provider>

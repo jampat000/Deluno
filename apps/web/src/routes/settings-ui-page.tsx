@@ -4,7 +4,7 @@
  *   PageToolbar (System settings tabs)
  *   ListCard  appearance    (theme, density — density applies live)
  *   ListCard  default views (movies, TV)
- *   PageFooter (pinned: status · Discard · Save)
+ *   PageFooter (pinned: status · Save)
  *
  * Contracts: PATCH /api/settings.
  */
@@ -58,7 +58,7 @@ export function SettingsUiPage() {
   const [message, setMessage] = useState<string | null>(null);
 
   // Density applies as you pick it, so you can see whether it suits the screen
-  // before committing. Discard puts it back.
+  // before committing. Navigation discard is handled by the shared modal.
   useEffect(() => {
     if (isDensity(form.density) && density !== form.density) setDensity(form.density as Density);
   }, [form.density, density, setDensity]);
@@ -155,7 +155,7 @@ export function SettingsUiPage() {
         </div>
       </ListCard>
 
-      <PageFooter state={state} message={message} saveLabel="Save interface settings" onDiscard={() => setForm(savedForm)} />
+      <PageFooter state={state} message={message} saveLabel="Save interface settings" />
     </form>
   );
 }

@@ -25,6 +25,7 @@ import {
   Tv,
   Wand2
 } from "lucide-react";
+import { commandPaletteShortcut } from "./platform-shortcuts";
 
 export type CommandGroup = "navigation" | "actions" | "recents" | "preferences";
 
@@ -75,7 +76,7 @@ export const navigationCommands: CommandItem[] = [
   },
   {
     id: "nav.indexers",
-    label: "Connections",
+    label: "Find & Download",
     keywords: ["providers", "prowlarr", "sources", "indexers", "download clients"],
     group: "navigation",
     icon: RadioTower,
@@ -84,7 +85,7 @@ export const navigationCommands: CommandItem[] = [
   },
   {
     id: "nav.automation",
-    label: "Automation",
+    label: "Automation & Recovery",
     keywords: ["search", "retries", "upgrades", "wanted", "scheduling", "recovery"],
     group: "navigation",
     icon: RefreshCw,
@@ -197,7 +198,7 @@ export const settingsCommands: CommandItem[] = [
   },
   {
     id: "settings.metadata",
-    label: "Media Management · Metadata & Sidecars",
+    label: "Media Management · Metadata & Files",
     keywords: ["library", "tmdb", "tvdb", "fanart", "metadata", "nfo"],
     group: "navigation",
     icon: Sparkles,
@@ -221,15 +222,15 @@ export const settingsCommands: CommandItem[] = [
   },
   {
     id: "settings.policy-sets",
-    label: "Media Plans",
-    keywords: ["quality", "policy", "media plan", "defaults", "custom plan", "multi version"],
+    label: "Library Profiles",
+    keywords: ["quality", "profile", "library profile", "behaviour", "policy", "library behaviour", "library rules", "defaults", "custom rules", "multi version"],
     group: "navigation",
     icon: Stars,
     to: "/settings/policy-sets"
   },
   {
     id: "settings.profiles",
-    label: "Media Plans · Quality Profiles",
+    label: "Library Profiles · Quality Profiles",
     keywords: ["quality", "profiles", "policy", "upgrades"],
     group: "navigation",
     icon: Stars,
@@ -237,7 +238,7 @@ export const settingsCommands: CommandItem[] = [
   },
   {
     id: "settings.quality",
-    label: "Media Plans · Size Rules",
+    label: "Library Profiles · Size Rules",
     keywords: ["quality", "resolution", "bitrate", "size limits", "sizes"],
     group: "navigation",
     icon: SlidersHorizontal,
@@ -245,7 +246,7 @@ export const settingsCommands: CommandItem[] = [
   },
   {
     id: "settings.custom-formats",
-    label: "Media Plans · Release Preferences",
+    label: "Library Profiles · Release Preferences",
     keywords: ["quality", "scoring", "release", "format", "rules"],
     group: "navigation",
     icon: Wand2,
@@ -356,27 +357,30 @@ export function buildActionCommands({
   return items;
 }
 
-export const globalShortcuts: ShortcutItem[] = [
-  { keys: ["Cmd", "K"], label: "Open command palette", group: "Global" },
-  { keys: ["/"], label: "Focus search", group: "Global" },
-  { keys: ["?"], label: "Show keyboard shortcuts", group: "Global" },
-  { keys: ["Esc"], label: "Close overlay or clear selection", group: "Global" },
-  { keys: ["g", "o"], label: "Go to Dashboard", group: "Navigation" },
-  { keys: ["g", "m"], label: "Go to Movies", group: "Navigation" },
-  { keys: ["g", "t"], label: "Go to TV", group: "Navigation" },
-  { keys: ["g", "q"], label: "Go to Transfers", group: "Navigation" },
-  { keys: ["g", "i"], label: "Go to Connections", group: "Navigation" },
-  { keys: ["g", "x"], label: "Go to Automation", group: "Navigation" },
-  { keys: ["g", "a"], label: "Go to Activity", group: "Navigation" },
-  { keys: ["g", "c"], label: "Go to Schedule", group: "Navigation" },
-  { keys: ["g", "s"], label: "Go to Media Management", group: "Navigation" },
-  { keys: ["g", "y"], label: "Go to System & Settings", group: "Navigation" },
-  { keys: ["j"], label: "Focus next row", group: "Table" },
-  { keys: ["k"], label: "Focus previous row", group: "Table" },
-  { keys: ["x"], label: "Select focused row", group: "Table" },
-  { keys: ["m"], label: "Toggle monitored", group: "Row" },
-  { keys: ["."], label: "Open row actions", group: "Row" }
-];
+export function getGlobalShortcuts(platform?: string): ShortcutItem[] {
+  const commandShortcut = commandPaletteShortcut(platform);
+  return [
+    { keys: commandShortcut.label.split(" "), label: "Open search & navigate", group: "Global" },
+    { keys: ["/"], label: "Focus search", group: "Global" },
+    { keys: ["?"], label: "Show keyboard shortcuts", group: "Global" },
+    { keys: ["Esc"], label: "Close overlay or clear selection", group: "Global" },
+    { keys: ["g", "o"], label: "Go to Dashboard", group: "Navigation" },
+    { keys: ["g", "m"], label: "Go to Movies", group: "Navigation" },
+    { keys: ["g", "t"], label: "Go to TV", group: "Navigation" },
+    { keys: ["g", "q"], label: "Go to Transfers", group: "Navigation" },
+    { keys: ["g", "i"], label: "Go to Find & Download", group: "Navigation" },
+    { keys: ["g", "x"], label: "Go to Automation & Recovery", group: "Navigation" },
+    { keys: ["g", "a"], label: "Go to Activity", group: "Navigation" },
+    { keys: ["g", "c"], label: "Go to Schedule", group: "Navigation" },
+    { keys: ["g", "s"], label: "Go to Media Management", group: "Navigation" },
+    { keys: ["g", "y"], label: "Go to System & Settings", group: "Navigation" },
+    { keys: ["j"], label: "Focus next row", group: "Table" },
+    { keys: ["k"], label: "Focus previous row", group: "Table" },
+    { keys: ["x"], label: "Select focused row", group: "Table" },
+    { keys: ["m"], label: "Toggle monitored", group: "Row" },
+    { keys: ["."], label: "Open row actions", group: "Row" }
+  ];
+}
 
 export function commandToShortcut(item: CommandItem): ShortcutItem | null {
   if (!item.shortcut) return null;
