@@ -1,0 +1,9 @@
+{
+  "enabled": false,
+  "frequency": "daily",
+  "timeOfDay": "03:00",
+  "retentionCount": 7,
+  "backupFolder": "C:\\Projects\\Deluno\\data\\backups",
+  "lastRunUtc": null,
+  "nextRunUtc": null
+}
