@@ -2,7 +2,7 @@
 
 You're picking up Deluno (`C:\Projects\Deluno`, github.com/jampat000/Deluno): a Windows .NET 10 + React 19 media-automation app replacing Radarr/Sonarr/Prowlarr/Huntarr/Cleanuparr/Recyclarr/Upgradarr/Trash Guides. Issue [#194](https://github.com/jampat000/Deluno/issues/194) is the product bar: do everything the arr-suite does, better and **simpler**.
 
-`main` is at `cc7c131`, working tree clean, 751 .NET tests and 272 web tests pass.
+`main` is at `a82cf29`, working tree clean, 751 .NET tests and 272 web tests pass.
 
 ## Standing rules from James — do not deviate
 
@@ -20,16 +20,16 @@ You're picking up Deluno (`C:\Projects\Deluno`, github.com/jampat000/Deluno): a 
 
 ## Where the board stands
 
-**Everything actionable is closed.** #269, #280, #290, #291, #292, #293, and the four raised and fixed during this run: #294, #295, #297, #298.
+Ten issues closed this run. Two are open and actionable:
 
-Open:
+- **[#296](https://github.com/jampat000/Deluno/issues/296) — "How this works", waiting on James's read of the copy.** The pattern is built (`apps/web/src/components/app/how-this-works.tsx`) and all seven configuration areas have one: Media Management, Quality & Release, Find & Download, Automation & Recovery, Discover Media, and — lead only, no steps — Preferences and System. James's steer was *configuration items only*, so Dashboard, Movies, TV Shows, Schedule, Transfers and Activity have none; an Activity draft was written and removed because its three steps were the three tabs directly above them. Two changes were made beyond the original ask and he has not reacted to them yet: the panel **collapses, with one preference across all seven**, and it is **no longer info-tinted**, because hue belongs to state (#290) and an explainer is not a state. What remains is his judgement on the copy, which is the whole job. See the status comment on the issue.
+- **[#300](https://github.com/jampat000/Deluno/issues/300) — `waiting` means three different things.** `MovieWorkflowService` sets it when a film *has a file and is at or above target*; the frontend hint says it means *not searchable yet*, implying no file. So the tooltip a user reads is probably wrong. Split out of #299 after fixing the visible symptom; the ambiguity itself is untouched and was not chased down.
 
-- **[#296](https://github.com/jampat000/Deluno/issues/296) — the next job.** James filed it mid-session: *"You see how we have How This Works in Find & Download → Library Routing. We should do this for every top menu in the whole app."* Nothing has been done on it. The existing one is in `apps/web/src/routes/connections-screen.tsx` on the routing section — three numbered cards under a heading. Thirteen top-level areas need one. Copy quality is the whole job here; his bar is "write for the person reading it", and a generic explainer per page would be worse than none.
-- **[#194](https://github.com/jampat000/Deluno/issues/194)** the epic, **#78/#81/#82/#129** GA readiness and externally blocked.
+Also open: **[#194](https://github.com/jampat000/Deluno/issues/194)** the epic, and **#78 / #81 / #82 / #129** — GA readiness and externally blocked.
 
 ## What this run did
 
-Fixed and closed the six open issues, then ran the first pass of the new end-to-end plan and found four more bugs — none of which any test could see, because each was a place where two things had to agree and nothing compared them.
+Fixed and closed the six issues that were open at the start, then ran the first pass of the new end-to-end plan and found five more bugs — none of which any test could see, because each was a place where two things had to agree and nothing compared them.
 
 **[#297] Every grab was sent with a hard-coded category.** `MediaGrabHandler` passed the literal `"movies"` or `"tv"`, so `ResolveCategory`'s fallback could never run and the Movies/TV category fields on every download client — plus the per-library routing category — had never been read by anything. Downloads landed in the client's default folder rather than the one the processor watches. **This is a large part of why the Processing stage was so hard to prove out.**
 
@@ -40,6 +40,8 @@ Fixed and closed the six open issues, then ran the first pass of the new end-to-
 **[#295] A legacy-protocol client told you to change it, then disabled the control that changes it** — and displayed a protocol it did not have, because a `<select>` with an unmatched value shows its first option.
 
 **[#280] is closed.** The whole pipeline ran twice: grab → qBittorrent → hand-off → MediaMop → matched output → import → `Big Buck Bunny (2008)/Big Buck Bunny (2008).mkv`, film reporting **On disk · WEB 2160p · cutoff Met**, and `processingCount`/`waitingForProcessorCount` back to **0** while the torrent kept seeding. The clamp question: unreachable, and gone — the invariant is pinned at the source in the one summary rule the adapters and the telemetry service now share. The timeout question: yes, it surfaces, as "Wait up to" on Processing Workflow.
+
+**[#299] An imported film read DOWNLOADING on its card** while its own detail page said *On disk — imported and verified*. The adapter tested the wanted status before `hasFile`, so a search-scheduling concept overrode the file state on an availability chip. Found while taking the README screenshots.
 
 **[#291]** added a third Playwright project, `shipped`, that drives a real browser against `Deluno.Host` serving its own front end. It runs in `npm run test:web` by default.
 
@@ -62,7 +64,7 @@ And the reason they were all found in one afternoon is that the app was set up b
 
 All three run as **scheduled tasks at startup** and survive a reboot.
 
-The install is now a **fully configured, populated lab**: 2 libraries, a torznab indexer, qBittorrent, routing, a TRaSH-template quality profile, 11 films and 6 shows with real metadata, and one film genuinely imported through the processor. The pre-run data root is kept at `C:\Deluno\Data.before-e2e-20260826-201335`, and the previous binary at `C:\Deluno\App.before-e2e-20260826-201404`.
+The install is now a **fully configured, populated lab** running the head of `main`: 2 libraries, a torznab indexer, qBittorrent, routing, a TRaSH-template quality profile, 11 films and 6 shows with real metadata, and one film genuinely imported through the processor. The pre-run data root is kept at `C:\Deluno\Data.before-e2e-20260826-201335`, and the previous binary at `C:\Deluno\App.before-e2e-20260826-201404`.
 
 **Deploying a build to the VM:** stop the task, kill `Deluno.Host`, copy `Deluno.Host.exe` and `wwwroot` into `C:\Deluno\App`, start the task. `Storage__DataRoot` and `Server__AllowLan` are machine env vars, so `appsettings.json` does not need editing.
 
@@ -86,9 +88,10 @@ TORZNAB_BIND=0.0.0.0 TORZNAB_ADVERTISE=10.1.1.102 python torznab_seed.py
 
 ## Loose ends worth a look
 
-- **The Movies card shows `DOWNLOADING` for a film whose detail page says *On disk — imported and verified*.** The torrent is still seeding, so queue state appears to leak into the library card. Header counts are correct. Not raised yet.
 - **The two import paths still repeat each other.** #298 made them agree; sharing the code outright is the better end state.
+- **Deluno's Check category cannot check the category that will actually be used** when the routing override is blank, because it is gated on that field being non-empty — and it does not notice that qBittorrent ignores a category's save path when Automatic Torrent Management is off. Both would have saved time this run.
 - **Phases 9–12 of `E2E-full-product-test.md` have not been run**: missing and upgrade cycles, recovery and cleanup, lists, notifications, tags, destination rules, API keys, backup and restore, reboot. SABnzbd is not installed on the rig, so Phase 5's usenet rungs are untouched.
+- **A card can no longer ever say Downloading.** That is honest — the catalogue adapter has no live transfer state — but if progress on a library card is wanted, it needs the download telemetry wired in rather than a wanted status standing in for it.
 
 ## Where James's bar sits
 
