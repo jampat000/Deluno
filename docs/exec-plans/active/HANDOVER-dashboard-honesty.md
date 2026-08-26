@@ -2,7 +2,7 @@
 
 You're picking up Deluno (`C:\Projects\Deluno`, github.com/jampat000/Deluno): a Windows .NET 10 + React 19 media-automation app replacing Radarr/Sonarr/Prowlarr/Huntarr/Cleanuparr/Recyclarr/Upgradarr/Trash Guides. Issue [#194](https://github.com/jampat000/Deluno/issues/194) is the product bar: do everything the arr-suite does, better and **simpler**.
 
-Working tree clean, `main` at `f7bf9e6`. **All gates green and actually run**: 714 .NET tests, 45 web unit tests, `ci:check` 7/7, and the Playwright smoke suite 260 passed / 0 failed across desktop and mobile.
+Working tree clean, `main` at `55482a4`. **All gates green and actually run**: 733 .NET tests, 48 web unit tests, `ci:check` 7/7, and the Playwright smoke suite 260 passed / 0 failed across desktop and mobile.
 
 ## Standing rules from James — do not deviate
 
@@ -59,7 +59,7 @@ Real end-to-end. Not mocks — real qBittorrent doing real transfers with real h
 
 **There is no peer on this rig**, so upload always reads 0.0 MB/s. That is correct, not a bug. A second qBittorrent instance was tried and abandoned — its WebUI would not bind, and adding a real swarm to James's machine is not something to do without asking.
 
-## What shipped this session — nine issues closed
+## What shipped last session — nine issues closed, plus the indexer privacy cleanup
 
 **[#287](https://github.com/jampat000/Deluno/issues/287) cleanup no longer breaks seeding.** `remove-source-after-import` deleted the completed file directly and told nobody, which errors the torrent and stops seeding. Two settings could delete the same file on different schedules; each now has a domain. The library's cleanup covers files Deluno found on disk; anything it downloaded through a search source belongs to the sharing rule, which removes it *through* the client. `DownloadProtocols.HasSharingPhase` makes that judgement in one place. Transmission, Deluge and uTorrent gained `delete-with-data`.
 
