@@ -2,7 +2,7 @@
 
 You're picking up Deluno (`C:\Projects\Deluno`, github.com/jampat000/Deluno): a Windows .NET 10 + React 19 media-automation app replacing Radarr/Sonarr/Prowlarr/Huntarr/Cleanuparr/Recyclarr/Upgradarr/Trash Guides. Issue [#194](https://github.com/jampat000/Deluno/issues/194) is the product bar: do everything the arr-suite does, better and **simpler**.
 
-Working tree clean, `main` at `a141a65`. **All gates green and actually run**: 671 .NET tests, 49 web unit tests, `ci:check` 7/7, and the Playwright smoke suite 255 passed / 0 failed across desktop and mobile.
+Working tree clean, `main` at `516a3eb`. **All gates green and actually run**: 694 .NET tests, 54 web unit tests, `ci:check` 7/7, and the Playwright smoke suite 255 passed / 0 failed across desktop and mobile.
 
 ## Standing rules from James — do not deviate
 
@@ -61,7 +61,7 @@ Bring it up: host → vite → qBittorrent → `torznab_seed.py`. All four must 
 
 **Dashboard:** setup ladder reordered by lifecycle, First Acquisition removed, Discover Media no longer a tile, ladder disappears once the basics are configured, setup items no longer duplicated in Needs You ([#275](https://github.com/jampat000/Deluno/issues/275)), throughput wave's clipped "now" marker fixed.
 
-**Sharing and reclaim ([#288](https://github.com/jampat000/Deluno/issues/288)) — 5 of 6 parts done.** A finished download exists twice: in the library permanently, and in the download client where it may still be shared. Some sites require sharing or they ban you; never deleting fills the drive. Deluno now models it:
+**Sharing and reclaim ([#288](https://github.com/jampat000/Deluno/issues/288)) — done and closed.** A finished download exists twice: in the library permanently, and in the download client where it may still be shared. Some sites require sharing or they ban you; never deleting fills the drive. Deluno now models it:
 
 - `SharingPolicy` + `SharingPolicyEvaluator` (`Deluno.Recovery/Policies`) — mode, optional time target, optional ratio target, stuck behaviour. Pure, returns the sentence a user reads.
 - Global default in settings, per-**search-source** override (5 nullable columns, platform migration v25). The requirement belongs to the site, not the library.
@@ -69,15 +69,18 @@ Bring it up: host → vite → qBittorrent → `torznab_seed.py`. All four must 
 - "When a download finishes" card on **Automation & Recovery**.
 - **Verified live:** three seeding torrents reclaimed once the rule was met, ~180 MB back, all three library copies untouched.
 
-## What's left on #288
+## How #288 finished
 
-The dashboard status line. A user should never open their torrent client to answer "why is my drive full", so the pipeline needs a post-import state like:
+The last three parts landed in `516a3eb` and the issue is closed.
 
-```
-Sintel — finished, still sharing for 2 more days, using 12 GB
-```
+- **The dashboard status line.** The pipeline card carries a Sharing stage and a strip under it — `Big Buck Bunny · 2 days left … 59.0 MB`. Read from what the worker's pass *decided*, via `GET /api/download-clients/sharing`, not recomputed for display: an answer worked out separately from the action could contradict it. `IDownloadSharingRepository` stores the snapshot as one settings row (no migration — the download-health records next door work the same way) and ages it out after ten minutes, so a stopped worker shows nothing rather than yesterday's numbers.
+- **`SharingDecision` gained a `Detail`** beside `Reason`. A section headed "Finished, still sharing" whose every row also reads "Still sharing" says the same thing twice. `Reason` is still what the activity feed gets, where nothing has said it yet.
+- **The setup-time question** on each search source: *Does this site expect you to keep sharing?* with the user's own rule stated back underneath. Written only when the answer changes, so a hand-tuned rule survives an unrelated edit.
+- **The different-drives warning** lives inside that strip rather than in its own card — the one place the fact changes what anyone should do. `SharingFootprint` (Recovery/Policies) decides whether the two copies are one set of file data and writes the sentence.
 
-`SharingPolicyEvaluator` already returns that sentence (`decision.Reason`); nothing surfaces it yet. Also unbuilt: the setup-time question under Find & Download, and the plain-English warning when downloads and library are on different drives.
+Finding that last one exposed a real bug: **`DispatchCatalogueLink` never carried `library_id`**, so nothing downstream could tell a hardlinked download from a genuine second copy. Fixed, with a test.
+
+Also fixed in passing: the indexer drawer sent `privacy: "private"` on *every* save, relabelling any edited source. It only sends it on create now. Whether that field should exist at all is a separate question — nothing reads it.
 
 ## Open issues
 
@@ -88,13 +91,13 @@ Sintel — finished, still sharing for 2 more days, using 12 GB
 - [#278](https://github.com/jampat000/Deluno/issues/278) mobile never looked at. [#279](https://github.com/jampat000/Deluno/issues/279) arrangeable panels (needs a direction call from James).
 - [#280](https://github.com/jampat000/Deluno/issues/280) Processing stage unverified — blocked, needs a real FileFlows/MediaMop.
 - [#281](https://github.com/jampat000/Deluno/issues/281) the `useQueries` tuple cliff.
-- [#287](https://github.com/jampat000/Deluno/issues/287) cleanup still deletes behind the client's back on the *old* `remove-source-after-import` path — #288 replaces it but the old path is still there.
+- [#287](https://github.com/jampat000/Deluno/issues/287) cleanup still deletes behind the client's back on the *old* `remove-source-after-import` path — #288 replaced it but the old path is still there. **This is the obvious next one.**
 - [#289](https://github.com/jampat000/Deluno/issues/289) what the throughput wave is for. **James wants the speed tile to show upload as well as download** — needs a sampler column and migration, not just frontend.
 - Pre-existing GA items blocked externally: #78, #81, #82, #129.
 
 ## Traps — save yourself the time
 
-- **Git Bash mangles backslashes** in `python - <<'PY'` heredocs. `r"C:\\x"` arrives as `C:\x`. Build paths with `chr(92)`, or use the Edit tool.
+- **Git Bash mangles backslashes** in `python - <<'PY'` heredocs. `r"C:\\x"` arrives as `C:\x`. Build paths with `chr(92)`, or use the Edit tool. It bites the **host command** too: `Storage__DataRoot=C:\\Projects\\Deluno\\.deluno\\data dotnet …` arrives as `C:ProjectsDeluno.delunodata`, and the host quietly builds a fresh empty install there and shows you the first-run setup screen — which reads exactly like your database being gone. Single-quote it instead: `export Storage__DataRoot='C:\Projects\Deluno\.deluno\data'`, and check the log says `storage initialized at C:\Projects\Deluno\.deluno\data` before believing anything the browser shows you.
 - **Don't navigate Chrome with a dirty form.** `useUnsavedChanges` raises a native "Leave site?" dialog that CDP cannot dismiss — the renderer freezes and you must ask James to click it.
 - **`performance.getEntriesByType('resource')` silently stops recording at 250 entries.** Call `performance.clearResourceTimings()` before measuring, or you'll conclude polling is broken when it isn't.
 - **`document.visibilityState === 'hidden'`** (Chrome window not focused) makes TanStack stop polling *entirely* — `refetchIntervalInBackground: false`. Check visibility before measuring cadence.
