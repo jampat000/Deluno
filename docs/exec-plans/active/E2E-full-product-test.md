@@ -10,6 +10,37 @@ A live test of everything Deluno does, run against a real install on the simulat
 
 ---
 
+## Run 1 — 26 August 2026
+
+The first pass through this plan, on a wiped install. It reached the end of Phase 8 and stopped there deliberately: seven defects turned up on the way, and fixing and verifying them was worth more than ticking further rows.
+
+**What the pipeline did.** Fresh install → 2 libraries → indexer → download client → routing → quality profile from a TRaSH template → add a film → search → grab → qBittorrent → hand-off → MediaMop → matched output → import → `Big Buck Bunny (2008)/Big Buck Bunny (2008).mkv`, with the film reporting **On disk · WEB 2160p · cutoff Met** and the Processing stage back to zero while the torrent kept seeding. Twice, with two different releases.
+
+**Found and fixed, none of which any test could see:**
+
+| | |
+|---|---|
+| [#297](https://github.com/jampat000/Deluno/issues/297) P0 | Every grab sent with a hard-coded category, so downloads never reached the folder the processor watches. The Movies/TV category fields and the routing category had never been read by anything. |
+| [#298](https://github.com/jampat000/Deluno/issues/298) P0 | A refined import was filed under its release name with "(Unknown Year)" and never linked to the film, which stayed Missing — a re-download loop that also produced duplicate catalogue entries. |
+| [#294](https://github.com/jampat000/Deluno/issues/294) | The folder check had never lit Readable or Writable for any path, and said nothing at all about a healthy folder. |
+| [#295](https://github.com/jampat000/Deluno/issues/295) | A legacy-protocol client told you to change it and disabled the control that changes it, while displaying a protocol it did not have. |
+
+Plus the four this run set out to close: [#280](https://github.com/jampat000/Deluno/issues/280), [#292](https://github.com/jampat000/Deluno/issues/292), [#293](https://github.com/jampat000/Deluno/issues/293), [#290](https://github.com/jampat000/Deluno/issues/290), [#291](https://github.com/jampat000/Deluno/issues/291), [#269](https://github.com/jampat000/Deluno/issues/269).
+
+**Two of those were the same defect written twice.** #298 is #268 on the sibling import path; #294 is two halves of one contract that nobody had ever compared. Both survived because the lesson was learned in one place and not carried next door. When a fix lands, the next question is where else that shape lives.
+
+**Setup facts the plan did not know:**
+
+- **qBittorrent only applies a category's save path when Automatic Torrent Management is on.** With it off the category is set correctly and the file still lands in the global default folder. The rig needs `auto_tmm_enabled: true`. Deluno's **Check category** does not catch this, and cannot check the category that will actually be used when the routing override is blank, because it is gated on that field being non-empty.
+- **Background automation is paused on a fresh install**, and queued jobs are held. `/api/health/ready` says so plainly — *"Background automation is paused; queued jobs are intentionally held."* Nothing moves past the queue until step 4 of the setup ladder is done. This is correct and well reported; it is just easy to miss.
+- **MediaMop's Refiner writes output even when it decides no changes are needed**, into `<output>/<source leaf>/`, which is exactly the shape `FindCorrelatedProcessorOutputs` expects. It also empties the source folder, which will break seeding if that folder is the client's.
+
+**Still to run:** Phases 9–12 — missing and upgrade cycles, recovery and cleanup, lists, notifications, tags, destination rules, API keys, backup and restore, reboot. Phase 5's SABnzbd rungs are untouched; it is not installed on the rig yet.
+
+**Open follow-up:** the Movies card for the imported film shows a `DOWNLOADING` chip while its detail page says *On disk — imported and verified*; the torrent is still seeding, so queue state appears to leak into the library card. Header counts are correct.
+
+---
+
 ## The rig
 
 | What | Where | Sign in |
