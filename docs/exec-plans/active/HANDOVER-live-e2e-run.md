@@ -68,11 +68,13 @@ The install is now a **fully configured, populated lab** running the head of `ma
 
 **Deploying a build to the VM:** stop the task, kill `Deluno.Host`, copy `Deluno.Host.exe` and `wwwroot` into `C:\Deluno\App`, start the task. `Storage__DataRoot` and `Server__AllowLan` are machine env vars, so `appsettings.json` does not need editing.
 
-**The torznab indexer runs on the desktop, not the VM**, and is not a service. `torznab_seed.py` is in this session's scratchpad; the LAN-capable copy is the one that reads `TORZNAB_BIND`/`TORZNAB_ADVERTISE`. Start it before any acquisition test:
+**The torznab indexer runs on the desktop, not the VM**, and is not a service. It now lives in the repo — `scripts/lab/`, with a README — rather than in a session scratchpad that has to be hunted for. Start it before any acquisition test:
 
 ```bash
-TORZNAB_BIND=0.0.0.0 TORZNAB_ADVERTISE=10.1.1.102 python torznab_seed.py
+TORZNAB_BIND=0.0.0.0 TORZNAB_ADVERTISE=10.1.1.102 python scripts/lab/torznab_seed.py
 ```
+
+`scripts/lab/watch-pipeline.ps1` prints where an acquisition has got to in one call — telemetry, queue statuses, hand-offs, jobs and the relevant activity.
 
 ## Traps — save yourself the time
 
