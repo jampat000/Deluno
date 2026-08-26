@@ -75,6 +75,8 @@ Real end-to-end. Not mocks — real qBittorrent doing real transfers with real h
 
 **[#278](https://github.com/jampat000/Deluno/issues/278) mobile.** Looked at five pages on a real Pixel 7. `Needs you` now sits above `System pulse` below the breakpoint. `tests/smoke/mobile-review.spec.ts` captures each page full-length and asserts no sideways scroll and the stacked order.
 
+**The indexer `privacy` field earns its keep** (`d4975e6`). It was stored, displayed, and read by nothing, guessed by the UI from protocol, and normalised in two places with opposite defaults. Now: one normaliser with an honest `unknown` default, gone from the list in favour of "Strict sharing" where a source differs from the normal rule, and doing one real job — a migration from Prowlarr gives an imported private or semi-private tracker the strict sharing rule, so the label arrives with its obligation rather than without it. `SharingPolicy.Strict` is the single definition, mirrored in the web app's `STRICT_SHARING` with both halves pinned.
+
 **[#279](https://github.com/jampat000/Deluno/issues/279) closed on James's call** — the lifecycle order is a good default and nobody has asked to change it.
 
 Three bugs turned up that nobody was looking for: a second summariser that would have reported zero upload however fast you were seeding; `DispatchCatalogueLink` never carrying `library_id`, so a hardlinked download was charged full price on the dashboard; and the automation churn above.
@@ -83,16 +85,38 @@ Three bugs turned up that nobody was looking for: a second summariser that would
 
 **[#269](https://github.com/jampat000/Deluno/issues/269) update the GitHub README.** James chose screenshots of his **real instance**. The blocker: capturing them needs either his password (for Playwright) or his browser session token, and moving that token out of the browser is correctly blocked. The offer to make him is a small Playwright capture script that reads `DELUNO_E2E_USERNAME` / `DELUNO_E2E_PASSWORD` from the environment — he sets them, runs one command, and gets seven 1920×1080 PNGs into `screenshots/`; the password never reaches you. The description rewrite is not blocked: the current "What it does" list predates sharing and reclaim, machine telemetry, and the honesty work.
 
-**[#280](https://github.com/jampat000/Deluno/issues/280) verify the Processing stage.** James does not use FileFlows any more — he is testing **MediaMop** as its replacement and wants Deluno connected to his existing instance.
+**[#280](https://github.com/jampat000/Deluno/issues/280) verify the Processing stage.** James does not use FileFlows any more — he is testing **MediaMop** as its replacement.
 
-What is established: MediaMop **2.3.11** is live and healthy at `http://app-server:8788` (10.1.1.35), data at `\\app-server\c$\ProgramData\MediaMop`, port in `current-port.txt`. It exposes `/openapi.json` with 86 paths including a `refiner` module (`/api/v1/refiner/jobs/watched-folder-remux-scan-dispatch/enqueue`, `/api/v1/refiner/path-settings`). **Its API is session-authenticated with CSRF, so you cannot call it.**
+**MediaMop is his own product and he has full access to it.** Change it, add endpoints to it, reconfigure it — whatever the integration needs. He asked specifically that connectivity be done **properly, the way a normal user would set it up**, not bodged around from the Deluno side.
 
-What that means: MediaMop has no endpoint that accepts Deluno's handoff payload, so Deluno's **webhook** mode will not work without work on one side. The realistic integration is Deluno's **watched-output-folder** mode, and for that you need two things from James:
+What is established: MediaMop **2.3.11** is live and healthy at `http://app-server:8788` (10.1.1.35), data under `ProgramData\MediaMop` on that box, port in `current-port.txt`. It exposes `/openapi.json` with 86 paths, including a `refiner` module (`/api/v1/refiner/jobs/watched-folder-remux-scan-dispatch/enqueue`, `/api/v1/refiner/path-settings`) and session auth with CSRF at `/api/v1/auth/*`. The previous session could not call the authenticated API and treated that as a wall — that constraint is gone now he has said it is his.
 
-1. MediaMop's refiner **input/watched folder** — where Deluno should put a finished download.
-2. MediaMop's refiner **output folder** — where MediaMop writes the cleaned file for Deluno to watch.
+Deluno's side of the contract: it POSTs a handoff (`eventType`, `handoffId`, `libraryId`, `mediaType`, `sourcePath`, `releaseName`, `queueItemId`, `callbackPath`) with an optional auth header, and expects either a callback to `/api/integrations/processors/events` or to watch an output folder itself. See `ProcessorConnectionService` and `docs/external-integration-api.md`. A connection test is a `HEAD` request, and a processor that rejects `HEAD` is still reported reachable.
 
-Both need to be reachable from *this* machine (10.1.1.102) as well as app-server, so they are probably UNC paths or a share. Ask him for those two paths rather than digging through his 160 MB production SQLite.
+Note the two machines: Deluno runs on 10.1.1.102 and MediaMop on 10.1.1.35, so any shared path has to be reachable from both.
+
+What #280 actually wants answered, once the two are talking: does `waitingForProcessorCount` populate; can it exceed `processingCount` and drive the `Math.max(0, …)` floor in `acquisition-pipeline.tsx`; does a configured-but-unreachable processor still show the stage; and does `ProcessorTimeoutMinutes` surface anywhere a user will see it.
+
+**Menu colour scheme — James thinks it is scattered, and he is right about the cause.**
+
+Six navigation accents are defined in `TOOLBAR_ACCENT_COLOURS` (`apps/web/src/components/ui/page-toolbar.tsx`) and assigned per area in `settings-shell.tsx`. Three of them collide with the semantic palette in `index.css`, one of them exactly:
+
+| Nav accent | HSL | Semantic token | HSL |
+|---|---|---|---|
+| green (Find & Download) | `145 78% 52%` | `--success` (dark) | `145 78% 52%` — **identical** |
+| orange (Automation & Recovery) | `28 96% 58%` | `--warning` | `24 94% 38%` — same hue family |
+| blue (Quality & Release) | `207 96% 62%` | `--info` | `207 92% 45%` — same hue |
+
+So colour is doing two incompatible jobs at once. On the dashboard green means "healthy" and amber means "look at this"; in the sidebar the same green means "Find & Download" and the same amber means "Automation & Recovery", permanently, regardless of state. Someone who learns the status colours then reads a nav item as a warning. That is a measurable conflict, not a taste question.
+
+The six are also all high-saturation and high-lightness (52–70%) and all lit at rest, so the sidebar carries six competing colours before anything has happened.
+
+**What I would do, in order of preference:**
+
+1. **Move the six area accents off the semantic hues and only light them on the active or hovered item.** Keeps the per-area identity and the toolbar tie-in, which is real wayfinding on an app with this many settings screens, while the resting sidebar goes calm and nothing can be mistaken for a status. Smallest change, and it respects the earlier "keep the icons and colours" steer.
+2. **One accent.** Navigation becomes monochrome with the brand blue marking only where you are, and hue belongs entirely to state. Cleanest and most honest — colour would mean exactly one thing everywhere — but it drops the per-area identity, so it is his call rather than mine.
+
+Either way the semantic tokens should be treated as reserved. Verify against both themes: `index.css` redefines the palette under dark, and the collision above is the dark-mode one.
 
 **Blocked externally:** [#78](https://github.com/jampat000/Deluno/issues/78), [#81](https://github.com/jampat000/Deluno/issues/81), [#82](https://github.com/jampat000/Deluno/issues/82), [#129](https://github.com/jampat000/Deluno/issues/129) — installer validation on clean Windows environments, a 14-day soak, and code signing. None can be done from here.
 
