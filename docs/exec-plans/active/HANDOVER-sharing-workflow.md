@@ -2,7 +2,7 @@
 
 You're picking up Deluno (`C:\Projects\Deluno`, github.com/jampat000/Deluno): a Windows .NET 10 + React 19 media-automation app replacing Radarr/Sonarr/Prowlarr/Huntarr/Cleanuparr/Recyclarr/Upgradarr/Trash Guides. Issue [#194](https://github.com/jampat000/Deluno/issues/194) is the product bar: do everything the arr-suite does, better and **simpler**.
 
-Working tree clean, `main` at `5b41da4`, all gates green (671 .NET tests, 49 web tests).
+Working tree clean, `main` at `a141a65`. **All gates green and actually run**: 671 .NET tests, 49 web unit tests, `ci:check` 7/7, and the Playwright smoke suite 255 passed / 0 failed across desktop and mobile.
 
 ## Standing rules from James — do not deviate
 
@@ -42,7 +42,7 @@ npm run ci:check
 
 Plus `npx vitest run` and `npm run build:web` in `apps/web`. `npx tsc -b` is incremental and skips new files — `npm run build:web` is authoritative.
 
-**Never run while `Deluno.Host` is up.** `ci:check` builds the whole solution; the Playwright smoke suite (`npm run test:web`) starts a *competing* Deluno.Host on 5199 and a web server on 5174, so don't run it while James is using the instance.
+Run them. The smoke suite caught a real regression this session that nothing else did — hiding Recently added on an empty library had removed the only "Add a movie" link from the dashboard. **Never run while `Deluno.Host` is up.** `ci:check` builds the whole solution; the Playwright smoke suite (`npm run test:web`) starts a *competing* Deluno.Host on 5199 and a web server on 5174, so don't run it while James is using the instance.
 
 ## The live test rig
 
