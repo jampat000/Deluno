@@ -97,7 +97,7 @@ Note the two machines: Deluno runs on 10.1.1.102 and MediaMop on 10.1.1.35, so a
 
 What #280 actually wants answered, once the two are talking: does `waitingForProcessorCount` populate; can it exceed `processingCount` and drive the `Math.max(0, …)` floor in `acquisition-pipeline.tsx`; does a configured-but-unreachable processor still show the stage; and does `ProcessorTimeoutMinutes` surface anywhere a user will see it.
 
-**Menu colour scheme — James thinks it is scattered, and he is right about the cause.**
+**Menu colour scheme — decided, and raised as [#290](https://github.com/jampat000/Deluno/issues/290).**
 
 Six navigation accents are defined in `TOOLBAR_ACCENT_COLOURS` (`apps/web/src/components/ui/page-toolbar.tsx`) and assigned per area in `settings-shell.tsx`. Three of them collide with the semantic palette in `index.css`, one of them exactly:
 
@@ -111,12 +111,11 @@ So colour is doing two incompatible jobs at once. On the dashboard green means "
 
 The six are also all high-saturation and high-lightness (52–70%) and all lit at rest, so the sidebar carries six competing colours before anything has happened.
 
-**What I would do, in order of preference:**
+**James picked one accent, the existing brand blue `hsl(211 100% 66%)`.** Navigation goes monochrome and the accent marks only where you are; hue belongs to state. Four options were rendered and compared before he chose. #290 has the full reasoning, the files to touch, and the acceptance criteria — read it rather than re-deriving.
 
-1. **Move the six area accents off the semantic hues and only light them on the active or hovered item.** Keeps the per-area identity and the toolbar tie-in, which is real wayfinding on an app with this many settings screens, while the resting sidebar goes calm and nothing can be mistaken for a status. Smallest change, and it respects the earlier "keep the icons and colours" steer.
-2. **One accent.** Navigation becomes monochrome with the brand blue marking only where you are, and hue belongs entirely to state. Cleanest and most honest — colour would mean exactly one thing everywhere — but it drops the per-area identity, so it is his call rather than mine.
+One thing worth carrying: blue keeping both roles is deliberate. `info` in this codebase does not mean "here is a notice", it means *in progress* — job running or queued, transfer moving, processing, the Searching/Queued chips, the Downloading/Processing/Sharing stages. Neither that nor "interactive" is an alarm and they never share a region of the screen, so it is not the defect green was. Do not "fix" it.
 
-Either way the semantic tokens should be treated as reserved. Verify against both themes: `index.css` redefines the palette under dark, and the collision above is the dark-mode one.
+The semantic tokens are reserved. Verify in both themes and on mobile — the tab bar carries the same per-area colours and is the easiest place to miss.
 
 **Blocked externally:** [#78](https://github.com/jampat000/Deluno/issues/78), [#81](https://github.com/jampat000/Deluno/issues/81), [#82](https://github.com/jampat000/Deluno/issues/82), [#129](https://github.com/jampat000/Deluno/issues/129) — installer validation on clean Windows environments, a 14-day soak, and code signing. None can be done from here.
 
