@@ -27,7 +27,7 @@ Open and actionable:
   telemetry and must never be inferred from a wanted status — that is the bug
   #299 fixed.
 - **[#301](https://github.com/jampat000/Deluno/issues/301)** — Subber. It
-  inherits the settled vocabulary, and the bar under a film's poster already has
+  inherits the settled vocabulary, and the bar under a movie's poster already has
   its landing site: `SubtitleLanguagesWanted`/`Held` are on both catalogue
   contracts, zero, with a grey bar drawn for "asked for nothing".
 
@@ -79,9 +79,9 @@ other. Same defect family, different subsystem — `attentionTotal()` in
 attention model the way `status-tones.ts` is now one colour table.
 
 **Three repetitions James would have found on screen**, all removed while
-verifying live: the list row said monitoring three times over; the film's summary
+verifying live: the list row said monitoring three times over; the movie's summary
 strip restated the mark as **FILE: Missing** in amber next to **CUTOFF: Below
-target** in amber, on a film with no file to be below target with; and every
+target** in amber, on a movie with no file to be below target with; and every
 episode row carried a File column saying "Not imported" beside a Status column
 saying "Missing". The strip is three cells now — quality, monitoring, import
 issues — and none of them is the mark.
@@ -111,7 +111,7 @@ one meaning each — `missing`, `upgrade`, `covered`, `upcoming` — in
 Each of those mapped anything unrecognised to `missing`, the most dangerous
 direction to guess in because `missing` means "go and download this". The shared
 one throws instead, and immediately caught two test suites seeding `wanted`.
-`upcoming` is new and actually set, from release dates for a film and the
+`upcoming` is new and actually set, from release dates for a movie and the
 earliest air date for a show, through `MovieAvailability` — the rule that already
 gates searching — rather than a second copy of it in SQL. V0014 and V0015 migrate
 the rows.
@@ -141,15 +141,15 @@ Fixed and closed the six issues that were open at the start, then ran the first 
 
 **[#297] Every grab was sent with a hard-coded category.** `MediaGrabHandler` passed the literal `"movies"` or `"tv"`, so `ResolveCategory`'s fallback could never run and the Movies/TV category fields on every download client — plus the per-library routing category — had never been read by anything. Downloads landed in the client's default folder rather than the one the processor watches. **This is a large part of why the Processing stage was so hard to prove out.**
 
-**[#298] A refined import was filed under its release name and never linked to the film.** It landed as `Big.Buck.Bunny.…-DELUNO (Unknown Year)`, the film stayed Missing, and monitoring would grab it again — a re-download loop that also produced duplicate catalogue entries. This is **#268 on the sibling import path**: the direct path was taught to name from the catalogue and carries a comment saying why; the processor path never was.
+**[#298] A refined import was filed under its release name and never linked to the movie.** It landed as `Big.Buck.Bunny.…-DELUNO (Unknown Year)`, the movie stayed Missing, and monitoring would grab it again — a re-download loop that also produced duplicate catalogue entries. This is **#268 on the sibling import path**: the direct path was taught to name from the catalogue and carries a comment saying why; the processor path never was.
 
 **[#294] The folder check had never lit Readable or Writable, for any path.** Server sent `canRead`/`canWriteToParent`/`fullPath`; the UI read `readable`/`writable`/`normalizedPath`/`message`. Both compiled. A healthy folder showed a warning triangle with nothing written under it.
 
 **[#295] A legacy-protocol client told you to change it, then disabled the control that changes it** — and displayed a protocol it did not have, because a `<select>` with an unmatched value shows its first option.
 
-**[#280] is closed.** The whole pipeline ran twice: grab → qBittorrent → hand-off → MediaMop → matched output → import → `Big Buck Bunny (2008)/Big Buck Bunny (2008).mkv`, film reporting **On disk · WEB 2160p · cutoff Met**, and `processingCount`/`waitingForProcessorCount` back to **0** while the torrent kept seeding. The clamp question: unreachable, and gone — the invariant is pinned at the source in the one summary rule the adapters and the telemetry service now share. The timeout question: yes, it surfaces, as "Wait up to" on Processing Workflow.
+**[#280] is closed.** The whole pipeline ran twice: grab → qBittorrent → hand-off → MediaMop → matched output → import → `Big Buck Bunny (2008)/Big Buck Bunny (2008).mkv`, movie reporting **On disk · WEB 2160p · cutoff Met**, and `processingCount`/`waitingForProcessorCount` back to **0** while the torrent kept seeding. The clamp question: unreachable, and gone — the invariant is pinned at the source in the one summary rule the adapters and the telemetry service now share. The timeout question: yes, it surfaces, as "Wait up to" on Processing Workflow.
 
-**[#299] An imported film read DOWNLOADING on its card** while its own detail page said *On disk — imported and verified*. The adapter tested the wanted status before `hasFile`, so a search-scheduling concept overrode the file state on an availability chip. Found while taking the README screenshots.
+**[#299] An imported movie read DOWNLOADING on its card** while its own detail page said *On disk — imported and verified*. The adapter tested the wanted status before `hasFile`, so a search-scheduling concept overrode the file state on an availability chip. Found while taking the README screenshots.
 
 **[#291]** added a third Playwright project, `shipped`, that drives a real browser against `Deluno.Host` serving its own front end. It runs in `npm run test:web` by default.
 
@@ -172,7 +172,7 @@ And the reason they were all found in one afternoon is that the app was set up b
 
 All three run as **scheduled tasks at startup** and survive a reboot.
 
-The install is now a **fully configured, populated lab** running the head of `main`: 2 libraries, a torznab indexer, qBittorrent, routing, a TRaSH-template quality profile, 11 films and 6 shows with real metadata, and one film genuinely imported through the processor. The pre-run data root is kept at `C:\Deluno\Data.before-e2e-20260826-201335`, and the previous binary at `C:\Deluno\App.before-e2e-20260826-201404`.
+The install is now a **fully configured, populated lab** running the head of `main`: 2 libraries, a torznab indexer, qBittorrent, routing, a TRaSH-template quality profile, 11 movies and 6 shows with real metadata, and one movie genuinely imported through the processor. The pre-run data root is kept at `C:\Deluno\Data.before-e2e-20260826-201335`, and the previous binary at `C:\Deluno\App.before-e2e-20260826-201404`.
 
 **Deploying a build to the VM:** stop the task, kill `Deluno.Host`, copy `Deluno.Host.exe` and `wwwroot` into `C:\Deluno\App`, start the task. `Storage__DataRoot` and `Server__AllowLan` are machine env vars, so `appsettings.json` does not need editing.
 
@@ -188,7 +188,7 @@ TORZNAB_BIND=0.0.0.0 TORZNAB_ADVERTISE=10.1.1.102 python scripts/lab/torznab_see
 
 - ~~**`scripts/publish-windows.ps1` calls `.\.dotnet\dotnet.exe`, which does not exist here.**~~ Fixed — it falls back to the PATH SDK. A publish still takes ~5 minutes; background it.
 - ~~**The web assets are not content-hashed.**~~ Fixed — they are `deluno.<hash>.js` now, so a stale bundle no longer survives a deploy. If something still looks unfixed, check the served file before re-diagnosing anyway.
-- **The Deluno calendar cannot be seen on this rig.** Every film has no `in_cinemas`/`digital`/`physical` date stored, and every episode aired years before the page's ±45/+120-day window. `/api/movies/calendar` returns `[]` over any range. The metadata editor has no date fields either, so a calendar change cannot be verified by looking — only by unit test.
+- **The Deluno calendar cannot be seen on this rig.** Every movie has no `in_cinemas`/`digital`/`physical` date stored, and every episode aired years before the page's ±45/+120-day window. `/api/movies/calendar` returns `[]` over any range. The metadata editor has no date fields either, so a calendar change cannot be verified by looking — only by unit test.
 - **`Deluno.Host` binds 5099 on the rig and 5199 under Playwright.** The Schedule page lives at `/calendar`, not `/schedule`.
 - **Only `wwwroot` needs redeploying for a front-end change.** `npm run build:web`, copy `apps/web/dist` over `C:\Deluno\App\wwwroot`, hard reload. No publish, no service restart.
 - **A crashed Playwright run can leave `Deluno.Host` holding port 5199**, and the next run then fails with "already used" or times out at the login form. Kill it before re-running.
