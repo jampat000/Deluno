@@ -125,6 +125,13 @@ including the two sorts deliberately *not* built and why, is in
 - **"Hunt 10 missing" hunted ten while the button said five.** The action built
   its own query and ignored the search box and the monitoring filter. Both come
   from `buildCatalogueParams()` now.
+- **The metadata broker was sending fourteen fields out of roughly thirty.**
+  Beyond runtime and popularity, it dropped certification, studio, network,
+  collection, director, trailer, tagline, homepage, original language and
+  status. Three of those the catalogue has *read from the metadata blob for a
+  long time* — `certification`, `collection`, `studio` — and the series adapter
+  hardcoded `network: undefined` because nothing ever sent one. No migration was
+  needed: the blob already carries whatever the provider returns.
 - **The metadata broker has never sent runtime, popularity or vote count.**
   V0012 added those columns as "the facts the library list has always displayed
   but never had"; the repository writes them and the API accepts them, and
@@ -163,9 +170,13 @@ in `docs/PRODUCT_NORTH_STAR.md` and is the thing to read first.
 
 **Next, in order:**
 
-1. **Redeploy the metadata gateway** so runtime, popularity and vote count start
-   arriving. Until then three columns, one filter and two orders are correct
-   code over empty data.
+1. **Redeploy the metadata gateway** (`npm --prefix services/metadata-gateway run
+   deploy`). It is now the single blocker for a whole batch of correct code over
+   empty data: runtime, popularity, vote count, certification, studio, network,
+   collection, director, trailer, tagline, original language and series status
+   all reach Deluno only once that worker ships. `wrangler whoami` answers on
+   this machine, so the credentials are there — it needs a human to say go,
+   because it is a live service other installs use.
 2. **#301 step 2 — providers as Connections.** One end to end, Gestdown or
    Podnapisi since neither needs an account, with health and a test button.
 3. **DESIGN-003's leftovers** — sorting by size or quality (three options
