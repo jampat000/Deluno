@@ -2,8 +2,9 @@
 
 You're picking up Deluno (`C:\Projects\Deluno`, github.com/jampat000/Deluno): a Windows .NET 10 + React 19 media-automation app replacing Radarr/Sonarr/Prowlarr/Huntarr/Cleanuparr/Recyclarr/Upgradarr/Trash Guides. Issue [#194](https://github.com/jampat000/Deluno/issues/194) is the product bar: do everything the arr-suite does, better and **simpler**.
 
-`main` is at `aa7fbc5`, working tree clean, 786 .NET tests and 82 web unit tests
-pass, and the Playwright suite was last green at 272 passed / 10 skipped.
+`main` is at `3c9ec8e`, working tree clean, **798 .NET tests** and **83 web unit
+tests** pass, and Playwright is green at **272 passed / 10 skipped**. The rig at
+10.1.1.142 is running this build.
 
 ## Where the board stands
 
@@ -13,11 +14,13 @@ of an area.
 
 Open and actionable:
 
-- **[#300](https://github.com/jampat000/Deluno/issues/300)** and **[#302](https://github.com/jampat000/Deluno/issues/302)** — both have a decided design in
-  `DESIGN-001-title-marks.md`, and both are blocked on the same first step: the
-  paged catalogue payload carries no wanted status, no cutoff flag and no dates,
-  and the wanted summary the grid falls back on is `LIMIT 25`. Data before
-  colour.
+- **[#300](https://github.com/jampat000/Deluno/issues/300)** and **[#302](https://github.com/jampat000/Deluno/issues/302)** — the design is decided in
+  `DESIGN-001-title-marks.md`, and **the data blocker is cleared**: both paged
+  catalogues now carry their own wanted status, reason, library, target quality
+  and cutoff flag, films carry their release dates, and shows carry what their
+  episodes add up to. Read that doc's "What landed" section before starting
+  #300's split — it also records three things the data work turned up that step
+  2 has to deal with. **Next is #300, then #302's one table, then the mark.**
 - **[#303](https://github.com/jampat000/Deluno/issues/303)** — automatic per-episode search does not exist. Three orphaned
   pieces, each individually plausible, found by the audit.
 - **[#301](https://github.com/jampat000/Deluno/issues/301)** — Subber, which inherits the settled vocabulary for free.
@@ -26,6 +29,33 @@ Also open: **[#194](https://github.com/jampat000/Deluno/issues/194)** the epic, 
 externally blocked.
 
 ## What the last run did
+
+**Cleared DESIGN-001's blocker, and found the same defect one screen over.**
+The grid read every title's search state from `/api/movies/wanted`, whose
+`recentItems` is `LIMIT 25` — so past the twenty-fifth title in a library every
+card silently lost its status and fell back to "is there a file". Eleven films
+on this rig all fit inside twenty-five. The detail pages did the same thing,
+worse: they searched that 25-item list for the one title they were already
+showing, so opening the 26th-most-recently-touched title lost its library, its
+target quality and its cutoff and left a Defer button that could only 404.
+
+Both now read from the title itself. One `LEFT JOIN` replaced the eight
+correlated subqueries each repository had grown — which also could not keep
+their own answers together, since each took the first row with a non-null value
+for *its* column. The plan is asserted in a test, because a page that stops
+being a seek looks exactly like one that still is until the twenty-thousandth
+title.
+
+**Six visual defects on the library toolbar**, all found by James looking at it
+rather than by anything green. Worth reading the commits: every one was a rule
+written in a place that could not enforce it — a ResizeObserver watching a node
+that had been remounted away, `border-0` that cannot undo `hover:border`, a
+`backdrop-blur` whose backdrop root was a sticky header, a dropdown clipped by
+an `overflow-hidden` two levels up, and a native `<select>` whose popup the
+operating system draws and no stylesheet can reach. The last one is now
+`MenuSelect`, shared with the density menu that had been hand-rolled beside it.
+
+## What the run before this one did
 
 Closed #296, then audited every status vocabulary in the app — twenty status
 columns across 58 tables, read from the schema up rather than from memory. That
@@ -44,7 +74,7 @@ without chasing it to the writer. Same shape as #268 → #298.
 Read it before touching #300 or #302 — the naming arguments alone took an hour,
 and the reasoning is recorded so they do not have to happen twice.
 
-## What the run before that did
+## And the run before those
 
 Fixed and closed the six issues that were open at the start, then ran the first pass of the new end-to-end plan and found five more bugs — none of which any test could see, because each was a place where two things had to agree and nothing compared them.
 
@@ -95,7 +125,10 @@ TORZNAB_BIND=0.0.0.0 TORZNAB_ADVERTISE=10.1.1.102 python scripts/lab/torznab_see
 
 ## Traps — save yourself the time
 
-- **`scripts/publish-windows.ps1` calls `.\.dotnet\dotnet.exe`, which does not exist here.** Use the PATH SDK. A publish takes ~5 minutes; background it.
+- ~~**`scripts/publish-windows.ps1` calls `.\.dotnet\dotnet.exe`, which does not exist here.**~~ Fixed — it falls back to the PATH SDK. A publish still takes ~5 minutes; background it.
+- **The web assets are not content-hashed** (`assets/deluno.js`, not `deluno.<hash>.js`). After deploying `wwwroot`, a browser will happily keep serving you the old bundle — a hard reload is not optional, and a "the fix did not work" result is worth re-checking against the served file before re-diagnosing. It cost a wrong diagnosis this run.
+- **Only `wwwroot` needs redeploying for a front-end change.** `npm run build:web`, copy `apps/web/dist` over `C:\Deluno\App\wwwroot`, hard reload. No publish, no service restart.
+- **A crashed Playwright run can leave `Deluno.Host` holding port 5199**, and the next run then fails with "already used" or times out at the login form. Kill it before re-running.
 - **qBittorrent only applies a category's save path when Automatic Torrent Management is on.** With it off, the category is set correctly and the file still lands in the global default folder. The rig now has `auto_tmm_enabled: true`. Deluno's **Check category** does not catch this, and cannot check the category that will actually be used when the routing override is blank, because it is gated on that field being non-empty. Worth fixing.
 - **Background automation is paused on a fresh install** and queued jobs are held — nothing moves past the queue until setup ladder step 4. `/api/health/ready` says so in plain words; read it before assuming the worker is broken.
 - **MediaMop's Refiner empties the source folder** when it processes. If that folder is the download client's, seeding breaks.
