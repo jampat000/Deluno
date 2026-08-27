@@ -51,12 +51,27 @@ cleared a *local* flag, which skipped the only branch that writes
 immediately expensive once #301 gave it something, queueing a scan every tick.
 Fixed, with a test that fails without the fix.
 
-**Verified live**: two sidecars beside Big Buck Bunny (English, and a forced
-Spanish), English and Spanish asked for in the library drawer, and the card draws
-**half green, half red** — one of two held, the forced one correctly not counted.
+**Verified live, both sources.** First with two sidecars beside Big Buck Bunny
+(English, and a forced Spanish): the card drew **half green, half red** — one of
+two held, the forced one correctly ignored. Then `ffprobe.exe` was put on the rig
+(it had never had one) and English and Spanish were muxed into the file as real
+tracks with the English sidecar deleted, so English could only come from inside
+the container. The card went to **full green, 2 of 2**, and the forced Spanish
+sidecar is still on disk and still not counted.
+
+That second pass needed one more fix: **a file read without ffprobe is read
+again once ffprobe is there.** Only the subtitles beside it could be seen the
+first time, and nothing would ever have gone back for the tracks inside it.
+`unavailable` and `failed` are treated differently on purpose — a missing binary
+is an environment state that changes, a file ffprobe cannot parse is a fact about
+the file, and retrying the second every cycle would read a corrupt file forever.
 
 ### What step 1 does *not* do
 
+- **A `.srt` dropped in by hand beside a file Deluno has already read is not
+  noticed.** The scan marker watches the video, not the folder. The ffprobe case
+  self-heals now; this one wants an explicit "read these files again" action, the
+  way Search now works.
 - **A newly imported file is read on the next library cycle, not at import.**
   Deliberate: wiring it into both import paths is the #268 → #298 shape. When
   Subber fetches, it writes the row directly, so this only affects files that
@@ -256,16 +271,17 @@ TORZNAB_BIND=0.0.0.0 TORZNAB_ADVERTISE=10.1.1.102 python scripts/lab/torznab_see
 - **Git Bash mangles backslashes.** Use PowerShell for anything with `\` — including JSON bodies containing Windows paths, which come back as HTTP 400 otherwise.
 - **Editing the VM's SQLite from the desktop:** copy `platform.db` **and** its `-wal`/`-shm` down, open it locally (which checkpoints and removes the sidecars), then move the VM's stale sidecars aside before copying the merged file back. Skip that and the stale WAL silently reverts your change.
 - **`rg` mangles some route-string matches.** Use `tests/Deluno.Platform.Tests/Routing/endpoint-inventory.snapshot.txt` for the authoritative route list.
-- **The rig has no `ffprobe`, so it has never validated a stream or read an
-  embedded subtitle track.** Not a product gap — `.github/workflows/release.yml`
-  bundles `ffprobe.exe` into the release artifact — but the rig is deployed by
-  hand-copying `Deluno.Host.exe`, which skips it. Everything ffprobe-shaped
-  degrades silently there: import stream validation, the replacement guard, and
-  embedded subtitle detection. Dropping an `ffprobe.exe` next to
-  `C:\Deluno\App\Deluno.Host.exe` closes it.
-- **Big Buck Bunny on the rig now has two subtitle files beside it** —
-  `.en.srt` and `.es.forced.srt` — placed as a fixture for #301. The forced one
-  is there on purpose: it must never count.
+- ~~**The rig has no `ffprobe`.**~~ Fixed — `C:\Deluno\Appfprobe.exe` is
+  there now, from the same BtbN build `.github/workflows/release.yml` pins, and
+  `C:\Deluno\Toolsfmpeg.exe` beside it for building fixtures. Until this
+  run the rig had **never** validated an import stream, run the replacement
+  guard, or read an embedded track: the release artifact bundles ffprobe, but the
+  rig is deployed by hand-copying `Deluno.Host.exe`, which skips it. Keep copying
+  it when you rebuild the VM.
+- **Big Buck Bunny on the rig is a #301 fixture now.** Its `.mkv` carries real
+  embedded `eng` and `spa` subtitle tracks, muxed in, and a
+  `.es.forced.srt` sits beside it. The forced one is there on purpose: it must
+  never count. Expect the card to read 2 of 2, full green.
 - **The in-app browser pane's screenshot times out often** on this app. Retry with a plain `wait` + `screenshot`; it usually succeeds second time. `find` by ref is more reliable than coordinate clicking, because drawer layouts shift as validation messages appear.
 
 ## Loose ends worth a look
