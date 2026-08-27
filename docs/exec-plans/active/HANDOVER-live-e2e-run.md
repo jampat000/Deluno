@@ -29,7 +29,7 @@ Open and actionable:
 - **[#301](https://github.com/jampat000/Deluno/issues/301)** — Subber. It
   inherits the settled vocabulary, and the bar under a movie's poster already has
   its landing site: `SubtitleLanguagesWanted`/`Held` are on both catalogue
-  contracts, zero, with a grey bar drawn for "asked for nothing".
+  contracts, zero, and a title with no languages asked for draws no bar.
 
 Also open: **[#194](https://github.com/jampat000/Deluno/issues/194)** the epic,
 and **#78 / #81 / #82 / #129** — GA readiness and externally blocked.
