@@ -2,77 +2,74 @@
 
 You're picking up Deluno (`C:\Projects\Deluno`, github.com/jampat000/Deluno): a Windows .NET 10 + React 19 media-automation app replacing Radarr/Sonarr/Prowlarr/Huntarr/Cleanuparr/Recyclarr/Upgradarr/Trash Guides. Issue [#194](https://github.com/jampat000/Deluno/issues/194) is the product bar: do everything the arr-suite does, better and **simpler**.
 
-`main` is at `3c9ec8e`, working tree clean, **798 .NET tests** and **83 web unit
-tests** pass, and Playwright is green at **272 passed / 10 skipped**. The rig at
-10.1.1.142 is running this build.
+`main` is at `23b1708`, working tree clean, **810 .NET tests**, **102 web unit
+tests** and Playwright at **272 passed / 10 skipped**. The rig at 10.1.1.142 is
+running this build.
 
 ## Where the board stands
 
-Closed since: **[#296](https://github.com/jampat000/Deluno/issues/296)** — How this works. The copy is signed off and the
-seven explainers now come from one table, rendered by `PageToolbar` on every tab
-of an area.
+**Closed this run: [#300](https://github.com/jampat000/Deluno/issues/300) and
+[#302](https://github.com/jampat000/Deluno/issues/302).** DESIGN-001 is built
+through step 4 of its six-step order.
 
 Open and actionable:
 
-- **[#300](https://github.com/jampat000/Deluno/issues/300)** and **[#302](https://github.com/jampat000/Deluno/issues/302)** — the design is decided in
-  `DESIGN-001-title-marks.md`, and **the data blocker is cleared**: both paged
-  catalogues now carry their own wanted status, reason, library, target quality
-  and cutoff flag, films carry their release dates, and shows carry what their
-  episodes add up to. Read that doc's "What landed" section before starting
-  #300's split — it also records three things the data work turned up that step
-  2 has to deal with. **Next is #300, then #302's one table, then the mark.**
-- **[#303](https://github.com/jampat000/Deluno/issues/303)** — automatic per-episode search does not exist. Three orphaned
-  pieces, each individually plausible, found by the audit.
-- **[#301](https://github.com/jampat000/Deluno/issues/301)** — Subber, which inherits the settled vocabulary for free.
+- **[#303](https://github.com/jampat000/Deluno/issues/303)** — automatic
+  per-episode search. Three orphaned pieces, all still orphaned: nothing calls
+  `PlanEpisodeSearchesAsync`. #300 fixed the half of it that was a defect —
+  `ListEligibleWantedEpisodesAsync` filtered on `wanted`, a word nothing writes,
+  so the query matched nothing in production and its test seeded the value by
+  hand. It reads `missing` now. **What is left is the wiring**: the heartbeat's
+  automation lane calls `PlanLibrarySearchesAsync` and nothing calls the episode
+  equivalent. Mirror it there.
+- **[#301](https://github.com/jampat000/Deluno/issues/301)** — Subber. It
+  inherits the settled vocabulary, and the bar under a film's poster already has
+  its landing site: `SubtitleLanguagesWanted`/`Held` are on both catalogue
+  contracts, zero, with a grey bar drawn for "asked for nothing".
+- **DESIGN-001 step 5 — live transfer state.** *Downloading* is a mark and a
+  colour and has no source: `titleMark()` takes an `isTransferring` flag nothing
+  sets, and there is deliberately no Downloading chip in the filter row because a
+  chip that can never match is worse than none. It has to come from download
+  telemetry and must never be inferred from a wanted status — that is the bug
+  #299 fixed.
 
-Also open: **[#194](https://github.com/jampat000/Deluno/issues/194)** the epic, and **#78 / #81 / #82 / #129** — GA readiness and
-externally blocked.
+Also open: **[#194](https://github.com/jampat000/Deluno/issues/194)** the epic,
+and **#78 / #81 / #82 / #129** — GA readiness and externally blocked.
 
 ## What the last run did
 
-**Cleared DESIGN-001's blocker, and found the same defect one screen over.**
-The grid read every title's search state from `/api/movies/wanted`, whose
-`recentItems` is `LIMIT 25` — so past the twenty-fifth title in a library every
-card silently lost its status and fell back to "is there a file". Eleven films
-on this rig all fit inside twenty-five. The detail pages did the same thing,
-worse: they searched that 25-item list for the one title they were already
-showing, so opening the 26th-most-recently-touched title lost its library, its
-target quality and its cutoff and left a Defer button that could only 404.
+**Closed #300.** `waiting` meant three different things: set by the workflow on a
+title that *has* a file and meets its target, set by the migration importer when
+the source app reported a file, and described by the front end as "not searchable
+yet — it has not been released", which is the opposite state. Four words now,
+one meaning each — `missing`, `upgrade`, `covered`, `upcoming` — in
+`WantedStatuses`, which replaced **three private copies** of the same switch.
+Each of those mapped anything unrecognised to `missing`, the most dangerous
+direction to guess in because `missing` means "go and download this". The shared
+one throws instead, and immediately caught two test suites seeding `wanted`.
+`upcoming` is new and actually set, from release dates for a film and the
+earliest air date for a show, through `MovieAvailability` — the rule that already
+gates searching — rather than a second copy of it in SQL. V0014 and V0015 migrate
+the rows.
 
-Both now read from the title itself. One `LEFT JOIN` replaced the eight
-correlated subqueries each repository had grown — which also could not keep
-their own answers together, since each took the first row with a non-null value
-for *its* column. The plan is asserted in a test, because a page that stops
-being a seek looks exactly like one that still is until the twenty-thousandth
-title.
+**Closed #302.** `lib/status-tones.ts` is the one place a state gets a colour.
+The amber fix is the one that matters: it belonged to four states that were
+proceeding normally, and every one of those teaches people to stop reading the
+colour that has to stay trustworthy. It covers four states now and the test
+asserts that list *exactly*. **Four** tone vocabularies became one, not the two
+the issue named — `AttentionDot` and `LibraryImpact` had their own as well.
 
-**Six visual defects on the library toolbar**, all found by James looking at it
-rather than by anything green. Worth reading the commits: every one was a rule
-written in a place that could not enforce it — a ResizeObserver watching a node
-that had been remounted away, `border-0` that cannot undo `hover:border`, a
-`backdrop-blur` whose backdrop root was a sticky header, a dropdown clipped by
-an `overflow-hidden` two levels up, and a native `<select>` whose popup the
-operating system draws and no stylesheet can reach. The last one is now
-`MenuSelect`, shared with the density menu that had been hand-rolled beside it.
+**Built the mark** (DESIGN-001 step 4): one dot on the four-rung ladder, a half
+for "not monitored", and a bar for what you asked for beyond the title. The
+filter row is now the legend, the counts and the filters at once — it used to
+repeat four numbers that a summary band above it was already showing.
 
-## What the run before this one did
-
-Closed #296, then audited every status vocabulary in the app — twenty status
-columns across 58 tables, read from the schema up rather than from memory. That
-found a live defect and produced a settled design.
-
-**`download_dispatches.import_status` was written as `imported` and read as
-`completed` in three places** (`f56e0a9`). The archive sweep therefore never
-selected a row, so no dispatch has ever been archived and every imported one
-stayed in the working set that the Transfers list, the metrics, the routing
-statistics and the ranking training data all read — against the 20,000-item
-invariant. Proven against the rig's own database: 6 nulls, 1 `imported`, **0
-`completed`**. Two call sites had already met it and papered over it locally
-without chasing it to the writer. Same shape as #268 → #298.
-
-**The design is in `DESIGN-001-title-marks.md`**, with a rendered reference.
-Read it before touching #300 or #302 — the naming arguments alone took an hour,
-and the reasoning is recorded so they do not have to happen twice.
+**Four things flagged in the run before, all fixed.** The web assets are
+content-hashed (a stale bundle survived a deploy and looked exactly like a fix
+that had not worked — it cost a wrong diagnosis); a show stopped counting
+episodes that have not aired as missing; the publish script finds a `dotnet` that
+exists; and the detail pages stopped searching a 25-item summary for the one
+title they were already showing.
 
 ## And the run before those
 
