@@ -2,39 +2,103 @@
 
 You're picking up Deluno (`C:\Projects\Deluno`, github.com/jampat000/Deluno): a Windows .NET 10 + React 19 media-automation app replacing Radarr/Sonarr/Prowlarr/Huntarr/Cleanuparr/Recyclarr/Upgradarr/Trash Guides. Issue [#194](https://github.com/jampat000/Deluno/issues/194) is the product bar: do everything the arr-suite does, better and **simpler**.
 
-`main` is at `23b1708`, working tree clean, **810 .NET tests**, **102 web unit
-tests** and Playwright at **272 passed / 10 skipped**. The rig at 10.1.1.142 is
-running this build.
+`main` is at the head of this run, working tree clean, **811 .NET tests**,
+**94 web unit tests** and Playwright at **272 passed / 10 skipped**. The rig at 10.1.1.142 is running this build.
+
+The web count went *down* by eight on purpose: two test files went with the two
+dead modules they were testing. `media-status-presentation.test.ts` asserted the
+shape of an eleven-value colour table a title could only ever hold two values of,
+and `library-filters.test.ts` exercised a client-side filter engine nothing had
+imported since the catalogue became server-paged.
 
 ## Where the board stands
 
-**Closed this run: [#300](https://github.com/jampat000/Deluno/issues/300) and
-[#302](https://github.com/jampat000/Deluno/issues/302).** DESIGN-001 is built
-through step 4 of its six-step order.
+**Closed this run: [#302](https://github.com/jampat000/Deluno/issues/302), for
+the second time and properly, and [#303](https://github.com/jampat000/Deluno/issues/303).**
+DESIGN-001 is built through step 4 of its six-step order — all of step 4 this
+time, not the grid half of it.
 
 Open and actionable:
 
-- **[#303](https://github.com/jampat000/Deluno/issues/303)** — automatic
-  per-episode search. Three orphaned pieces, all still orphaned: nothing calls
-  `PlanEpisodeSearchesAsync`. #300 fixed the half of it that was a defect —
-  `ListEligibleWantedEpisodesAsync` filtered on `wanted`, a word nothing writes,
-  so the query matched nothing in production and its test seeded the value by
-  hand. It reads `missing` now. **What is left is the wiring**: the heartbeat's
-  automation lane calls `PlanLibrarySearchesAsync` and nothing calls the episode
-  equivalent. Mirror it there.
-- **[#301](https://github.com/jampat000/Deluno/issues/301)** — Subber. It
-  inherits the settled vocabulary, and the bar under a film's poster already has
-  its landing site: `SubtitleLanguagesWanted`/`Held` are on both catalogue
-  contracts, zero, with a grey bar drawn for "asked for nothing".
 - **DESIGN-001 step 5 — live transfer state.** *Downloading* is a mark and a
   colour and has no source: `titleMark()` takes an `isTransferring` flag nothing
   sets, and there is deliberately no Downloading chip in the filter row because a
   chip that can never match is worse than none. It has to come from download
   telemetry and must never be inferred from a wanted status — that is the bug
   #299 fixed.
+- **[#301](https://github.com/jampat000/Deluno/issues/301)** — Subber. It
+  inherits the settled vocabulary, and the bar under a film's poster already has
+  its landing site: `SubtitleLanguagesWanted`/`Held` are on both catalogue
+  contracts, zero, with a grey bar drawn for "asked for nothing".
 
 Also open: **[#194](https://github.com/jampat000/Deluno/issues/194)** the epic,
 and **#78 / #81 / #82 / #129** — GA readiness and externally blocked.
+
+## What this run did
+
+**Re-closed #302.** James re-opened it saying the design had not been executed
+100%, and he was right twice over: step 4 had finished the grid and stopped, and
+the guard test written to prevent exactly this had not noticed, because it
+watched for **one spelling** of the defect — `tone="x"` beside a state's label.
+Four more tables were spelling it other ways, and a fifth was dead code holding
+a competing definition. The full account is in DESIGN-001's step 4. The short
+version:
+
+- `MEDIA_STATUS_PRESENTATION` coloured a missing title **amber** — the signal
+  reserved for "a person is needed" — off an eleven-value `MediaStatus` a title
+  could only ever hold two values of, both from `hasFile`.
+- `WANTED_STATUS_PRESENTATION` gave the four stored wanted statuses a *second*
+  set of tones: Missing blue there, red on the poster.
+- `quickFilterConfig` wrote the mark colours out by hand, three lines under a
+  comment calling that row the legend.
+- Both detail-page headers picked a Badge `variant` per status.
+- `filterAndSortLibraryItems` and its 45-value `FilterField` union: imported by
+  nothing, and holding a fourth definition of Upgradable and a `downloading`
+  branch that could only ever match zero rows.
+
+`MediaItem` has no `status` at all now. The guard is restated in the shape the
+offenders took: outside `status-tones.ts`, no module may put a colour on the same
+line as a mark's name, whether it spells the colour `tone`, `variant` or `bg-*`.
+Reintroducing the old detail-page badge was checked to fail it before the guard
+was trusted.
+
+**The dashboard had survived both passes**, because a screen that invents a new
+*name* for a state carries no mark label for a colour rule to catch. It counted
+"Watching for", "Still missing" — amber — and "Could be upgraded", beside a ring
+labelled "On disk", "Still missing" and **"Upgradeable"**, a letter off the mark
+it was drawing. Both read the table now and the strip is the design's own counts
+line. **Needs You** lost its two self-resolving entries: it read **2** on an
+install whose sidebar was simultaneously saying *All good · Nothing needs you*.
+A second guard was added for this shape — the names DESIGN-001 retired may not
+come back.
+
+**One left flagged, not fixed:** the sidebar's "needs you" and the dashboard's
+count it from **two different sources**, which is why they contradicted each
+other. Same defect family, different subsystem — `attentionTotal()` in
+`lib/use-attention.ts` versus `setupStatus.attentionItems`. It wants one
+attention model the way `status-tones.ts` is now one colour table.
+
+**Three repetitions James would have found on screen**, all removed while
+verifying live: the list row said monitoring three times over; the film's summary
+strip restated the mark as **FILE: Missing** in amber next to **CUTOFF: Below
+target** in amber, on a film with no file to be below target with; and every
+episode row carried a File column saying "Not imported" beside a Status column
+saying "Missing". The strip is three cells now — quality, monitoring, import
+issues — and none of them is the mark.
+
+**Closed #303.** Three orphaned pieces that each worked and never met. The wiring
+went **inside the library search cycle**, not in the heartbeat lane where the
+missing call was expected: the lane would have needed its own copy of the
+time-of-day window, the interval, missing-versus-upgrade, the manual override and
+`MaxItemsPerRun`, and a second copy of a scheduling rule is how the last four
+defects in this codebase were built.
+
+**Verified live on the rig**, not just green: shelf, list, both detail pages and
+the episode list all draw the same mark from the same table, and no amber appears
+on a title anywhere. **The calendar could not be exercised with data** — every
+film on the rig has no release date stored and every episode aired outside the
+page's ±45/+120-day window, so its endpoint was confirmed to run clean and its
+contract change is unit-covered, but nobody has seen the new chip.
 
 ## What the last run did
 
@@ -123,7 +187,9 @@ TORZNAB_BIND=0.0.0.0 TORZNAB_ADVERTISE=10.1.1.102 python scripts/lab/torznab_see
 ## Traps — save yourself the time
 
 - ~~**`scripts/publish-windows.ps1` calls `.\.dotnet\dotnet.exe`, which does not exist here.**~~ Fixed — it falls back to the PATH SDK. A publish still takes ~5 minutes; background it.
-- **The web assets are not content-hashed** (`assets/deluno.js`, not `deluno.<hash>.js`). After deploying `wwwroot`, a browser will happily keep serving you the old bundle — a hard reload is not optional, and a "the fix did not work" result is worth re-checking against the served file before re-diagnosing. It cost a wrong diagnosis this run.
+- ~~**The web assets are not content-hashed.**~~ Fixed — they are `deluno.<hash>.js` now, so a stale bundle no longer survives a deploy. If something still looks unfixed, check the served file before re-diagnosing anyway.
+- **The Deluno calendar cannot be seen on this rig.** Every film has no `in_cinemas`/`digital`/`physical` date stored, and every episode aired years before the page's ±45/+120-day window. `/api/movies/calendar` returns `[]` over any range. The metadata editor has no date fields either, so a calendar change cannot be verified by looking — only by unit test.
+- **`Deluno.Host` binds 5099 on the rig and 5199 under Playwright.** The Schedule page lives at `/calendar`, not `/schedule`.
 - **Only `wwwroot` needs redeploying for a front-end change.** `npm run build:web`, copy `apps/web/dist` over `C:\Deluno\App\wwwroot`, hard reload. No publish, no service restart.
 - **A crashed Playwright run can leave `Deluno.Host` holding port 5199**, and the next run then fails with "already used" or times out at the login form. Kill it before re-running.
 - **qBittorrent only applies a category's save path when Automatic Torrent Management is on.** With it off, the category is set correctly and the file still lands in the global default folder. The rig now has `auto_tmm_enabled: true`. Deluno's **Check category** does not catch this, and cannot check the category that will actually be used when the routing override is blank, because it is gated on that field being non-empty. Worth fixing.
