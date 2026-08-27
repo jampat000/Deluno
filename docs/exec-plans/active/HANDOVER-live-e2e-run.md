@@ -2,14 +2,70 @@
 
 You're picking up Deluno (`C:\Projects\Deluno`, github.com/jampat000/Deluno): a Windows .NET 10 + React 19 media-automation app replacing Radarr/Sonarr/Prowlarr/Huntarr/Cleanuparr/Recyclarr/Upgradarr/Trash Guides. Issue [#194](https://github.com/jampat000/Deluno/issues/194) is the product bar: do everything the arr-suite does, better and **simpler**.
 
-`main` is at the head of this run, working tree clean, **811 .NET tests**,
-**94 web unit tests** and Playwright at **272 passed / 10 skipped**. The rig at 10.1.1.142 is running this build.
+`main` is at the head of this run, working tree clean, **845 .NET tests**,
+**97 web unit tests** and Playwright at **272 passed / 10 skipped**. The rig at 10.1.1.142 is running this build.
 
 The web count went *down* by eight on purpose: two test files went with the two
 dead modules they were testing. `media-status-presentation.test.ts` asserted the
 shape of an eleven-value colour table a title could only ever hold two values of,
 and `library-filters.test.ts` exercised a client-side filter engine nothing had
 imported since the catalogue became server-paged.
+
+## What this run did — #301, step 1 finished
+
+**Deluno now knows what subtitles you already have**, before it fetches any.
+
+The plan had this as "read the embedded streams out of the MKV". James corrected
+it while it was being built: *"shouldn't the whole premise of porting Subber over
+to Deluno be that it knows when subtitles are downloaded and added? I get that
+ffprobe can detect subs in downloaded media but that should only be part of the
+equation."* Right, and the bigger half was missing — the `.srt` sitting **beside**
+the video, which is what a Bazarr-era library is full of. Held now has three
+sources: `fetched` (Subber writes the row itself, with its provider), `external`
+(a file beside the video, or in a `Subs` folder), `embedded` (ffprobe). The store
+is the truth; scanning only teaches it about what Deluno did not fetch.
+
+`en`, `eng` and `English` are one language now. The setting stores the first,
+ffprobe emits the second, a sidecar is named any of the three, and two of those
+are different ISO 639-2 codes for one language. Three vocabularies would have
+made `eng` embedded and `en` wanted read as missing — the defect this codebase
+keeps producing.
+
+Not guessed at: a bare `Movie.srt` is `und` and counts for nothing; a **forced**
+track is not coverage; **hearing-impaired** is, and is not counted twice beside a
+plain track.
+
+`movie_subtitle_state` / `episode_subtitle_state` are one SQL body through
+`MediaTableMap`, per ADR-001 — the pair costs its Step 2 two table names, not two
+implementations. `library.subtitles.scan` is planned by the library cycle and
+rides the **import** lane, sliced like `library.import.existing`. A shelf with no
+languages is never planned a scan and never runs the rollup: measured at 20,000
+films, the rollup is **0.26 ms per hundred-title page** and the read that decides
+whether to run it **0.014 ms** (`SubtitleScaleBenchmark`).
+
+**Found while verifying: a manual search request that was never consumed.** Both
+libraries on the rig had been stuck at `searchRequested = true` for days,
+re-entering the cycle every thirty seconds. The code meant to consume it and
+cleared a *local* flag, which skipped the only branch that writes
+`search_requested = 0`. Invisible while the cycle had nothing to do there —
+immediately expensive once #301 gave it something, queueing a scan every tick.
+Fixed, with a test that fails without the fix.
+
+**Verified live**: two sidecars beside Big Buck Bunny (English, and a forced
+Spanish), English and Spanish asked for in the library drawer, and the card draws
+**half green, half red** — one of two held, the forced one correctly not counted.
+
+### What step 1 does *not* do
+
+- **A newly imported file is read on the next library cycle, not at import.**
+  Deliberate: wiring it into both import paths is the #268 → #298 shape. When
+  Subber fetches, it writes the row directly, so this only affects files that
+  arrive with subtitles already in them.
+- **The detail pages do not list the languages a title holds.** That belongs with
+  manual search, step 3.
+- **The TV rollup has no episode files on the rig to exercise.** Same SQL body
+  through the map as movies, covered at episode grain by
+  `SubtitleBarPersistenceTests`, but nobody has seen a show's bar with real data.
 
 ## Where the board stands
 
@@ -26,10 +82,11 @@ Open and actionable:
   chip that can never match is worse than none. It has to come from download
   telemetry and must never be inferred from a wanted status — that is the bug
   #299 fixed.
-- **[#301](https://github.com/jampat000/Deluno/issues/301)** — Subber. It
-  inherits the settled vocabulary, and the bar under a movie's poster already has
-  its landing site: `SubtitleLanguagesWanted`/`Held` are on both catalogue
-  contracts, zero, and a title with no languages asked for draws no bar.
+- **[#301](https://github.com/jampat000/Deluno/issues/301)** — Subber. **Step 1
+  is done** (languages, and reading what you already have). **Step 2 is next:
+  providers as Connections** — one end to end, Gestdown or Podnapisi since
+  neither needs an account, with health and a test button. Then step 3, search
+  and write, on the existing lane and planned from the existing cycle.
 
 Also open: **[#194](https://github.com/jampat000/Deluno/issues/194)** the epic,
 and **#78 / #81 / #82 / #129** — GA readiness and externally blocked.
@@ -199,6 +256,16 @@ TORZNAB_BIND=0.0.0.0 TORZNAB_ADVERTISE=10.1.1.102 python scripts/lab/torznab_see
 - **Git Bash mangles backslashes.** Use PowerShell for anything with `\` — including JSON bodies containing Windows paths, which come back as HTTP 400 otherwise.
 - **Editing the VM's SQLite from the desktop:** copy `platform.db` **and** its `-wal`/`-shm` down, open it locally (which checkpoints and removes the sidecars), then move the VM's stale sidecars aside before copying the merged file back. Skip that and the stale WAL silently reverts your change.
 - **`rg` mangles some route-string matches.** Use `tests/Deluno.Platform.Tests/Routing/endpoint-inventory.snapshot.txt` for the authoritative route list.
+- **The rig has no `ffprobe`, so it has never validated a stream or read an
+  embedded subtitle track.** Not a product gap — `.github/workflows/release.yml`
+  bundles `ffprobe.exe` into the release artifact — but the rig is deployed by
+  hand-copying `Deluno.Host.exe`, which skips it. Everything ffprobe-shaped
+  degrades silently there: import stream validation, the replacement guard, and
+  embedded subtitle detection. Dropping an `ffprobe.exe` next to
+  `C:\Deluno\App\Deluno.Host.exe` closes it.
+- **Big Buck Bunny on the rig now has two subtitle files beside it** —
+  `.en.srt` and `.es.forced.srt` — placed as a fixture for #301. The forced one
+  is there on purpose: it must never count.
 - **The in-app browser pane's screenshot times out often** on this app. Retry with a plain `wait` + `screenshot`; it usually succeeds second time. `find` by ref is more reliable than coordinate clicking, because drawer layouts shift as validation messages appear.
 
 ## Loose ends worth a look
