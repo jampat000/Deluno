@@ -2,32 +2,49 @@
 
 You're picking up Deluno (`C:\Projects\Deluno`, github.com/jampat000/Deluno): a Windows .NET 10 + React 19 media-automation app replacing Radarr/Sonarr/Prowlarr/Huntarr/Cleanuparr/Recyclarr/Upgradarr/Trash Guides. Issue [#194](https://github.com/jampat000/Deluno/issues/194) is the product bar: do everything the arr-suite does, better and **simpler**.
 
-`main` is at `a82cf29`, working tree clean, 751 .NET tests and 272 web tests pass.
-
-## Standing rules from James — do not deviate
-
-1. Work directly on `main` for **Deluno**. No feature branches. Commit and push.
-2. **MediaMop is different**: `main` is protected, use a branch + PR. Merging needs `--squash --admin`.
-3. Deluno: never run GitHub Actions. **MediaMop: Actions are expected** — that is how it releases.
-4. Verify live in **real Chrome** via `mcp__claude-in-chrome__*`. The in-app browser pane is not a substitute.
-5. Australian English in all user-facing copy.
-6. Preserve the 20,000+ item scale invariant.
-7. **Stop `Deluno.Host` before any build** — it locks the DLLs.
-8. Add tests for contract, persistence, routing, status or schema changes.
-9. He wants **short answers** and `AskUserQuestion` with brief options. Simplicity is the product. Repetition is a defect.
-10. **Do not cut corners on setup.** Configure through the UI, not the API. This is not a style note — it is how three of this run's bugs were found.
-11. **Close issues before starting new work.** He pulled me up on drifting into a broad sweep while issues were still open, and he was right.
+`main` is at `aa7fbc5`, working tree clean, 786 .NET tests and 82 web unit tests
+pass, and the Playwright suite was last green at 272 passed / 10 skipped.
 
 ## Where the board stands
 
-Ten issues closed this run. Two are open and actionable:
+Closed since: **[#296](https://github.com/jampat000/Deluno/issues/296)** — How this works. The copy is signed off and the
+seven explainers now come from one table, rendered by `PageToolbar` on every tab
+of an area.
 
-- **[#296](https://github.com/jampat000/Deluno/issues/296) — "How this works", waiting on James's read of the copy.** The pattern is built (`apps/web/src/components/app/how-this-works.tsx`) and all seven configuration areas have one: Media Management, Quality & Release, Find & Download, Automation & Recovery, Discover Media, and — lead only, no steps — Preferences and System. James's steer was *configuration items only*, so Dashboard, Movies, TV Shows, Schedule, Transfers and Activity have none; an Activity draft was written and removed because its three steps were the three tabs directly above them. Two changes were made beyond the original ask and he has not reacted to them yet: the panel **collapses, with one preference across all seven**, and it is **no longer info-tinted**, because hue belongs to state (#290) and an explainer is not a state. What remains is his judgement on the copy, which is the whole job. See the status comment on the issue.
-- **[#300](https://github.com/jampat000/Deluno/issues/300) — `waiting` means three different things.** `MovieWorkflowService` sets it when a film *has a file and is at or above target*; the frontend hint says it means *not searchable yet*, implying no file. So the tooltip a user reads is probably wrong. Split out of #299 after fixing the visible symptom; the ambiguity itself is untouched and was not chased down.
+Open and actionable:
 
-Also open: **[#194](https://github.com/jampat000/Deluno/issues/194)** the epic, and **#78 / #81 / #82 / #129** — GA readiness and externally blocked.
+- **[#300](https://github.com/jampat000/Deluno/issues/300)** and **[#302](https://github.com/jampat000/Deluno/issues/302)** — both have a decided design in
+  `DESIGN-001-title-marks.md`, and both are blocked on the same first step: the
+  paged catalogue payload carries no wanted status, no cutoff flag and no dates,
+  and the wanted summary the grid falls back on is `LIMIT 25`. Data before
+  colour.
+- **[#303](https://github.com/jampat000/Deluno/issues/303)** — automatic per-episode search does not exist. Three orphaned
+  pieces, each individually plausible, found by the audit.
+- **[#301](https://github.com/jampat000/Deluno/issues/301)** — Subber, which inherits the settled vocabulary for free.
 
-## What this run did
+Also open: **[#194](https://github.com/jampat000/Deluno/issues/194)** the epic, and **#78 / #81 / #82 / #129** — GA readiness and
+externally blocked.
+
+## What the last run did
+
+Closed #296, then audited every status vocabulary in the app — twenty status
+columns across 58 tables, read from the schema up rather than from memory. That
+found a live defect and produced a settled design.
+
+**`download_dispatches.import_status` was written as `imported` and read as
+`completed` in three places** (`f56e0a9`). The archive sweep therefore never
+selected a row, so no dispatch has ever been archived and every imported one
+stayed in the working set that the Transfers list, the metrics, the routing
+statistics and the ranking training data all read — against the 20,000-item
+invariant. Proven against the rig's own database: 6 nulls, 1 `imported`, **0
+`completed`**. Two call sites had already met it and papered over it locally
+without chasing it to the writer. Same shape as #268 → #298.
+
+**The design is in `DESIGN-001-title-marks.md`**, with a rendered reference.
+Read it before touching #300 or #302 — the naming arguments alone took an hour,
+and the reasoning is recorded so they do not have to happen twice.
+
+## What the run before that did
 
 Fixed and closed the six issues that were open at the start, then ran the first pass of the new end-to-end plan and found five more bugs — none of which any test could see, because each was a place where two things had to agree and nothing compared them.
 
