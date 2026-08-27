@@ -2,8 +2,9 @@
 
 You're picking up Deluno (`C:\Projects\Deluno`, github.com/jampat000/Deluno): a Windows .NET 10 + React 19 media-automation app replacing Radarr/Sonarr/Prowlarr/Huntarr/Cleanuparr/Recyclarr/Upgradarr/Trash Guides. Issue [#194](https://github.com/jampat000/Deluno/issues/194) is the product bar: do everything the arr-suite does, better and **simpler**.
 
-`main` is at the head of this run, working tree clean, **845 .NET tests**,
-**97 web unit tests** and Playwright at **272 passed / 10 skipped**. The rig at 10.1.1.142 is running this build.
+`main` is at the head of this run, working tree clean, **854 .NET tests**,
+**104 web unit tests**, **13 metadata-gateway tests** and Playwright at
+**272 passed / 10 skipped**. The rig at 10.1.1.142 is running this build.
 
 The web count went *down* by eight on purpose: two test files went with the two
 dead modules they were testing. `media-status-presentation.test.ts` asserted the
@@ -82,6 +83,59 @@ the file, and retrying the second every cycle would read a corrupt file forever.
   through the map as movies, covered at episode grain by
   `SubtitleBarPersistenceTests`, but nobody has seen a show's bar with real data.
 
+## And then the library screen — James's five, plus #194
+
+**[#194](https://github.com/jampat000/Deluno/issues/194) is closed**, and the
+only reason it could be is that it no longer depends on anybody remembering it.
+`docs/PRODUCT_NORTH_STAR.md` now carries the eight apps Deluno replaces, what it
+owes for each, and a **five-question standing check** every change answers before
+it is called done. `AGENTS.md` points at it first, so it is read at the start of
+a session rather than discovered. The doc existed already and was in nobody's
+source-of-truth list.
+
+**Quality is granular again.** `shortQuality()` collapsed twenty-one tiers into
+three answers — anything with 2160 became "4K" — so a 60 GB Remux and a 7 GB WEB
+read identically everywhere. The stored value was already the answer; nothing
+re-derives it now. There were **two copies** of that function, and the dashboard
+never imported the grid's.
+
+Three columns also stopped describing files that do not exist: the quality badge
+read `currentQuality ?? targetQuality`, so a missing movie wore its *target*
+beside a red dot. Size printed "Unknown" where the truthful answer is that there
+is nothing to measure, and a filled star sat beside the word "Unknown".
+
+**The topbar is one height and one icon size.** It was three tokens side by side
+— 42px, 38px, and a third — with the mobile search icon a pixel larger than the
+bell. Search is wider and keeps its label down to `lg`.
+
+**The library toolbar is two rows.** Nine controls became four plus three
+actions: row one searches and acts, row two narrows and arranges. Display and
+Order were one question asked twice and are one **View** panel; Monitoring and
+Views each took a whole control for one setting and are inside **Filters** now.
+
+**There is a filter system.** Quality, genre, size, year, runtime and rating,
+all applied in SQL, plus Runtime and Popularity orders. Named typed fields, not
+a rule engine — this codebase already shipped the generic version and deleted it
+in #302 because it could express filters nothing could answer. The full design,
+including the two sorts deliberately *not* built and why, is in
+**DESIGN-003-library-filters.md**.
+
+### Three things that fell out of building it
+
+- **"Hunt 10 missing" hunted ten while the button said five.** The action built
+  its own query and ignored the search box and the monitoring filter. Both come
+  from `buildCatalogueParams()` now.
+- **The metadata broker has never sent runtime, popularity or vote count.**
+  V0012 added those columns as "the facts the library list has always displayed
+  but never had"; the repository writes them and the API accepts them, and
+  `mapTmdbResult` in `services/metadata-gateway` dropped all three. So on every
+  broker install — which is the managed default — they are null for every title
+  ever added. Fixed with tests. **The gateway is a deployed Cloudflare worker, so
+  the rig keeps showing blanks until somebody redeploys it**, and until then the
+  new Runtime and Popularity orders have nothing to sort by there.
+- **Saved views did not save the filters.** `rulesJson` was waiting for "a
+  server-side rule contract" and now has one.
+
 ## Where the board stands
 
 **Closed this run: [#302](https://github.com/jampat000/Deluno/issues/302), for
@@ -103,8 +157,22 @@ Open and actionable:
   neither needs an account, with health and a test button. Then step 3, search
   and write, on the existing lane and planned from the existing cycle.
 
-Also open: **[#194](https://github.com/jampat000/Deluno/issues/194)** the epic,
-and **#78 / #81 / #82 / #129** — GA readiness and externally blocked.
+Also open: **#78 / #81 / #82 / #129** — GA readiness and externally blocked.
+[#194](https://github.com/jampat000/Deluno/issues/194) is closed; its bar lives
+in `docs/PRODUCT_NORTH_STAR.md` and is the thing to read first.
+
+**Next, in order:**
+
+1. **Redeploy the metadata gateway** so runtime, popularity and vote count start
+   arriving. Until then three columns, one filter and two orders are correct
+   code over empty data.
+2. **#301 step 2 — providers as Connections.** One end to end, Gestdown or
+   Podnapisi since neither needs an account, with health and a test button.
+3. **DESIGN-003's leftovers** — sorting by size or quality (three options
+   costed there), and the compact list's fixed columns.
+4. **DESIGN-001 step 5** — live transfer state, so Downloading has a source.
+5. The two attention models that disagree — `attentionTotal()` versus
+   `setupStatus.attentionItems`.
 
 ## What this run did
 
