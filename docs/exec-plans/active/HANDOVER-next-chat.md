@@ -11,10 +11,11 @@ five-question standing check every change answers before it is called done.
 Then `DESIGN-002-subber.md` (the current stream), `HANDOVER-live-e2e-run.md` for
 the lab rig, and `DESIGN-001`, `DESIGN-003`, `DESIGN-004`, `DESIGN-005`.
 
-`main` is at `6dc22e5`, working tree clean. **902 .NET tests, 124 web unit
-tests**, both run rather than carried forward. Playwright was last run green at
-`60527dc` (272 passed / 10 skipped) and **has not been run since** — subtitle
-navigation moved twice after it, so run it before you quote it.
+`main` is at `774589c`, working tree clean. **906 .NET tests** (run this
+session; 902 plus the four that hold the subtitle-cycle fix) and **124 web unit
+tests**. Playwright was last run green at `60527dc` (272 passed / 10 skipped) and
+**has not been run since** — subtitle navigation moved twice after it and the
+cycle changed again this session, so run it before you quote it.
 
 ## The bar, in James's words
 
@@ -49,6 +50,10 @@ until its done completely."*
 
 **#301** is the epic, **#321** is the Bazarr delta, and DESIGN-002 is the plan.
 
+**DESIGN-002's six build steps are all done.** What is left of the stream is
+#321's remaining seven settings, manual search, blacklist and #327 — additions
+on top of a loop that now runs end to end, not gaps in it.
+
 ### Done
 
 | DESIGN-002 step | |
@@ -58,6 +63,7 @@ until its done completely."*
 | 3. Search and write, on the library cycle | `1a981d0` |
 | 4. The remaining providers | `1a981d0`, trimmed in `b052b66` |
 | 5. Backoff | `6081c95` |
+| 6. Remove from MediaMop | MediaMop [#327](https://github.com/jampat000/MediaMop/pull/327) |
 
 Plus the provider screen, #321's first two settings, and the settings' home:
 **Media Management → Subtitles** for the per-library languages, **Find &
@@ -74,26 +80,51 @@ alive — has a real `/api/search/` returning *films*, while the listing behind
 them serves an interstitial marked `noindex, nofollow` that redirects to an
 unrelated third-party domain. An advertising gate, not a subtitle source.
 
+### The end-to-end fetch, and what getting it cost
+
+**A `.srt` has landed on the rig, twice.** Big Buck Bunny's MKV was remuxed with
+`-sn` into `Severance (2022)/Season 01/Severance - S01E01 - ... .mkv`, imported
+by the existing-library import, and Gestdown wrote **44,445 bytes of real
+English** beside it. The bar went to 1 of 1, `held` carries `fetched` and the
+provider, and Activity reads *"Fetched 1 of 1 subtitle(s) looked for in TV
+Shows."*
+
+The rig is left in that state: two Severance episodes with files, both with
+English `.srt` beside them, Gestdown configured, the TV library's interval
+dropped to 1 h.
+
+**Proving it found the defect,** and it is the one this feature was most likely
+to ship with. The only way to make the first fetch happen was to press *search
+now*. Subtitle scanning and fetching were planned **inside the release-search
+branch**, so they inherited its two switches: a library with "Search
+automatically" off — which that screen calls *keep this library manual*, meaning
+manual **releases** — asked for English every day and never got it, silently. So
+did a library with searching on but neither missing nor upgrade selected. That
+is exactly the person Bazarr exists for, and Deluno was refusing them.
+
+Fixed in `774589c`: `next_subtitle_search_utc`, its own column with its own
+guarded writer, planned by the same cycle in the same window under the same
+manual override — DESIGN-002 rule 3 intact — but no longer behind the release
+switches. `next_search_utc` deliberately does not fold it in, so a paused
+library still reads paused. Four tests, each failing without the fix.
+
+**Then proven unattended:** a second episode file was imported, the library left
+at auto **off**, missing off, upgrade off, nothing requested, and the second
+`.srt` (46,197 bytes) appeared on its own.
+
 ### Not done
 
-1. **An end-to-end fetch has never run on the rig,** and DESIGN-002 makes that
-   the condition for step 6. Gestdown's *search* is proven live — "answered with
-   6 subtitle(s) for the test title" — and the write is proven by test, but no
-   file has actually landed. The rig has one film with a file (Big Buck Bunny)
-   and Gestdown is TV-only; Podnapisi covers films and **does not resolve from
-   this machine or the rig**. Give a rig TV episode a real file, or configure a
-   provider that resolves, and watch a `.srt` appear.
-2. **Step 6 — remove Subber from MediaMop.** `C:\Projects\MediaMop` is cloned
-   (77 subber files under `apps/backend/src/mediamop/modules/subber/`). MediaMop
-   uses **branch + PR with `--squash --admin`** and **does** run GitHub Actions —
-   the opposite of Deluno on both counts.
-3. **#321's remaining seven:** adaptive searching *per provider* (the backoff
+1. **#321's remaining seven:** adaptive searching *per provider* (the backoff
    that landed is per title+language, which is not the same thing), content
    modification (Sub-Zero options), sync with score thresholds, Whisper,
    translation, post-processing, language equals, HI extensions.
-4. **Manual search and blacklist** — DESIGN-002's "new, and worth it" list.
-5. **#327** — the subtitle bar has no legend, and it is the only mark on a poster
+2. **Manual search and blacklist** — DESIGN-002's "new, and worth it" list.
+3. **#327** — the subtitle bar has no legend, and it is the only mark on a poster
    that does not.
+4. **A newly imported file waits for the next cycle.** Deliberate and recorded,
+   but with the interval at 12 h it means half a day before a new episode is
+   even looked at, and Bazarr fetches on import. Worth revisiting; it is not a
+   second scheduler to reset the subtitle cursor when a file arrives.
 
 ### The one decision waiting for James
 
