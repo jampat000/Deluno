@@ -11,10 +11,10 @@ five-question standing check every change answers before it is called done.
 Then `DESIGN-002-subber.md` (the current stream), `HANDOVER-live-e2e-run.md` for
 the lab rig, and `DESIGN-001`, `DESIGN-003`, `DESIGN-004`, `DESIGN-005`.
 
-`main` is at `de9e05b`, working tree clean. **902 .NET tests, 125 web unit
+`main` is at `6dc22e5`, working tree clean. **902 .NET tests, 124 web unit
 tests**, both run rather than carried forward. Playwright was last run green at
-`60527dc` (272 passed / 10 skipped) and **has not been run since** — the
-Subtitles nav area moved after it, so run it before you quote it.
+`60527dc` (272 passed / 10 skipped) and **has not been run since** — subtitle
+navigation moved twice after it, so run it before you quote it.
 
 ## The bar, in James's words
 
@@ -37,6 +37,9 @@ work rather than defend the reasoning. Four times last session:
   four different control shapes in a row that should have had one.
 - *"https://yifysubtitles.tv/"* — he was right the site is alive. It still could
   not be used, and finding out why took four requests rather than an assumption.
+- *"I think we misunderstood each other"* — a whole top-level nav area where two
+  tabs were wanted. When an instruction names an existing part of the app, the
+  likely reading is *like that one*, not *next to it*.
 
 ## THE CURRENT TASK — finish the Subber stream
 
@@ -56,8 +59,12 @@ until its done completely."*
 | 4. The remaining providers | `1a981d0`, trimmed in `b052b66` |
 | 5. Backoff | `6081c95` |
 
-Plus: the provider screen, #321's first two settings, and **Subtitles as its own
-top-level area** with Languages and Providers (`6081c95`).
+Plus the provider screen, #321's first two settings, and the settings' home:
+**Media Management → Subtitles** for the per-library languages, **Find &
+Download → Subtitle Providers** for the sources (`6dc22e5`). A first attempt made
+Subtitles a top-level area of its own, which was a misreading — James said *"in
+staying with the theme in media management"*, meaning consistent with how that
+area works, not beside it.
 
 **Six providers, not MediaMop's eight.** OpenSubtitles `.org` and `.com` were one
 source counted twice — separate credentials on its settings screen, one handler
