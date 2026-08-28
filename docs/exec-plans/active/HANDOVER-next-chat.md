@@ -25,7 +25,17 @@ Working tree clean, everything pushed. Every number below was measured at
 | `npm run ci:check` | 7 passed, 0 warned, 0 failed |
 
 The .NET number went 952 → 977: 22 for subtitle timing sync and 3 for the job
-names that turned out to be missing.
+names that turned out to be missing. Every one of these was run at this
+session's code, not carried forward.
+
+**Two tests flaked under full-suite load and passed alone**, and they are worth
+knowing about before a future session chases one:
+`ProcessorOutputReadinessTests.Rejects_a_recently_written_file` (.NET) and
+`protected route does not crash before auth: /movies` (Playwright). The
+Playwright suite failed once at 271 and then ran clean at 272; the navigation
+spec passes 40 of 40 on its own. Neither is near anything this session touched —
+no web code was changed at all — but a flake nobody wrote down is a flake
+somebody re-diagnoses.
 
 **The publish now carries FFmpeg** — 128 MB of LGPL shared build under
 `tools/ffmpeg`, fetched by `scripts/fetch-ffmpeg.ps1` and cached, so the first
