@@ -11,18 +11,38 @@ five-question standing check every change answers before it is called done.
 Then `DESIGN-002-subber.md` (the current stream), `HANDOVER-live-e2e-run.md` for
 the lab rig, and `DESIGN-001`, `DESIGN-003`, `DESIGN-004`, `DESIGN-005`.
 
-`main` is at `48fcb4a`, working tree clean. All three suites run this session,
-not carried forward: **926 .NET tests**, **136 web unit tests**, and **Playwright
-271 passed / 10 skipped** — the one failure a login timeout in an unrelated
-`beforeEach`, and that spec re-ran clean at 60/60.
+## Baseline
 
-**The rig is a working subtitle install now.** Severance has three episodes with
-files under `C:\Deluno\Library\TV\Severance (2022)\Season 01`; two are named
-`-TEPES` and hold TEPES subtitles at the cutoff, and the third is deliberately
-`BluRay.x265-NOBODY` so it holds one below the cutoff and stays on the upgrade
-list. Its bar is gold two-thirds, green for the rest. Gestdown is configured;
-the TV library is paused with a 1 h interval, which no longer matters to
-subtitles.
+`main` at **`62afe5c`**, working tree clean, everything pushed. Every number
+below was run at this commit — none carried forward.
+
+| Suite | |
+|---|---|
+| .NET (`dotnet test Deluno.slnx`) | **952 passed**, 1 skipped |
+| Web unit (`npm run test:unit:web`) | **137 passed**, 18 files |
+| Playwright (`npm run test:web`) | **272 passed**, 10 skipped |
+| Metadata gateway | **17 passed**, 0 failed |
+| `npm run ci:check` | 7 passed, 0 warned, 0 failed |
+
+### The rig at 10.1.1.142, as left
+
+A working subtitle install, deliberately holding one of every case so the next
+session can see all three rungs without setting anything up.
+
+- **Movies** — 11 films, automation off, wants `en, es`. Big Buck Bunny is the
+  only one with a file.
+- **TV Shows** — 6 shows, automation off, 12 h interval, wants `en`. Only
+  Severance has files: three episodes under
+  `C:\Deluno\Library\TV\Severance (2022)\Season 01`.
+  - `S01E01` and `S01E02` are named `...1080p.WEB.H264-TEPES` and hold Gestdown's
+    TEPES subtitle — **at the cutoff**, no attempt row, Deluno has stopped.
+  - `S01E03` is deliberately `...1080p.BluRay.x265-NOBODY`, so the same subtitle
+    lands **below** the cutoff and stays on the upgrade list with a backoff.
+  - So its poster reads `MISSING · 3/20` and its subtitle bar is two-thirds
+    gold, one-third green.
+- **Gestdown** is the only configured provider, healthy. No account needed.
+- Automation is off on both libraries **on purpose** — subtitles run anyway now,
+  which is the whole point of `774589c`. Turning it on starts release searching.
 
 ## The bar, in James's words
 
@@ -97,10 +117,6 @@ English** beside it. The bar went to 1 of 1, `held` carries `fetched` and the
 provider, and Activity reads *"Fetched 1 of 1 subtitle(s) looked for in TV
 Shows."*
 
-The rig is left in that state: two Severance episodes with files, both with
-English `.srt` beside them, Gestdown configured, the TV library's interval
-dropped to 1 h.
-
 **Proving it found the defect,** and it is the one this feature was most likely
 to ship with. The only way to make the first fetch happen was to press *search
 now*. Subtitle scanning and fetching were planned **inside the release-search
@@ -125,9 +141,14 @@ at auto **off**, missing off, upgrade off, nothing requested, and the second
 Four blockers were put to him in one round. He answered all four, and two of the
 answers changed the work rather than confirming it.
 
-**"Ready", not "Held" or "Have"** — *"missing is good, held sucks as far as
-choice of words."* Held was the store's word for itself leaking onto the screen;
-Have read oddly as a label. The set is now Missing / Ready / Done.
+**The subtitle bar's words are the ladder's words** — three goes to get there.
+"Held" first (*"missing is good, held sucks as far as choice of words"*), then
+"Have", then "Ready"/"Done", and finally the right answer: *"users need to also
+be able to distinguish between done and ready for subtitles its a little
+ambiguous compared to the status of the files."* The bar had invented synonyms
+for rungs the dot already names. It now reads **Quality met / Upgradable /
+Missing**, the same words and colours as the dot, because DESIGN-002 says the bar
+is a miniature of that ladder.
 
 **Subtitles share no timing at all** — *"I dont agree that it shares a cycle or
 schedule and this was told to you back when I said nothing should be shared or
@@ -149,23 +170,134 @@ names your exact release group. Gold shipped with it.
 ([#329](https://github.com/jampat000/Deluno/issues/329)) and machine translation
 ([#330](https://github.com/jampat000/Deluno/issues/330)) went to the backlog.
 
-### Not done
+### Then the rule got bigger than subtitles
 
-1. **#321's remaining, minus the two backlogged:** timing sync, content
-   modification (Sub-Zero options), adaptive searching *per provider* (the
-   backoff that landed is per title+language, which is not the same thing),
-   post-processing, language equals, HI extensions.
+*"we need to ensure nothing shares a schedule or timer, everything this app does
+needs to fire independently when it wants to and when it needs to."*
+
+`b1109aa`. Lanes were grouped by the resource they contend on, which is a good
+reason to size them differently and a bad reason to make them queue behind each
+other: the lease is `ORDER BY scheduled_utc` across every job type on a lane, so
+on the two-slot intake lane a backlog of `intake.sync` starved
+`library.subtitles.search` outright. Now **18 lanes, one per kind of work**, and
+three planning lanes where the three planners used to be awaited in sequence.
+
+Lanes stopped polling. One that leases nothing asks when its *own* next job is
+due (`NextDueUtcAsync`, served by `ix_job_queue_type_status_scheduled`) and
+sleeps until then, waking early on a signal.
+
+**Measured on the rig, idle, two minutes each — and the middle row is the point:**
+
+| | |
+|---|---|
+| 7 shared lanes, 30 s tick | 1.30% CPU, 150 MB |
+| 18 lanes, first cut | 1.64% CPU, 161 MB |
+| 18 lanes, tuned | **0.98% CPU, 139 MB** |
+
+The query arithmetic said the split would be cheaper and the machine said
+otherwise. Sizing the planners by what they plan and widening the settings cache
+from 1 s to 15 s took it below where it started. Independence ended up cheaper
+than sharing, but only after it was measured.
+
+**Lane width follows the machine** — *"4 slot lane doesnt sound enough though we
+need to maximise this what if someone was a power user."* They were constants, so
+a six-core box and a thirty-two-core server ran identical widths. Local work
+scales with cores; network work goes to twice that, because a thread asleep on a
+socket is not using a core and what protects a tracker is
+`IOutboundRequestThrottle` pacing per host.
+
+**A regression this caused, and how it was found.** Nothing signals a job that
+was already queued when the process starts, so with a five-minute backstop a
+restart stranded the queue for that long. Caught on the rig — an import enqueued
+before a deploy was still queued five minutes after the host came back. A lane's
+first act is now to look before waiting, and startup jitter is capped at two
+seconds rather than a quarter of the interval. The tests did not catch it; the
+rig did.
+
+### And the TV mark, which was a bug not a legend
+
+*"the colour/status legend works for movies but it doesnt quite work for tv with
+regards to quality met and subtitles because of the show and then the episodes."*
+
+`62afe5c`. **A show's rung was computed twice from different inputs and the two
+disagreed.** The server stored it from the title-level row — `has_file` and
+`current_quality` of whichever file the import saw first — while the browser
+recomputed it from episode counts. Severance with three of twenty episodes was
+"Quality met" to the chips and "Missing" on its own poster, and the chips summed
+to **seven for six shows**.
+
+A collection has no title-level file, so it can have no title-level quality.
+`SeriesRung` in `Deluno.Contracts` is the only place that answers it now; the
+facets stopped rebuilding the ladder a third time out of `has_file` and
+`quality_cutoff_met`.
+
+**How far along, without a fifth rung.** Three of twenty and none of
+eighty-seven were both Missing and both red. Sonarr solves this with a filled bar
+on the poster's edge — but *"adding a bar isnt a good idea, the bar is strictly
+for subtitles."* Drawn into the dot as an arc it was correct and illegible: 15%
+of a nine-pixel dot is about one pixel, and at 0% the whole dot washed out. So it
+is **text on the chip**: `MISSING · 3/20` beside `MISSING · 0/87`. Dots are one
+size everywhere now, because the chip's was hard-coded at 9 against the legend's
+13.
+
+### Not done — pick up here
+
+1. **Timing sync**, then **content modification**. James chose these two out of
+   #321's larger items; Whisper and translation went to the backlog as
+   [#329](https://github.com/jampat000/Deluno/issues/329) and
+   [#330](https://github.com/jampat000/Deluno/issues/330). Timing sync is the one
+   that saves the most hand-editing, and Deluno already ships ffprobe handling.
 2. **Manual search and blacklist** — DESIGN-002's "new, and worth it" list.
-   Manual search is now more useful than it was: it can show the rung each
-   candidate is on.
-3. **The cutoff is not a setting.** It is `SubtitleCutoff.Rung`, one constant.
-   That was the simplest thing that could be true and it matches the standing
-   check; if anybody ever wants "same source is good enough for the kids' films",
-   it becomes a per-library choice beside the quality profile.
+   Manual search is more useful than it was: it can now show which rung each
+   candidate is on, which is the thing a person is actually choosing between.
+3. **#321's smaller remainder:** adaptive searching *per provider* (the backoff
+   that landed is per title+language, which is not the same thing),
+   post-processing, language equals, HI extensions.
+4. Then **[#322](https://github.com/jampat000/Deluno/issues/322)'s running
+   order** — #306 (the honest filter count and its migration, which closes
+   #319), #328 (Tags), #311 (TV status, next airing, episode progress — now
+   partly served by `SeriesRung`).
+
+### Audited and deliberately left alone
+
+Recorded so it is not re-litigated, and so the reasoning can be attacked if it is
+wrong.
+
+- **Missing and upgrade searches share `SearchIntervalHours`.** They already have
+  independent cursors, and the planner dedupes to at most one of each per
+  library on a twelve-wide lane, so neither can starve the other. One setting
+  meaning "how often this library visits its indexers" is honest, and both kinds
+  visit the same indexers.
+- **The subtitle cutoff is not a setting.** It is `SubtitleCutoff.Rung`, one
+  constant at the top rung, because James asked for *"the best method, no point
+  spreading lies about subs that may be out of sync."* If anybody ever wants
+  "same source is good enough for the kids' films", it becomes a per-library
+  choice beside the quality profile.
+- **The subtitle bar counts only over episodes a show holds.** A file you do not
+  have cannot be short of a subtitle, and the dot now says `3/20` so the poster
+  is not claiming completeness. One consequence: the bar can go *backwards* as
+  new episodes land without subtitles. That is correct.
 
 ## What the rig caught that no test would have
 
-Three in one session, all in provider code that looked obviously correct:
+**Six now, across two sessions, and not one of them was a failing test.**
+
+This session's three:
+
+4. **Gestdown puts a bare `TEPES` in its `version` field**, and answers some
+   queries with a comma-separated list of releases. `MediaFileNameFacts` looks
+   for the trailing `-GROUP` convention — right for a file name, wrong for both
+   of those — so every Gestdown subtitle would have scored at the bottom rung and
+   been re-fetched for ever.
+5. **A new field never reached the browser.** The API sent
+   `subtitleLanguagesSettled`, the bar drew nothing, and nothing failed:
+   `adaptMovieItems` and `adaptSeriesItems` copy the catalogue row field by
+   field, twice, and every field is optional so the types were happy.
+6. **A restart stranded the whole queue for five minutes.** Nothing signals work
+   that was already queued when the process starts, and the new backstop is five
+   minutes. Only visible by watching a real deploy.
+
+And the earlier three:
 
 1. **Gestdown answers with `matchingSubtitles`,** not `subtitles`. Both my client
    and MediaMop's read the wrong key — so *"ported from code that works"* is not
