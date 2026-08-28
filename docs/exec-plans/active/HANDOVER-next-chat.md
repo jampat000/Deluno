@@ -18,14 +18,14 @@ Working tree clean, everything pushed. Every number below was measured at
 
 | Suite | |
 |---|---|
-| .NET (`dotnet test Deluno.slnx`) | **977 passed**, 1 skipped |
+| .NET (`dotnet test Deluno.slnx`) | **984 passed**, 1 skipped |
 | Web unit (`npm run test:unit:web`) | **137 passed**, 18 files |
 | Playwright (`npm run test:web`) | **272 passed**, 10 skipped |
 | Metadata gateway | **17 passed**, 0 failed |
 | `npm run ci:check` | 7 passed, 0 warned, 0 failed |
 
-The .NET number went 952 → 977: 22 for subtitle timing sync and 3 for the job
-names that turned out to be missing. Every one of these was run at this
+The .NET number went 952 → 984: 22 for subtitle timing sync, 3 for the job names
+that turned out to be missing, and 7 for the subtitle re-read cadence. Every one of these was run at this
 session's code, not carried forward.
 
 **Two tests flaked under full-suite load and passed alone**, and they are worth
@@ -43,10 +43,10 @@ publish on a new machine downloads 67 MB and every one after that does not.
 
 ### The rig at 10.1.1.142, as left
 
-Unchanged from last session except in three ways:
+Unchanged from last session except in four ways:
 
-- **It has FFmpeg now**, and it never did before. See below — that is a finding,
-  not a footnote.
+- **It has FFmpeg now**, shipped with the publish under `tools/ffmpeg`. It had
+  ffprobe before, by hand — see the correction below.
 - **TV Shows asks for `en, fr`** rather than `en`, and there are now two French
   `.srt` files beside E02 and E03. Changed deliberately: English was already
   satisfied, so the only way to make the library want anything — and therefore
@@ -55,9 +55,15 @@ Unchanged from last session except in three ways:
   Gestdown has none, which is itself worth knowing. Set it back to `en` and
   delete the two `.fr.srt` files if they are in the way; a `es` backoff row is
   also sitting on each episode and will expire on its own.
-- **`Severance - S01E03 … .en.srt` was deleted** and, as of writing, has not come
-  back. That is not a fault of this session's work and it is worth reading the
-  "deleting a subtitle is invisible" note below before assuming it is broken.
+- **`Severance - S01E03 … .en.srt` was deleted**, which is what found the
+  re-read defect below. Deluno has now noticed it is gone and wants English for
+  that episode again; it will fetch it once the ordinary six-hour attempt
+  backoff expires, at 10:43 UTC on 28 August. Nothing needs doing.
+- **Its three `episode_subtitle_scan` rows were backdated a day** so the
+  twelve-hour re-read would fire while somebody was watching. They have since
+  been rewritten by a real pass, so this leaves no trace.
+  `C:\Deluno\Data\series.db.before-reread-20260828-175940` is the database as
+  it was before that, and can be deleted.
 
 Otherwise as before: 11 films and 6 shows, automation off on both on purpose,
 Gestdown the only provider, and **all three MKVs are the same 59 MB Big Buck
@@ -268,14 +274,25 @@ a *"Timing sync, as built"* section with the whole of it; this is what a person
 picking the work up needs to know.
 
 **Deluno ships FFmpeg now.** That was a decision put to James before any code was
-written, because it is a 128 MB decision and not mine to make. It was worth
-asking, because the premise DESIGN-002 was working from was wrong: it says
-*"Deluno already ships ffprobe handling, so the same shape applies"*, and it ships
-the handling but never shipped the binary. **The rig had neither ffprobe nor
-ffmpeg on it for the whole of the previous session** — so every import validated
-nothing, and the embedded-subtitle half of every scan returned `unavailable`,
-which means #321's new *treat embedded as held* toggle had no input reaching it at
-all. None of that was visible anywhere.
+written, because it is a 128 MB decision and not mine to make. The premise
+DESIGN-002 was working from was still wrong — it says *"Deluno already ships
+ffprobe handling, so the same shape applies"*, and it ships the handling and
+never shipped the binary.
+
+**A correction, because I got the evidence wrong first time.** I checked the rig
+for ffprobe with `Get-Command` and the `DELUNO_FFPROBE_PATH` variable, found
+neither, and reported that the rig had been running blind for a whole session.
+That was wrong, and reading the scan table is what caught it: every row says
+`probe_status: succeeded`. **`C:\Deluno\App\ffprobe.exe` was put there by hand on
+27 August**, and Deluno resolves a binary sitting beside its own executable —
+which my check never looked at. Stream validation and the embedded-subtitle half
+of the scan were both working the whole time.
+
+What *was* genuinely missing is the half this feature needs. `ffmpeg.exe` is on
+the rig too, at `C:\Deluno\Tools\ffmpeg.exe` — a folder Deluno has never looked
+in. So it sat on the same disk as the app that needed it and was invisible to it,
+which is a better argument for shipping FFmpeg than the one I made: the install
+that *had* the binary still could not use it.
 
 Fetch is `scripts/fetch-ffmpeg.ps1`, cached in `tools/ffmpeg` (gitignored) and
 copied into the publish. LGPL **shared**, pinned to `n9.0`: the GPL builds cannot
@@ -349,22 +366,72 @@ One table now, and `JobTypeWordsTests` finds the job types by reflection off the
 registered handlers rather than from a fourth hand-written list — so a new
 handler with no words fails without anybody remembering to check.
 
-### Deleting a subtitle is invisible to Deluno
+### Deleting a subtitle was invisible to Deluno — fixed
 
-Found trying to make the rig re-fetch one, and **not caused by this session's
-work**. Deleting `Severance - S01E03 … .en.srt` from disk changed nothing:
-the library went on reporting *"Every file in TV Shows has the subtitles you
-asked for"*, and it still does.
+Found trying to make the rig re-fetch one. Deleting
+`Severance - S01E03 … .en.srt` from disk changed nothing: the library went on
+reporting *"Every file in TV Shows has the subtitles you asked for"*, for ever.
 
-`ListPendingScansAsync` re-reads a file when the scan row is missing, the path
+`ListPendingScansAsync` re-read a file when the scan row was missing, the path
 changed, the size changed, or the last probe was `unavailable`. **Deleting a
 sidecar changes none of those** — it is a different file — so the scan never
-looks again and the `media_subtitle` row saying English is held stands for ever.
-Bazarr rescans on a schedule and does not have this.
+looked again and the row saying English was held stood permanently. The commoner
+half is the same blind spot in reverse: a subtitle you drop in by hand was never
+noticed either.
 
-Worth an issue. The cheap fix is for the scan candidate query to notice that a
-recorded sidecar path no longer exists; the honest fix is a periodic re-read that
-does not depend on the video having changed.
+**The fix is a cadence, and the reason it needs no setting is the interesting
+part.** A file is now re-read twelve hours after it was last read, whatever the
+video did. Bazarr does the same thing and has to expose *"use cached embedded
+subtitles parser results"* as a switch, because it re-parses containers on every
+pass and people needed a way to stop it. Deluno already records what the video
+was, so it can tell the two halves apart on its own:
+
+| | Costs | When |
+|---|---|---|
+| The files beside the video | one directory listing | every pass |
+| The tracks inside the container | one ffprobe process | only when the video is new, renamed, resized, or was never successfully probed |
+
+`MediaSubtitleScanCandidate.VideoChanged` carries which is needed, and the tracks
+in a container cannot move while the container does not. So the standing check's
+question — can Deluno decide and explain the consequence once — is answered yes,
+and there is no trade-off to hand anybody.
+
+**Two things fell out of it that were not the reported bug.**
+
+`RecordScanAsync` replaces everything it is told about a file and deletes
+anything it is not, which is right and is how a deletion corrects itself. It also
+means an incomplete list is a destructive one: a folder-only re-read finds no
+embedded tracks, and handing that over as the whole truth would delete every
+embedded subtitle in a library twelve hours after it was found. That rule is
+`LibrarySubtitleScanJobHandler.WholeTruth`, named rather than inlined and tested
+four ways — **the rig cannot check it**, because its videos were remuxed with
+`-sn` and hold no embedded tracks at all.
+
+And `SubtitleSources.Fetched`'s own summary promises that a rescan does not turn
+Deluno's own work into an anonymous file it knows nothing about. Only `provider`
+was actually being kept; `source` flipped to `external` the first time a rescan
+found the file sitting there. Rare while a rescan needed the video to change, and
+routine the moment one runs on a cadence.
+
+**Verified on the rig, on the very file that found the defect.** The three scan
+rows were aged by a day — deliberately backdated rather than deleted, because
+deleting them would have made every file look never-read, which is the *old*
+path. Activity then said **"Read 3 file(s) in TV Shows for subtitles"** where it
+had said "Every file in TV Shows has been read" for hours, and afterwards:
+
+| | Before | After |
+|---|---|---|
+| `subtitleLanguagesHeld` on Severance | 5 | **4** |
+| E03's English row, pointing at a file that is not there | present | **pruned** |
+| `source` / `provider` on the four survivors | `fetched` / `gestdown` | **unchanged** |
+| `match_rung` on the four survivors | 2, 2, 1, 0 | **unchanged** |
+| `probe_status` after the pass | `succeeded` | **`cached`** |
+
+That last row is the cheap half doing its job: not one ffprobe was spawned. The
+re-fetch itself was not watched, because E03's English is sitting on the ordinary
+six-hour attempt backoff from its last fetch and is not eligible until 10:43 UTC
+— that is the existing, already-proven machinery, and the fix is that the
+language is wanted again at all.
 
 ### Not done — pick up here
 
@@ -427,12 +494,15 @@ rather than after writing the code, which is cheaper and should be the habit.
 
 This session's four, and the first is the largest:
 
-7. **FFmpeg was never installed on the rig, and Deluno never shipped it.** Three
-   features were dark and none of them said so: import validated nothing, the
-   embedded-subtitle half of every scan returned `unavailable`, and #321's brand
-   new *treat embedded as held* toggle had no input reaching it. DESIGN-002 said
-   *"Deluno already ships ffprobe handling"* and that sentence was true and
-   misleading at once. Found by checking the rig before trusting the plan.
+7. **The ffmpeg the rig had was in a folder Deluno never looks in.**
+   `C:\Deluno\Tools\ffmpeg.exe`, on the same disk as the app that needed it and
+   invisible to it, so timing sync would have had no engine. Deluno now ships
+   its own. *(This started as a bigger claim — that the rig had no ffprobe
+   either and three features were silently dark. That was wrong: ffprobe was
+   sitting beside the executable, where Deluno does look. Reading the scan
+   table, which says `probe_status: succeeded` on every row, is what corrected
+   it. Checking one resolution path and concluding "not installed" is its own
+   lesson.)*
 8. **Deleting a subtitle from disk is invisible.** The scan re-reads a file whose
    path, size or probe status changed, and deleting a sidecar changes none of
    them. The library still says every file has the subtitles you asked for. See
