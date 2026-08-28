@@ -11,11 +11,18 @@ five-question standing check every change answers before it is called done.
 Then `DESIGN-002-subber.md` (the current stream), `HANDOVER-live-e2e-run.md` for
 the lab rig, and `DESIGN-001`, `DESIGN-003`, `DESIGN-004`, `DESIGN-005`.
 
-`main` is at `2fbd59d`, working tree clean. All three suites were run this
-session, not carried forward: **906 .NET tests** (902 plus the four that hold the
-subtitle-cycle fix), **124 web unit tests**, and **Playwright 272 passed / 10
-skipped** — re-run at `774589c` after the cycle changed, so it is current again
-rather than a number from `60527dc`.
+`main` is at `48fcb4a`, working tree clean. All three suites run this session,
+not carried forward: **926 .NET tests**, **136 web unit tests**, and **Playwright
+271 passed / 10 skipped** — the one failure a login timeout in an unrelated
+`beforeEach`, and that spec re-ran clean at 60/60.
+
+**The rig is a working subtitle install now.** Severance has three episodes with
+files under `C:\Deluno\Library\TV\Severance (2022)\Season 01`; two are named
+`-TEPES` and hold TEPES subtitles at the cutoff, and the third is deliberately
+`BluRay.x265-NOBODY` so it holds one below the cutoff and stays on the upgrade
+list. Its bar is gold two-thirds, green for the rest. Gestdown is configured;
+the TV library is paused with a 1 h interval, which no longer matters to
+subtitles.
 
 ## The bar, in James's words
 
@@ -63,7 +70,8 @@ on top of a loop that now runs end to end, not gaps in it.
 | 3. Search and write, on the library cycle | `1a981d0` |
 | 4. The remaining providers | `1a981d0`, trimmed in `b052b66` |
 | 5. Backoff | `6081c95` |
-| 6. Remove from MediaMop | MediaMop [#327](https://github.com/jampat000/MediaMop/pull/327) |
+| 6. Remove from MediaMop | MediaMop [#327](https://github.com/jampat000/MediaMop/pull/327), merged |
+| Upgrades — the open half of step 5 | `3de1f65`, `48fcb4a` |
 
 Plus the provider screen, #321's first two settings, and the settings' home:
 **Media Management → Subtitles** for the per-library languages, **Find &
@@ -112,28 +120,48 @@ library still reads paused. Four tests, each failing without the fix.
 at auto **off**, missing off, upgrade off, nothing requested, and the second
 `.srt` (46,197 bytes) appeared on its own.
 
+### What James decided, and what came out of it
+
+Four blockers were put to him in one round. He answered all four, and two of the
+answers changed the work rather than confirming it.
+
+**"Ready", not "Held" or "Have"** — *"missing is good, held sucks as far as
+choice of words."* Held was the store's word for itself leaking onto the screen;
+Have read oddly as a label. The set is now Missing / Ready / Done.
+
+**Subtitles share no timing at all** — *"I dont agree that it shares a cycle or
+schedule and this was told to you back when I said nothing should be shared or
+have to wait for another process or anything."* The first fix that day had
+freed the two switches and left the clock borrowed. Now: own five-minute
+cadence, no search window, own retry delay, and an import makes subtitles due
+immediately. Measured on the rig: import at 04:15:54, `.srt` at 04:16:03.
+
+**"Better" was researched, not chosen from a menu** — *"this is the thing that
+we need to look into with bazaar and how it does it properly."* Bazarr's
+scoring was read at master. Its eleven weights are gates with a tiebreaker tail:
+at the shipped 90%, the right episode alone scores 86% and fails; add `source`
+and it is 93% and passes. So its default means *cut for the same kind of
+release*. Deluno's cutoff goes one rung further — *"we need the best method, no
+point spreading lies about subs that may be out of sync"* — to a subtitle that
+names your exact release group. Gold shipped with it.
+
+**Scope** — timing sync and content modification stay in the stream; Whisper
+([#329](https://github.com/jampat000/Deluno/issues/329)) and machine translation
+([#330](https://github.com/jampat000/Deluno/issues/330)) went to the backlog.
+
 ### Not done
 
-1. **#321's remaining seven:** adaptive searching *per provider* (the backoff
-   that landed is per title+language, which is not the same thing), content
-   modification (Sub-Zero options), sync with score thresholds, Whisper,
-   translation, post-processing, language equals, HI extensions.
+1. **#321's remaining, minus the two backlogged:** timing sync, content
+   modification (Sub-Zero options), adaptive searching *per provider* (the
+   backoff that landed is per title+language, which is not the same thing),
+   post-processing, language equals, HI extensions.
 2. **Manual search and blacklist** — DESIGN-002's "new, and worth it" list.
-3. **#327** — the subtitle bar has no legend, and it is the only mark on a poster
-   that does not.
-4. **A newly imported file waits for the next cycle.** Deliberate and recorded,
-   but with the interval at 12 h it means half a day before a new episode is
-   even looked at, and Bazarr fetches on import. Worth revisiting; it is not a
-   second scheduler to reset the subtitle cursor when a file arrives.
-
-### The one decision waiting for James
-
-**Subtitle upgrades need a definition of "better".** DESIGN-002 already proposes
-it — *must match this release* / *prefer this release* / *anything readable*,
-with the consequence written underneath — and that is a decision to put to him
-rather than a scoring model to invent. Until then the fetcher takes the first
-usable subtitle from the highest-priority provider, preferring a plain track over
-hearing-impaired and never taking a forced one.
+   Manual search is now more useful than it was: it can show the rung each
+   candidate is on.
+3. **The cutoff is not a setting.** It is `SubtitleCutoff.Rung`, one constant.
+   That was the simplest thing that could be true and it matches the standing
+   check; if anybody ever wants "same source is good enough for the kids' films",
+   it becomes a per-library choice beside the quality profile.
 
 ## What the rig caught that no test would have
 
