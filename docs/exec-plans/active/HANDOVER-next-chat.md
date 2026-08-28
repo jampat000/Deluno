@@ -13,37 +13,47 @@ the lab rig, and `DESIGN-001`, `DESIGN-003`, `DESIGN-004`, `DESIGN-005`.
 
 ## Baseline
 
-Working tree clean, everything pushed. Every number below was run at
-**`62afe5c`**, the last code commit — none carried forward. `main` is one
-docs-only commit ahead of it.
+Working tree clean, everything pushed. Every number below was measured at
+**this session's last code commit** — none carried forward.
 
 | Suite | |
 |---|---|
-| .NET (`dotnet test Deluno.slnx`) | **952 passed**, 1 skipped |
+| .NET (`dotnet test Deluno.slnx`) | **977 passed**, 1 skipped |
 | Web unit (`npm run test:unit:web`) | **137 passed**, 18 files |
 | Playwright (`npm run test:web`) | **272 passed**, 10 skipped |
 | Metadata gateway | **17 passed**, 0 failed |
 | `npm run ci:check` | 7 passed, 0 warned, 0 failed |
 
+The .NET number went 952 → 977: 22 for subtitle timing sync and 3 for the job
+names that turned out to be missing.
+
+**The publish now carries FFmpeg** — 128 MB of LGPL shared build under
+`tools/ffmpeg`, fetched by `scripts/fetch-ffmpeg.ps1` and cached, so the first
+publish on a new machine downloads 67 MB and every one after that does not.
+
 ### The rig at 10.1.1.142, as left
 
-A working subtitle install, deliberately holding one of every case so the next
-session can see all three rungs without setting anything up.
+Unchanged from last session except in three ways:
 
-- **Movies** — 11 films, automation off, wants `en, es`. Big Buck Bunny is the
-  only one with a file.
-- **TV Shows** — 6 shows, automation off, 12 h interval, wants `en`. Only
-  Severance has files: three episodes under
-  `C:\Deluno\Library\TV\Severance (2022)\Season 01`.
-  - `S01E01` and `S01E02` are named `...1080p.WEB.H264-TEPES` and hold Gestdown's
-    TEPES subtitle — **at the cutoff**, no attempt row, Deluno has stopped.
-  - `S01E03` is deliberately `...1080p.BluRay.x265-NOBODY`, so the same subtitle
-    lands **below** the cutoff and stays on the upgrade list with a backoff.
-  - So its poster reads `MISSING · 3/20` and its subtitle bar is two-thirds
-    gold, one-third green.
-- **Gestdown** is the only configured provider, healthy. No account needed.
-- Automation is off on both libraries **on purpose** — subtitles run anyway now,
-  which is the whole point of `774589c`. Turning it on starts release searching.
+- **It has FFmpeg now**, and it never did before. See below — that is a finding,
+  not a footnote.
+- **TV Shows asks for `en, fr`** rather than `en`, and there are now two French
+  `.srt` files beside E02 and E03. Changed deliberately: English was already
+  satisfied, so the only way to make the library want anything — and therefore
+  the only way to watch the fetch-to-sync chain run unattended — was to ask for a
+  language Gestdown actually has for this show. Spanish was tried first and
+  Gestdown has none, which is itself worth knowing. Set it back to `en` and
+  delete the two `.fr.srt` files if they are in the way; a `es` backoff row is
+  also sitting on each episode and will expire on its own.
+- **`Severance - S01E03 … .en.srt` was deleted** and, as of writing, has not come
+  back. That is not a fault of this session's work and it is worth reading the
+  "deleting a subtitle is invisible" note below before assuming it is broken.
+
+Otherwise as before: 11 films and 6 shows, automation off on both on purpose,
+Gestdown the only provider, and **all three MKVs are the same 59 MB Big Buck
+Bunny remux** under Severance filenames. That last fact is easy to forget and it
+matters: the rig's subtitle text and its audio are genuinely unrelated, so the
+rig is a good test of sync *refusing* and no test at all of sync *working*.
 
 ## The bar, in James's words
 
@@ -241,13 +251,132 @@ is **text on the chip**: `MISSING · 3/20` beside `MISSING · 0/87`. Dots are on
 size everywhere now, because the chip's was hard-coded at 9 against the legend's
 13.
 
+### Timing sync — built, and what it cost
+
+**#321 item 4, and the first of the two things James picked.** DESIGN-002 now has
+a *"Timing sync, as built"* section with the whole of it; this is what a person
+picking the work up needs to know.
+
+**Deluno ships FFmpeg now.** That was a decision put to James before any code was
+written, because it is a 128 MB decision and not mine to make. It was worth
+asking, because the premise DESIGN-002 was working from was wrong: it says
+*"Deluno already ships ffprobe handling, so the same shape applies"*, and it ships
+the handling but never shipped the binary. **The rig had neither ffprobe nor
+ffmpeg on it for the whole of the previous session** — so every import validated
+nothing, and the embedded-subtitle half of every scan returned `unavailable`,
+which means #321's new *treat embedded as held* toggle had no input reaching it at
+all. None of that was visible anywhere.
+
+Fetch is `scripts/fetch-ffmpeg.ps1`, cached in `tools/ffmpeg` (gitignored) and
+copied into the publish. LGPL **shared**, pinned to `n9.0`: the GPL builds cannot
+ship inside a product and a static LGPL build would oblige us to hand out object
+files for relinking.
+
+**What decides a subtitle gets timed: the cutoff, and nothing else.** Bazarr
+syncs what scores under a threshold and hands you the threshold. Deluno already
+drew that line — a subtitle at `MadeForThisFile` was cut against this encode and
+is in time by construction — so the rung that keeps a subtitle on the upgrade
+list is the rung that sends it to be timed. No setting.
+
+**It has its own job and its own lane.** `subtitle.sync` on `subtitles.sync`,
+because timing is seconds of local FFmpeg and `subtitles.search` exists to spend
+a provider's daily allowance. Doing it inline in the fetch would have been one
+line and the fourth instance of the mistake this codebase keeps making.
+
+**The guard was wrong twice, and measuring is what found it both times.** The
+whole risk of this feature is moving a subtitle that was already fine: a
+correlation always has a best shift, and telling a real one from a lucky one is
+the entire problem.
+
+| Guard | Real match | Unrelated pair | Verdict |
+|---|---|---|---|
+| Coverage — how much lands on speech | — | **41%** | Useless. Two films with talking in them are both talking most of the time. |
+| Ratio to the mean overlap | **1.64** | **1.13** | Works, either side of a 1.5 threshold. A margin of 0.14 is not a margin. |
+| Peak in standard deviations | **4.7–4.8** | **1.3–2.0** | Shipped, at 3.0. |
+
+Measured on the lab episode's real audio through the real FFmpeg. A matching
+subtitle displaced by anything from 300 ms to 30 s, in either direction, came
+back **exact to the millisecond**, nine times out of nine. The rig's own
+Severance subtitle over Big Buck Bunny audio reached 1.3 σ and was left
+untouched, which is the outcome that matters more.
+
+**And then unattended on the rig, end to end.** TV Shows was set to want `en, fr`
+— Gestdown has French for these episodes and English was already satisfied, so
+this was the only way to make the library want anything. Nothing was pressed:
+
+```
+Fetched 2 of 3 subtitle(s) looked for in TV Shows.
+Added a subtitle timing check to the queue.
+Started timing a subtitle against the video's audio.
+Severance - S01E03 … .fr.srt: This subtitle does not line up with the video's
+  dialogue at any one point, so it has been left exactly as it was.
+```
+
+Both fetches landed below the cutoff, both enqueued a `subtitle.sync`, both ran
+on the new lane, and both refused — correctly, because the rig's audio is Big
+Buck Bunny and its subtitles are Severance. **Three seconds a job**, 07:31:54 to
+07:31:57. The two Activity lines naming the new job type come from the job-name
+table below, which is the other half of this working.
+
+**Not built, and deliberately:** framerate mismatch (a PAL-to-NTSC subtitle
+drifts rather than offsets, and one shift cannot fix it), subtitles already on
+disk (only what Deluno fetches below the cutoff is queued — a library full of
+somebody's old Bazarr subtitles gets nothing until each is re-fetched), and the
+original audio language (the sync prefers the track matching the title's own
+language and is never told it, because the wanted row does not carry it; it falls
+back to the first audio track, which is where every muxer puts the original).
+
+### Three job types were nameless in Activity, and it was the usual shape
+
+Adding `subtitle.sync` meant naming it in **three separate switch statements** in
+`SqliteJobStore` — queued, started, and the queue row's title. They were three
+lists in three methods that could not check each other, and it had already gone
+wrong: `episode.search`, `intake.sync` and `library.import.existing` were in none
+of them, so Activity showed a person the raw string `library.import.existing`
+where it meant to say *Library scan*.
+
+One table now, and `JobTypeWordsTests` finds the job types by reflection off the
+registered handlers rather than from a fourth hand-written list — so a new
+handler with no words fails without anybody remembering to check.
+
+### Deleting a subtitle is invisible to Deluno
+
+Found trying to make the rig re-fetch one, and **not caused by this session's
+work**. Deleting `Severance - S01E03 … .en.srt` from disk changed nothing:
+the library went on reporting *"Every file in TV Shows has the subtitles you
+asked for"*, and it still does.
+
+`ListPendingScansAsync` re-reads a file when the scan row is missing, the path
+changed, the size changed, or the last probe was `unavailable`. **Deleting a
+sidecar changes none of those** — it is a different file — so the scan never
+looks again and the `media_subtitle` row saying English is held stands for ever.
+Bazarr rescans on a schedule and does not have this.
+
+Worth an issue. The cheap fix is for the scan candidate query to notice that a
+recorded sidecar path no longer exists; the honest fix is a periodic re-read that
+does not depend on the video having changed.
+
 ### Not done — pick up here
 
-1. **Timing sync**, then **content modification**. James chose these two out of
-   #321's larger items; Whisper and translation went to the backlog as
-   [#329](https://github.com/jampat000/Deluno/issues/329) and
-   [#330](https://github.com/jampat000/Deluno/issues/330). Timing sync is the one
-   that saves the most hand-editing, and Deluno already ships ffprobe handling.
+1. **Content modification** — the second of the two James picked out of #321,
+   and now the next thing. Bazarr's Sub-Zero options: strip hearing-impaired
+   tags, remove style tags, remove emoji, OCR fixes, common whitespace and
+   punctuation fixes, fix all-uppercase, add colour, reverse RTL punctuation. A
+   whole category DESIGN-002 does not mention — making a subtitle *usable* after
+   fetching it.
+
+   **It has a head start that did not exist this morning.** `SubtitleTimeline`
+   reads a subtitle into cues and writes it back canonically, tolerating every
+   shape real files arrive in, and it decodes Windows-1252 as well as UTF-8.
+   Content modification is a transform over `SubtitleCue.Text` and nothing else,
+   and it should ride the `subtitle.sync` lane rather than invent a second one —
+   both are "open the file Deluno just wrote and improve it", and a second lane
+   for the second half of that sentence is the mistake this codebase keeps
+   making. Consider renaming the lane before adding to it.
+
+   Timing sync itself is **done** — see above. Whisper and translation stay in
+   the backlog as [#329](https://github.com/jampat000/Deluno/issues/329) and
+   [#330](https://github.com/jampat000/Deluno/issues/330).
 2. **Manual search and blacklist** — DESIGN-002's "new, and worth it" list.
    Manual search is more useful than it was: it can now show which rung each
    candidate is on, which is the thing a person is actually choosing between.
@@ -281,9 +410,29 @@ wrong.
 
 ## What the rig caught that no test would have
 
-**Six now, across two sessions, and not one of them was a failing test.**
+**Ten now, across three sessions, and not one of them was a failing test.**
 
-This session's three:
+Two of this session's were found by checking the rig *before* trusting a plan
+rather than after writing the code, which is cheaper and should be the habit.
+
+This session's four, and the first is the largest:
+
+7. **FFmpeg was never installed on the rig, and Deluno never shipped it.** Three
+   features were dark and none of them said so: import validated nothing, the
+   embedded-subtitle half of every scan returned `unavailable`, and #321's brand
+   new *treat embedded as held* toggle had no input reaching it. DESIGN-002 said
+   *"Deluno already ships ffprobe handling"* and that sentence was true and
+   misleading at once. Found by checking the rig before trusting the plan.
+8. **Deleting a subtitle from disk is invisible.** The scan re-reads a file whose
+   path, size or probe status changed, and deleting a sidecar changes none of
+   them. The library still says every file has the subtitles you asked for. See
+   above; it wants an issue.
+9. **Three job types had no words in Activity**, because their names lived in
+   three switch statements that could not check each other.
+10. **A subtitle for a different film overlaps a matching one by 41%.** The first
+    guard against moving a subtitle that was already fine would have moved it.
+
+And the previous session's three:
 
 4. **Gestdown puts a bare `TEPES` in its `version` field**, and answers some
    queries with a comma-separated list of releases. `MediaFileNameFacts` looks
