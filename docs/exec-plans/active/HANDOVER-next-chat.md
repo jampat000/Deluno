@@ -60,6 +60,48 @@ when it lands.
   ever.
 - **Run scope** — everything except the five that need something I cannot supply.
 
+### The run order
+
+#322 sets most of this and its reasoning is not repeated here. What follows is
+that order with the strays folded in, so an unattended run never has to decide
+what is next.
+
+1. **#308** — check first, do not assume. The last session's notes say it *"came
+   out complete"* of #324's work: "not searched in the last 30 days" runs on the
+   rig and includes the never-searched. If the relative forms are all there it is
+   a close, not a build.
+2. **#311** TV: series status, next airing, episode progress. Unblocked now that
+   #324 has shipped, and the data is already arriving from the broker.
+3. **#306 + #319 together** — one migration. #306's own notes say it closes #319,
+   and the four rating sources need indexed columns either way. Migration numbers
+   have shifted: movies V0017 and series V0018 were taken by the subtitle attempt
+   tables.
+4. **#310** the 12 sorts, 6 poster options and the Overview view — and the
+   decision James already gave on it: *"instead of putting ALL of it on the
+   posters we put some of the not so important information under the poster"*. On
+   the poster: the status mark, the subtitle bar, the held quality. Under it:
+   everything you read once you have stopped scanning. Card height then varies
+   with the switches, so check it at 20,000 titles rather than assuming — that is
+   the shape that made the shelf shake in #312.
+5. **#307** filters on the file — the axis Radarr states it cannot do.
+6. **#309** what Deluno decided, including a saved filter that scopes work.
+7. **#325** sort title. Decide the article list once and share it between the
+   SQLite trigger and the C#, held together by a test that runs both.
+8. **#326** artwork, to the sizes decided above.
+9. **#328** tags, then **#316** which needs them.
+10. **#313 + #315 together** — monitoring a franchise must not re-add the film
+    you threw out, so the exclusion list lands with or before collections.
+11. **#314** every scheduled pass on one screen, **#317** the indexer scoreboard.
+12. **#318** colour must never be the only carrier, **#320** preferences.
+13. **#323** unmonitor — small, and it is a thing that is simply missing.
+14. **#305** the lane-runner tests, which is ADR-001 Step 4 for the runner alone.
+15. **Subber's remainder** — content modification, then manual search and
+    blacklist, then #327, then close **#301** and **#321**.
+
+**#329** (Whisper) and **#330** (translation) stay open and are not to be built.
+James put them in the backlog deliberately; closing them unbuilt would be
+pretending they were decided against, which is not what happened.
+
 ### Parked, and why — not to be picked up unattended
 
 | | Why it cannot be finished here |
