@@ -11,11 +11,11 @@ five-question standing check every change answers before it is called done.
 Then `DESIGN-002-subber.md` (the current stream), `HANDOVER-live-e2e-run.md` for
 the lab rig, and `DESIGN-001`, `DESIGN-003`, `DESIGN-004`, `DESIGN-005`.
 
-`main` is at `774589c`, working tree clean. **906 .NET tests** (run this
-session; 902 plus the four that hold the subtitle-cycle fix) and **124 web unit
-tests**. Playwright was last run green at `60527dc` (272 passed / 10 skipped) and
-**has not been run since** — subtitle navigation moved twice after it and the
-cycle changed again this session, so run it before you quote it.
+`main` is at `2fbd59d`, working tree clean. All three suites were run this
+session, not carried forward: **906 .NET tests** (902 plus the four that hold the
+subtitle-cycle fix), **124 web unit tests**, and **Playwright 272 passed / 10
+skipped** — re-run at `774589c` after the cycle changed, so it is current again
+rather than a number from `60527dc`.
 
 ## The bar, in James's words
 
