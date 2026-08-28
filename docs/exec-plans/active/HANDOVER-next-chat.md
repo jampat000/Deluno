@@ -13,8 +13,9 @@ the lab rig, and `DESIGN-001`, `DESIGN-003`, `DESIGN-004`, `DESIGN-005`.
 
 ## Baseline
 
-`main` at **`62afe5c`**, working tree clean, everything pushed. Every number
-below was run at this commit — none carried forward.
+Working tree clean, everything pushed. Every number below was run at
+**`62afe5c`**, the last code commit — none carried forward. `main` is one
+docs-only commit ahead of it.
 
 | Suite | |
 |---|---|
