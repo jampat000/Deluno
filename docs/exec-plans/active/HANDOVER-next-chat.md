@@ -13,33 +13,67 @@ the lab rig, and `DESIGN-001`, `DESIGN-003`, `DESIGN-004`, `DESIGN-005`.
 
 ## Baseline
 
-Working tree clean, everything pushed. Every number below was measured at
-**this session's last code commit** — none carried forward.
+Working tree clean, everything pushed, `main` at **`ea5643a`**. Every number below
+was run at that commit — none carried forward.
 
 | Suite | |
 |---|---|
 | .NET (`dotnet test Deluno.slnx`) | **984 passed**, 1 skipped |
 | Web unit (`npm run test:unit:web`) | **137 passed**, 18 files |
 | Playwright (`npm run test:web`) | **272 passed**, 10 skipped |
-| Metadata gateway | **17 passed**, 0 failed |
 | `npm run ci:check` | 7 passed, 0 warned, 0 failed |
 
-The .NET number went 952 → 984: 22 for subtitle timing sync, 3 for the job names
-that turned out to be missing, and 7 for the subtitle re-read cadence. Every one of these was run at this
-session's code, not carried forward.
+The .NET number went 952 → 984 across this session: 22 for subtitle timing sync,
+3 for the job names that turned out to be missing, and 7 for the subtitle re-read
+cadence.
 
-**Two tests flaked under full-suite load and passed alone**, and they are worth
+**Two tests flake under full-suite load and pass alone**, and they are worth
 knowing about before a future session chases one:
 `ProcessorOutputReadinessTests.Rejects_a_recently_written_file` (.NET) and
 `protected route does not crash before auth: /movies` (Playwright). The
 Playwright suite failed once at 271 and then ran clean at 272; the navigation
-spec passes 40 of 40 on its own. Neither is near anything this session touched —
-no web code was changed at all — but a flake nobody wrote down is a flake
-somebody re-diagnoses.
+spec passes 40 of 40 on its own.
 
-**The publish now carries FFmpeg** — 128 MB of LGPL shared build under
+**The publish carries FFmpeg** — 128 MB of LGPL shared build under
 `tools/ffmpeg`, fetched by `scripts/fetch-ffmpeg.ps1` and cached, so the first
 publish on a new machine downloads 67 MB and every one after that does not.
+
+## The issue board, and how it is being worked
+
+**Say which issue you are on.** James asked for this outright: every piece of
+work names its issue before it starts, and the issue is closed with the evidence
+when it lands.
+
+**28 open.** Three were closed on the spot once they were actually read:
+
+| | |
+|---|---|
+| **#324** | The per-kind control set already shipped in `c5ac944` / `60527dc`. The rig serves 31 filter fields on movies and 28 on TV from one declaration; the panel fetches its vocabulary rather than declaring it. James: *"panel has been fixed already."* |
+| **#331** | Answerable from a configured instance and nothing to build — `ExternalLibraryManifest` already carries `id`, `mediaType`, `rootPath` and `processorOutputPath`. Confirmed live against the rig. |
+| **#129** | Closed at James's call — *"we will cross that bridge when we get to it"* — with the one question nobody here can answer written down: which certificate is in the signing secret. Reopen before 1.0. |
+
+### Decisions James made on the board
+
+- **#326 artwork** — bigger posters *and* backdrops. `w500` → `w780` and
+  `w1280` → `original`; 1.4 GB → 2.2 GB at 20,000 titles. Comes with a metadata
+  refresh to take effect and an artwork cleanup pass, or the old files orphan for
+  ever.
+- **Run scope** — everything except the five that need something I cannot supply.
+
+### Parked, and why — not to be picked up unattended
+
+| | Why it cannot be finished here |
+|---|---|
+| **#78** GA readiness | Epic over the four below |
+| **#81** Installer, upgrade, rollback | Needs clean Windows VMs |
+| **#82** 14-day soak | Needs fourteen days of wall clock against a real library |
+| **#269** README and screenshots | Its own text says it must come after the dashboard redesign |
+
+**#82 and #81 are worth half a session each anyway**, writing the parts that do
+not need the environment: `docs/soak-plan.md` and
+`scripts/collect-soak-snapshot.ps1` are both specified in #82 down to the metric
+names, and neither exists. That is the difference between a soak that cannot
+start and one that is waiting on a calendar.
 
 ### The rig at 10.1.1.142, as left
 
