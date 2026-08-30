@@ -1,0 +1,90 @@
+[
+ {
+  "id": "01a03dae92577f29be49ac8353a03628",
+  "title": "Big Buck Bunny",
+  "monitored": 1,
+  "wanted_status": "covered",
+  "has_file": 1,
+  "current_quality": "WEB 2160p"
+ },
+ {
+  "id": "01a03ddb3bec7d1b9c2aa595168a1bcc",
+  "title": "Mad Max: Fury Road",
+  "monitored": 1,
+  "wanted_status": "missing",
+  "has_file": 0,
+  "current_quality": null
+ },
+ {
+  "id": "01a03ddba74a76bdaa575799dc73f458",
+  "title": "Blade Runner 2049",
+  "monitored": 1,
+  "wanted_status": "missing",
+  "has_file": 0,
+  "current_quality": null
+ },
+ {
+  "id": "01a03ddbaf237f1195daf8992aa529da",
+  "title": "Arrival",
+  "monitored": 1,
+  "wanted_status": "missing",
+  "has_file": 0,
+  "current_quality": null
+ },
+ {
+  "id": "01a03ddbb7067440bad735153af7e93e",
+  "title": "Dune",
+  "monitored": 1,
+  "wanted_status": "missing",
+  "has_file": 0,
+  "current_quality": null
+ },
+ {
+  "id": "01a03ddbbee8755e924726322f586973",
+  "title": "The Martian",
+  "monitored": 1,
+  "wanted_status": "missing",
+  "has_file": 0,
+  "current_quality": null
+ },
+ {
+  "id": "01a03ddbc6c97a7f885c808e650887f5",
+  "title": "Inception",
+  "monitored": 1,
+  "wanted_status": "missing",
+  "has_file": 0,
+  "current_quality": null
+ },
+ {
+  "id": "01a03ddbcea27ce193810398426200b5",
+  "title": "Interstellar",
+  "monitored": 1,
+  "wanted_status": "missing",
+  "has_file": 0,
+  "current_quality": null
+ },
+ {
+  "id": "01a03ddbd67a7d868fe864fa46dc793a",
+  "title": "Sicario",
+  "monitored": 1,
+  "wanted_status": "missing",
+  "has_file": 0,
+  "current_quality": null
+ },
+ {
+  "id": "01a03ddbde627b54887582284b21e2dd",
+  "title": "Ex Machina",
+  "monitored": 1,
+  "wanted_status": "missing",
+  "has_file": 0,
+  "current_quality": null
+ },
+ {
+  "id": "01a03ddbe639776d950a1bad3d00374b",
+  "title": "Everything Everywhere All at Once",
+  "monitored": 1,
+  "wanted_status": "missing",
+  "has_file": 0,
+  "current_quality": null
+ }
+]
