@@ -1,165 +1,168 @@
-# Deluno — handover
+# Deluno — current baseline and handover
 
-Paste this whole file as the first message of a new chat.
+Snapshot: **1 September 2026, Australia/Sydney**.
 
----
+This is the current operational baseline. It replaces the old handover that
+described commit `de117a4`, a clean tree, 1,179 backend tests, and no work in
+flight. Those claims are no longer current.
 
-You are picking up **Deluno** at `C:\Projects\Deluno` (github.com/jampat000/Deluno) — a
-Windows .NET 10 + React 19 media-automation app meant to replace Radarr, Sonarr,
-Prowlarr, Huntarr, Cleanuparr, Recyclarr, Trash Guides and Bazarr. James is the
-owner. Australian English.
+## Start here
 
-## Non-negotiables
+- Work only from `C:\Projects\Deluno`.
+- Read `AGENTS.md` and `docs/PRODUCT_NORTH_STAR.md` before changing anything.
+- Preserve the shared working tree. Do not reset, checkout, clean, overwrite,
+  stage, commit, push, or close issues merely to make the repository look tidy.
+- Run `git status --short --branch` before editing.
+- Do not touch or close #78, #81, #82, #269, #329, or #330.
+- An issue closes only when its acceptance criteria have been implemented,
+  executed, remediated, and evidenced. Broad issues remain open when only one
+  slice is proven.
 
-- **Work on `main` and push.** Never run GitHub Actions for Deluno.
-- **Stop `Deluno.Host` before any build** and kill stray `testhost` — they lock the
-  DLLs (MSB3027). Publish **self-contained**.
-- **Verify live on the rig. A green suite is not evidence.** Nearly every defect this
-  session was found by looking at the running app, and several passed their tests
-  while being wrong.
-- **Everything runs independently.** James, more than once: *"nothing relies on each
-  other or fights or conflicts or overlaps… everything needs to run independently."*
-  One saved file read is never worth coupling two features.
-- **No second scheduler** (DESIGN-002 rule 3). Recurring work claims the existing
-  heartbeat via `TryClaimScheduledPassAsync`, declared in `SystemTasks`.
+## Git baseline
 
-## The rig
-
-`http://10.1.1.142:5099`, `admin` / `Deluno-Lab-2026!`. Windows `Administrator` /
-`Deluno-MM-Lab-2026!`. It holds 11 movies and 6 shows, **one of which has a file**.
-
-```powershell
-$p = ConvertTo-SecureString 'Deluno-MM-Lab-2026!' -AsPlainText -Force
-$c = New-Object System.Management.Automation.PSCredential('Administrator',$p)
-$s = New-PSSession -ComputerName 10.1.1.142 -Credential $c
-Invoke-Command -Session $s -ScriptBlock { Stop-ScheduledTask -TaskName 'Deluno Host'; Start-Sleep 3 }
-Copy-Item -ToSession $s -Path 'C:\Projects\Deluno\artifacts\publish\win-x64\*' -Destination 'C:\Deluno\App' -Recurse -Force
-Invoke-Command -Session $s -ScriptBlock { Start-ScheduledTask -TaskName 'Deluno Host'; Start-Sleep 12 }
-```
-
-A front-end-only change is `npm --prefix apps/web run build` plus copying
-`apps/web/dist/*` to `C:\Deluno\App\wwwroot`. **A C# change needs a republish.** The
-host runs from a scheduled task called `Deluno Host` — use `Stop-ScheduledTask` /
-`Start-ScheduledTask`; `Start-Process` over WinRM dies with the runspace and breaks
-DPAPI.
-
-The API is bearer-token: `POST /api/auth/login` with `{username,password}` returns
-`accessToken`. James's live arr instances are at `10.1.1.35` — Radarr `:8310`,
-Sonarr `:8989`, Prowlarr `:9696`, Bazarr `:6767`. **Look, do not save.**
-
-## Baseline as handed over
-
-Commit `de117a4`, working tree clean, pushed, rig running this build.
-
-| Suite | |
+| Item | Current state |
 |---|---|
-| Persistence | 825 (+1 skipped) |
-| Platform | 118 |
-| Integrations | 77 |
-| Movies | 64 |
-| Worker | 54 |
-| Series | 38 |
-| Tray | 3 |
-| **.NET total** | **1,179** |
-| Web unit | 151 |
-| Metadata gateway | 17 |
+| Branch | `main` |
+| HEAD | `38e5ae806d92a862fdcbd4bcaabef5bb83935add` |
+| `origin/main` | same commit; ahead 0, behind 0 |
+| Worktree | intentionally dirty shared worktree |
+| Tracked changes | 319 modified, 1 deleted |
+| Untracked paths | 182 |
+| Tracked diff | about 24,942 insertions and 4,306 deletions |
+| Whitespace check | `git diff --check` passes |
+| Current CI gate | `npm run ci:check` passed 8/8 with no warnings on 1 September after the latest local notification fix |
 
-Run per project — `dotnet test tests/Deluno.<Name>.Tests`. **The full-solution run
-hangs intermittently (#333)**, unexplained; per-project runs are the workaround.
+The dirty tree contains the backlog implementation, tests, documentation, and
+test-result artefacts accumulated across the current autonomous run. It is not a
+safe candidate for a mechanical cleanup. Integration must be deliberate and
+path-scoped after the work has been reviewed.
 
-Movies now serve **53 filter fields, 21 sorts, 18 poster options**; series 52 and 20.
-Radarr has 33 / 21 / 14.
+## Live lab baseline
 
-## Closed this session
+The Windows lab is at `http://10.1.1.142:5099`. Credentials and the scheduled-task
+deployment procedure are recorded in `E2E-full-product-test.md`. Never launch a
+second ad-hoc Deluno host; deploy and restart only through the **Deluno Host**
+scheduled task after `npm run ci:check` passes.
 
-#324, #331, #129, #308, #332, #311, #323, #325, #326, #306, #319, #310, #307.
-Filed: #332, #333, #334, #335.
+| Item | Current state |
+|---|---|
+| Scheduled task | `Deluno Host` running |
+| Host PID | 2604 |
+| Readiness | ready; all 9 checks ready |
+| Deployed executable SHA-256 | `45D004F5F3C53C27622CA9194278351D334D2E64A52F869EBB7D6447E9C8B3B6` |
+| Rollback | 10 retained; latest `C:\Deluno\App.rollback-20260901-165400` |
+| Catalogue | 2 movies, 1 show; no temporary catalogue titles |
+| Notifications | globally disabled |
+| Webhooks | one pre-existing `E2E webhook test`; the temporary DLQ fixture webhook was removed |
+| Download clients | SABnzbd and qBittorrent healthy |
+| qBittorrent | 3 retained completed/import-ready lab downloads |
+| SABnzbd | no queued download; retained native/import audit history |
+| Jobs | 156 completed, 114 historical dead-letter, 0 active |
 
-## What is in flight
+The lab is functionally healthy, not a blank database. Readiness confirms all
+five databases, migrations, writable storage, a fresh worker heartbeat, and no
+stalled or lagged jobs. Historical completed and dead-letter job rows are kept as
+audit evidence. One temporary webhook-delivery dead-letter row is also retained
+because delivery history deliberately survives deletion of its webhook.
 
-Nothing. The last piece — poster hover actions — is finished, verified on both
-shelves and pushed.
+During this baseline audit, an old deterministic SAB entry named
+`Breaking.Bad.S01E01.2160p.WEB-DL.x264-DELUNO` was found creating a fresh rejected
+sample import every worker cycle. Only that exact SAB history entry
+(`4a5ee8bf-96a3-42c7-be7f-46445d57e2c5`) was removed. The imported `DELUNOLAB`
+entries and all user/catalogue state were left intact. The last already-created
+retry exhausted normally; the jobs API then reported **0 queued, running, or
+failed jobs**, and readiness remained 9/9.
 
-## The immediate next thing
+## What has been implemented and executed
 
-**#314 is parked pending a decision and must not be built until James answers.**
-A full audit is posted on the issue. It found that **nine scheduled passes are now
-declared in `SystemTasks`, and seven more recurring services run with their own
-timers and cannot be listed at all**: backup (daily 03:00), ranking model training
-(24h), import recovery retention (24h), download dispatch polling (1h), plus three
-samplers/publishers that are plumbing rather than tasks. Six decisions are open on
-the issue. Ask, do not guess.
+The detailed evidence ledger is
+`E2E-full-product-test-run-2026-08-31.md`. The highest-value completed slices are:
 
-After that the recorded order is **#309 remainder** (a saved filter that *does*
-something — needs James's decisions first, he pushed back hard on the framing), then
-**#328** (tags), **#313**, **#315**, **#316**, **#317**, **#318**, **#320**, **#305**,
-then Subber's remainder (#321, close #301).
+1. **Real download/import path** — qBittorrent movie import and deterministic
+   SABnzbd NZB/yEnc TV downloads were executed through Deluno and survived
+   scheduled-task restarts. Multi-episode imports now persist final library paths,
+   not disposable client paths.
+2. **Season-pack safety and atomic import (#342)** — explicit episode manifests,
+   catalogue validation, rejection of ambiguous multi-video packs, transactional
+   catalogue writes, filesystem compensation, idempotent retry, and positive live
+   two-file placement were implemented and exercised.
+3. **Upgrade convergence and atomic replacement (#345/#342)** — installed-file
+   evidence is evaluated per episode; unsafe whole-season replacement is held
+   before external work; exact episode-to-owned-path manifests drive atomic
+   multi-file replacement with rollback and restart-safe `already-committed`
+   retries. A wrong-owner negative case and a positive two-file replacement were
+   executed live.
+4. **Calm TMDb removal recovery (#357)** — movie and TV titles, files, history,
+   monitoring, and local metadata are retained. Evidence can be acknowledged;
+   retry and reviewed remap are separate from removal. Remap preview/apply now has
+   confirmation tokens, conflict protection, stale-token checks, TV episode-loss
+   protection, and restart proof. This directly implements the product rule that
+   an upstream metadata deletion is a title-scoped recoverable condition, not a
+   system emergency.
+5. **Truthful SAB identity/telemetry (#338)** — SAB add responses now retain native
+   `nzo_id` at dispatch creation across grab paths; telemetry converges native and
+   dispatch-derived history into one stable row. The exact identity survived a
+   live restart.
+6. **Automation idempotency (#344)** — the PowerShell contract now sends the real
+   `Idempotency-Key`, verifies byte-identical replay, and requires 409 for the same
+   key with a conflicting body. A non-dry mixed movie/series write with explicit
+   episodes was executed, replayed, conflict-tested, verified, and cleaned up.
 
-**Do not touch #78, #81, #82, #269. Do not close #329 or #330.**
+No broad issue was closed on the strength of these partial slices.
 
-## What James has taught, that keeps costing when ignored
+## Implemented locally but not deployed
 
-- **Repetition is a defect.** After a fix, find where else that shape lives. One rule
-  written twice in two places that cannot check each other is where every defect here
-  has come from.
-- **"Declared, never populated."** A column, state or mark that exists and nothing
-  writes. A filter over it returns no rows and looks like a fair answer. Guard by
-  reading the value back *through the thing that consumes it*, not off the row.
-- **Measure, do not reason.** Query plans, pixel positions, whether a switch produced
-  a row. Several times this session a browser sweep passed a broken version because it
-  measured the wrong property.
-- **Prove a test discriminates.** Break the fix, watch it fail, restore it. Done for
-  every guard added this session.
-- **Ask when the decision is his.** He would rather be asked than have it guessed, and
-  says so.
+The live webhook dead-letter exercise exposed a truthful-remediation defect: an
+exhausted delivery was labelled `RetryScheduled` and told the user Deluno would
+retry even though `nextAttemptUtc` was null. The local fix:
 
-## Traps that have each cost real time
+- records exhausted webhook delivery as `ManualAction`;
+- clears retry time;
+- tells the user to check the service/network and replay the delivery;
+- keeps transient retry wording for attempts that really are scheduled.
 
-- **Bash heredocs mangle backslashes.** `\n` inside a quoted heredoc arrives as a
-  newline and `\\1` as a control character. Write Python to the scratchpad with the
-  Write tool and run it with `python <path>`.
-- **Python slice-replacement over JSX is dangerous.** Two edits this session ate
-  neighbouring methods or a component's opening. `git checkout <file>` and redo with
-  an exact-string replace.
-- **`.mark-grail` sets `position: relative`** and beats a Tailwind `absolute` on the
-  same element. It silently dropped an element out of its parent, then collapsed
-  another to zero height — both times rendering the right gradient invisibly. Put the
-  sheen on an element Tailwind never positions.
-- **Tailwind cannot parse commas in an arbitrary value.** `shadow-[...rgba(0,0,0,.5)]`
-  emits nothing; use `rgb(0_0_0_/_0.55)`.
-- **A migration already recorded never runs again.** Never edit a shipped migration —
-  add a new one, or existing installs silently lack the column.
-- **Two caches sit in front of metadata**: the gateway's KV (`search:vN:`) and
-  Deluno's `SearchCacheShape`. Bump **both** when a payload's shape or content
-  changes, and deploy the worker *before* relying on it.
-- **The in-app browser pane's screenshot times out.** Use Claude in Chrome. Its zoom
-  region is in *screenshot* coordinates, not page pixels — convert, or measure with
-  `getBoundingClientRect` instead.
-- **Never quote a suite number from a run started before your last edit.** Re-run it.
+Focused notification/integration-failure tests passed **16/16**, and the complete
+CI gate passed **8/8** after the fix. This change is **not in the deployed hash
+above**. It still needs CI-gated scheduled-task deployment, live dead-letter
+replay, restart proof, cleanup, ledger evidence, and an issue comment before that
+slice can be called complete.
 
-## Recent architecture worth knowing
+## Open backlog baseline
 
-- `SystemTasks` — every scheduled pass in one place, fixed intervals, read by
-  `WorkPlanner`. Two tests read the planner's source and fail if anyone writes an
-  interval at a call site again.
-- `CatalogueFileFactsMigrationSql` / `CatalogueDecisionFacts` / `RatingSources` —
-  migrations, indexes, backfills, write paths, filters and sorts are all **generated
-  from one list** so a new entry cannot be half-added.
-- `CatalogueMetadata.ToUpdate` is the **only** mapping from a provider result to the
-  catalogue. The 18-argument positional overload that lost `Status` and `Studio` four
-  times is gone.
-- **No filter reads through `ws`** (the correlated wanted-state pick). All 104 are
-  index walks, asserted by `FileFilterQueryPlanTests`.
-- The poster card: state is a **top bar** whose size the Quality switch decides;
-  subtitles own the **bottom edge**; three round actions sit centred on hover; every
-  enabled switch draws **one reserved row** beneath, so a column means the same thing
-  on every card.
+There are **27 open issues**:
 
-## Open questions James has not answered
+- protected/external or explicitly untouched: #78, #81, #82, #269, #329, #330;
+- Subber/stack epics: #301, #321, #322;
+- infrastructure and integration: #337, #338, #344;
+- portal/mobile: #339, #340, #341;
+- TV/import/convergence: #342, #345;
+- media plans and release preferences: #343, #347–#354;
+- metadata recovery: #357.
 
-1. **#314** — the six decisions on the issue.
-2. **#309's second half** — a saved filter that acts as a scope on the library cycle.
-   He challenged the framing: *"filters are just display filters"*. Needs rediscussion
-   before any of it is built.
-3. Whether to add Radarr's fourth poster action (edit) — Deluno's equivalent is the
-   drawer the card already opens.
+Important remaining acceptance work:
+
+- #337 has no honest container runtime proof because Docker, Podman, and nerdctl
+  are absent locally and in the lab.
+- #338 still needs the broader client/indexer matrix and visible Health, Activity,
+  and title-level failure-mode acceptance.
+- #344 still needs the webhook replay slice above, Home Assistant install/action
+  proof, existing-library import automation, and clean-host CI orchestration.
+- #341 is a product-wide real-device mobile workflow matrix, not a small layout fix.
+- #342/#345 still need a real client/indexer season replacement dispatch,
+  automatic zero-work convergence, and representative Daily, Anime, specials,
+  scene-numbering, and owner-mapping flows.
+- #357 is implemented, tested, and live-proven for movie and TV, but remains open
+  because the work is still in this uncommitted shared tree rather than durable
+  integrated repository history.
+- #343 and #347–#354 are broad normative/implementation/proof/UX bodies of work;
+  they must not be closed from isolated tests or scaffolding.
+
+## Recommended next sequence
+
+1. Deploy the already-tested webhook terminal-state fix through the scheduled
+   task, execute dead-letter → replay → restart proof, clean its temporary fixture,
+   and update #344 without closing the broad issue.
+2. Continue #338's remaining truthful failure surfaces and client/indexer matrix.
+3. Return to the real-client #342/#345 replacement/convergence gaps.
+4. Integrate the shared worktree in reviewable, explicit path groups; only then
+   reassess issue closure from acceptance evidence.

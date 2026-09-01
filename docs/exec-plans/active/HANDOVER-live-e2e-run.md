@@ -12,6 +12,26 @@ shape of an eleven-value colour table a title could only ever hold two values of
 and `library-filters.test.ts` exercised a client-side filter engine nothing had
 imported since the catalogue became server-paged.
 
+## 1 September live import addendum
+
+The deterministic Usenet rig now proves real NZB fetch, NNTP authentication,
+yEnc article transfer, SAB post-processing/native history, Deluno import, and
+restart durability. The latest multi-episode acceptance used Breaking Bad
+S01E04/E05. One native SAB item (`d27a2c1b-9f53-4bd1-bdc1-785942f6f0b9`)
+produced one completed Deluno import job
+(`01a05b229f7c7dafa47bd22d61d0f0e3`, one attempt), covered both exact episode
+IDs, and persisted one shared library destination and import timestamp across
+two `Deluno Host` scheduled-task restarts.
+
+That run found and fixed a catalog-integrity defect: TV numbering must be parsed
+from the download-client source name, but episode ownership must point to the
+placed library destination. The code previously used the source path for both,
+which would leave episode rows dangling after client cleanup. Standard,
+alternate-number, and season-pack imports now store the destination path, with
+focused persistence coverage. The mandatory CI gate passed 8/8 before the lab
+deployment. This is deterministic protocol/client/import evidence, not a claim
+about any commercial Usenet provider's retention.
+
 ## What this run did — #301, step 1 finished
 
 **Deluno now knows what subtitles you already have**, before it fetches any.
@@ -366,8 +386,10 @@ TORZNAB_BIND=0.0.0.0 TORZNAB_ADVERTISE=10.1.1.102 python scripts/lab/torznab_see
 ## Loose ends worth a look
 
 - **The two import paths still repeat each other.** #298 made them agree; sharing the code outright is the better end state.
+- **#342 remains open after the season-pack safety slice.** Deluno now refuses to treat an `S01` label as proof of every episode and refuses to import only the largest video from a multi-file TV directory. The deployed S01E06/E07 negative acceptance survived restart with both source files intact, both episodes still missing, and one explicit recovery case. The positive workflow that atomically places, catalogues, and recovers every file in a real multi-file season pack is still outstanding; do not close the issue until that workflow has live end-to-end proof.
+- **#357 has now passed its remaining live remap acceptance, but stays open until the source change is durably integrated.** The populated-series missing-TMDb path retains files, monitoring, stored metadata, acknowledgement, and one non-emergency activity across repeat and restart. The remap drawer now previews exact identity/title/year/collection or episode-catalogue consequences, requires a state-bound confirmation token, rejects held identities and mixed TV catalogues, and keeps local files/monitoring/history/assignments. Live execution caught and fixed a preview/apply title-year mismatch; the corrected movie transition and a 71-episode/5-file TV remap survived scheduled-task restart. Do not close the issue from the current uncommitted shared worktree even though the deployed acceptance is green.
 - **Deluno's Check category cannot check the category that will actually be used** when the routing override is blank, because it is gated on that field being non-empty — and it does not notice that qBittorrent ignores a category's save path when Automatic Torrent Management is off. Both would have saved time this run.
-- **Phases 9–12 of `E2E-full-product-test.md` have not been run**: missing and upgrade cycles, recovery and cleanup, lists, notifications, tags, destination rules, API keys, backup and restore, reboot. SABnzbd is not installed on the rig, so Phase 5's usenet rungs are untouched.
+- **Phases 9–12 of `E2E-full-product-test.md` have not been run**: missing and upgrade cycles, recovery and cleanup, lists, notifications, tags, destination rules, API keys, backup and restore, reboot. This handover predates the 31 August run; SABnzbd is now installed and its deterministic NZB → NNTP/yEnc → native history → TV import path is recorded in `E2E-full-product-test-run-2026-08-31.md`.
 - **A card can no longer ever say Downloading.** That is honest — the catalogue adapter has no live transfer state — but if progress on a library card is wanted, it needs the download telemetry wired in rather than a wanted status standing in for it.
 
 ## Where James's bar sits

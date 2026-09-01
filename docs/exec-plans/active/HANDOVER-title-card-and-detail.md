@@ -1,4 +1,4 @@
-# Handover — the title card, the detail pages, and what TV still needs
+# Handover — the title card, the detail pages, and the live shelf implementation
 
 Paste this whole file as the opening prompt of a fresh session. It is written to
 be self-contained: nothing below assumes you saw the conversation that produced
@@ -269,118 +269,74 @@ heuristic in a smoke test, stop and move the assertion.**
 | Unmonitored is one flat grey, fill and track alike | *"unmonitored titles are the override, they are always grey - once they are monitored they inherit the normal statuses"*. Grey therefore means exactly one thing on a card. | Settled |
 | The half/drained dot is gone | *"ditch the half and just overright it when its unmonitored its just black or grey period"* | Settled |
 | Vocabulary is **"Unmonitored"**, one word | *"change to unmonitored then"* | Settled |
-| Bar track is Missing red, not neutral grey | A grey track would make a monitored title holding nothing read as unmonitored | Settled |
+| Movie and TV monitored bars use a Missing-red remainder; held coverage is green and Quality met is gold | Both shelves use the same composition grammar where the state matches; TV still measures the top bar over aired episodes, and Unmonitored always overrides both bars with one flat grey | Settled |
 | Monitoring is a **configurable toggle under the poster**, plus a shield on the detail page | *"it should be a configurable toggle that displays under the poster like all the other toggles"*. An earlier attempt removed the toggle entirely and was wrong. | Settled |
 | The detail page shows **everything, unconditionally** | A shelf lets you choose what a card carries because you are scanning; here you have stopped and gone looking, so mirroring the toggles would hide a fact at the moment you want it. | Settled |
 | A detail page can never know less than the shelf | Guarded by a reflection test over every property — `tests/Deluno.Persistence.Tests/Catalogue/DetailMatchesListProjectionTests.cs`. **Its fixture imports a real file on purpose**: without one the file facts are null on both sides and the test passes while guarding nothing. | Settled |
-| The movie card spec is settled; **TV is deliberately frozen** | *"they should be independant of each other, tv and movie"* | See §5 |
+| The movie and TV card specs are settled independently | *"they should be independant of each other, tv and movie"* | Settled |
 
 ---
 
-## 5. What is LEFT — TV is the big one
+## 5. TV card implementation — completed
 
-### 5a. The TV card has never been finished (highest priority)
+### 5a. The approved TV card is built and shipped
 
-`CARD_DESIGN.show.bars` is still **`false`** in `apps/web/src/lib/card-design.ts`.
-The movie card is fully settled and shipping; TV is frozen on the old card. The
-mechanism is entirely shared — **flipping that one boolean is how TV adopts it,
-and nothing about the movie card changes when it does** — but it must not be
-flipped until the open question below is decided, because the whole reason it is
-frozen is that TV has a colour movies do not.
+`CARD_DESIGN.show.bars` is now **`true`** in `apps/web/src/lib/card-design.ts`.
+The movie card remains independently declared and unchanged. TV now uses the
+shared two-bar mechanism with its own choices:
 
-**The open question: the Continuing hue.** This is what started the whole design
-(*"continuing and upcoming colours are too similar"*). The measurement is already
-done and written up in
-`docs/exec-plans/active/DESIGN-006-the-title-card.md` §4:
+- the top bar says aired episodes held and fills to coverage of what has aired;
+- the bottom bar says subtitle coverage across episodes actually held;
+- the remainder is Missing red, the held portion is green, and a fully held
+  Quality met show is gold;
+- Unmonitored takes priority over every other state and paints both bars one flat
+  grey, including partial and empty coverage;
+- Continuing remains a TV-only lifecycle label and legend colour (**Magenta
+  `318 78% 38%`**), while its held coverage follows the green rule;
+- the top shelf legend places **Unmonitored immediately after Upcoming behind a
+  divider** on both Movies and TV; the separate subtitle legend contains only
+  subtitle segments;
+- episode-count and subtitle-count words are independently switchable, on by
+  default, and the only lead word is `SUBS`.
 
-- The pair James flagged (Continuing vs Upcoming) is actually the *furthest
-  apart* on the ladder, ΔE 88. **The pair that genuinely collides is Continuing
-  and Downloading** — ΔE 49, hues 184 and 207, the smallest gap on the ladder.
-- Sweeping the full hue circle against the other six rungs, the recommendation is
-  **magenta `318 78% 38%` — ΔE 54.7, contrast 6.60**, the only candidate that
-  puts Continuing in an arc nothing else occupies.
+The TV renderer is now the implementation record for this direction. Its
+alternate hue, track and fill treatments remain available for comparison, while
+the product defaults are the approved recommendation. The live lab has been
+updated and the grid, table, overview, legend, calendar, search and detail
+surfaces all use the same state palette.
 
-**Take this to James as a decision, with the numbers.** He has seen the table but
-has not chosen. Once he does: set the token, flip `show.bars`, and re-run the TV
-render audit (`ui-explorations/card-decider-tv.html` — 3,240 renders / 72
-combinations, previously 0 problems).
+### 5b. TV detail page parity — completed
 
-Also still TV-side:
+The TV detail page now uses the same visual format as the movie detail page while
+retaining TV-specific content:
 
-- `mediaBar: "episodes"` and `fillMeans: "coverage"` are declared but unexercised
-  while `bars` is false.
-- `fill` and Continuing are **movie-inert by design** — measured, zero movie cards
-  render differently across the three `fill` rules, because a film is held or it
-  is not. Do not "simplify" that away; it is declared so the shelves stay
-  separately readable.
+- Shared 16:9 hero/backdrop treatment, `16rem` poster column, and `h-96 w-64`
+  poster artwork.
+- Certification, year, and runtime metadata on the title line, followed by
+  monitoring/status and genre marks.
+- A TV facts `<dl>` for episodes, network, studio, language, collection,
+  director, status, added date, and import issues when available.
+- The shared `Ratings & IDs` aside with `RatingStrip`; its `xl:min-h-96` height
+  is now exactly aligned with the poster on both movie and TV pages.
+- Shared cast and crew rows using the same portrait-card treatment.
 
-### 5b. TV detail page is not at parity with the movie one
+The page is deployed and verified on the live lab. This detail-page work is
+complete; the unresolved TV decision below applies to the library card, not this
+page.
 
-The show page now has the shield and — since this session — the shared cast and
-crew rows. It is still missing everything else the movie header gained:
+### 5c. Monitor a person → a TMDb Person import list — completed
 
-| Movie detail has | Show detail |
-|---|---|
-| Certification badge on the meta line | **missing** |
-| `RatingLine` under the title | **missing** (still only `RatingStrip` in the aside) |
-| The facts `<dl>` (path, size, studio, language, director, codec, release group, added) | **missing** |
-| Poster `h-96 w-64` (24rem) | still `h-64 w-40` (10rem) |
-| Aside headed "Metadata" | still headed "Ratings & IDs" |
+The `tmdb-person` intake provider is implemented end to end. It accepts a numeric
+TMDb person id or TMDb person URL, fetches combined credits, separates movie and
+TV entries, deduplicates by provider id, and supports the Radarr-style Cast,
+Director, Producer, Sound, and Writing role filters. Cast is enabled by default;
+the selected roles are stored in the canonical feed URL and used by preview and
+sync.
 
-It is the same header and it should get the same treatment. The components are
-all extracted and reusable (`RatingLine`, `SourceMark`, `HeroBackdrop`,
-`CreditsRow`) — this is mostly assembly, not new design.
-
-### 5c. Monitor a person → a TMDb Person import list (asked for, not started)
-
-James, with a Radarr screenshot of *Add Import List - TMDb Person*: *"cast and
-crew in radarr you can monitor them which brings up an add import list for a TMDb
-person - we should do the same"*.
-
-The codebase was mapped for this and it is **cheaper than it looks**. The feature
-is called **"intake"** in the backend and **"Import Lists" / "Discover Media"** in
-the UI — they are the same feature; there is no separate discovery subsystem.
-
-**You do NOT need:** a DB migration (`intake_sources.provider` is unconstrained
-`TEXT`), any change to the job/queue plumbing (`intake.sync` is
-provider-agnostic), or any change to preview / approve / exclusion / origin code
-paths (all provider-agnostic).
-
-**There is no provider abstraction — every kind is hard-coded in three
-unconnected places that must be kept in step by hand:**
-
-1. `src/Deluno.Intake/IntakeSourceAddressValidator.cs:21-43` — a switch on the
-   provider string; unknown → 400 from `ValidateIntakeSource`. Add a
-   `"tmdb-person"` arm accepting a numeric TMDb person id or a
-   `themoviedb.org/person/…` URL, plus a `[GeneratedRegex]` alongside `:54-61`.
-2. `src/Deluno.Worker/Intake/IntakeSyncService.cs:537-550` — `FetchEntriesAsync`,
-   the per-kind dispatch. Add `"tmdb-person" => await FetchTmdbPersonCreditsAsync(...)`
-   and write it next to `FetchTmdbListAsync` (`:552`), reusing
-   `GetManagedSecretAsync` (`:554-558`) for the API key and `IntakeHttpClientName`
-   (`:43`). It returns `IReadOnlyList<IntakeEntry>` (`:1388`) and everything
-   downstream is provider-agnostic. `/3/person/{id}/combined_credits` splits
-   cleanly because `IntakeEntry.MediaType` is **per entry** — use
-   `NormalizeMediaType` (`:1291`).
-3. `apps/web/src/routes/settings-lists-page.tsx:44-51` (`PROVIDERS`) and the help
-   text at `:685-698` (`listAddressHelp`).
-
-**The one genuinely new thing:** Radarr's dialog offers *Person Cast / Director /
-Producer / Sound / Writing credits* as separate checkboxes. Deluno's per-kind
-storage is **a single `FeedUrl` string** and the drawer renders **one fixed field
-set for every kind** — there is no per-provider form branch at all. So either
-encode the credit-type filters into the stored string, or introduce per-kind form
-rendering. **Raise this with James before building it**, because it is the only
-part that is a design decision rather than an assembly job.
-
-Also note: **nothing exists for TMDb person search** (`IMetadataProvider` has no
-person method, and no endpoint hits `/3/search/person`). "Monitor this person"
-launched from a credit card does not need it — the card already has the person id
-after this session's work — but a "search for a person by name" UI would.
-
-Useful references: `IntakeSourceItem.cs`, endpoints under `/api/intake-sources`
-in `src/Deluno.Intake/IntakeEndpointRouteBuilderExtensions.cs`, and
-`SubtitleProviderRegistry.cs` as the pattern to copy **if** you decide the
-hard-coded switches have earned a real abstraction.
+The UI exposes the provider and filters in the Import Lists drawer. IMDb credit
+destinations are also implemented through the metadata gateway's cached
+per-person resolver; existing records may need a metadata refresh before their
+stored credit cards receive the new destination.
 
 ### 5d. Smaller loose ends
 
@@ -414,8 +370,7 @@ hard-coded switches have earned a real abstraction.
 | Detail-vs-shelf guarantee | `tests/Deluno.Persistence.Tests/Catalogue/DetailMatchesListProjectionTests.cs` |
 | Render audits | `ui-explorations/card-decider-movies.html`, `card-decider-tv.html` |
 
-**Suggested first move:** put the Continuing hue decision to James with the ΔE
-table from DESIGN-006 §4, since every remaining TV item is blocked behind it, and
-ask him the credit-type-filter question from §5c at the same time. Both are
-decisions only he can make, and everything else in §5 is work you can do without
-interrupting him again.
+**Suggested next move:** review the implemented TV shelf on the live lab across
+grid, table and overview density, then capture any final visual adjustments for
+the implementation PR. The credit-type-filter decision is no longer blocking;
+the implemented canonical feed URL is the current approach.

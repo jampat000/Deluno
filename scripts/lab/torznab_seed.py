@@ -33,7 +33,9 @@ ADVERTISE = os.environ.get("TORZNAB_ADVERTISE", BIND)
 HOST = ADVERTISE
 BASE = f"http://{ADVERTISE}:{PORT}"
 SOURCE = r"C:\Deluno\e2e\data\bbb.mp4"
-OUT = r"C:\Deluno\e2e\torrents"
+# A secondary rig can write its torrent metadata beside the main lab rather
+# than racing the long-lived listener for the same files.
+OUT = os.environ.get("TORZNAB_OUT", r"C:\Deluno\e2e\torrents")
 PIECE_LEN = 262144  # 256 KiB
 
 os.makedirs(OUT, exist_ok=True)
@@ -60,6 +62,42 @@ RELEASES = [
     ("Breaking.Bad.S01E01.1080p.WEB-DL.x264-DELUNO", "5040", 3 * GB),
     ("Breaking.Bad.S01E02.1080p.WEB-DL.x264-DELUNO", "5040", 3 * GB),
 ]
+
+# A one-off season-pack fixture can be enabled without disturbing the long-lived
+# indexer rig used by the ordinary movie and episode searches.  The release is
+# still a genuine multi-file torrent: each requested episode is a separately
+# hashed video entry backed by the local CC-BY source.  Keeping this opt-in
+# means a second listener can exercise a whole-season replacement while the
+# normal listener continues serving its stable catalogue.
+SEASON_PACK_RELEASE = os.environ.get("DELUNO_E2E_SEASON_PACK_RELEASE", "").strip()
+SEASON_PACK_SEASON = int(os.environ.get("DELUNO_E2E_SEASON_PACK_SEASON", "1"))
+
+
+def season_pack_episode_numbers():
+    raw = os.environ.get("DELUNO_E2E_SEASON_PACK_EPISODES", "1,2,3,4,5")
+    numbers = []
+    for token in raw.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        try:
+            episode = int(token)
+        except ValueError as exc:
+            raise ValueError("DELUNO_E2E_SEASON_PACK_EPISODES must be comma-separated integers") from exc
+        if episode < 0 or episode > 999:
+            raise ValueError("DELUNO_E2E_SEASON_PACK_EPISODES must contain episode numbers from 0 through 999")
+        numbers.append(episode)
+    if not numbers:
+        raise ValueError("DELUNO_E2E_SEASON_PACK_EPISODES must name at least one episode")
+    return tuple(sorted(set(numbers)))
+
+
+SEASON_PACK_EPISODES = season_pack_episode_numbers() if SEASON_PACK_RELEASE else ()
+if SEASON_PACK_RELEASE:
+    # The synthetic file is small, but the feed advertises a credible 4K
+    # Blu-ray size so Deluno's real release-policy filters evaluate the same
+    # candidate shape as a production indexer would publish.
+    RELEASES.append((SEASON_PACK_RELEASE, "5040", 16 * GB))
 
 
 # ---------------------------------------------------------------- bencode ---
@@ -99,8 +137,18 @@ def layout(release):
     """Files in the torrent, in order: [(relative path parts, size, reader)]."""
     video_size = os.path.getsize(SOURCE)
     nfo = nfo_bytes(release)
+    video_names = [f"{release}{VIDEO_EXT}"]
+    if release == SEASON_PACK_RELEASE:
+        marker = f"S{SEASON_PACK_SEASON:02d}"
+        marker_pattern = re.compile(rf"(?<![A-Za-z0-9]){re.escape(marker)}(?!E\\d)", re.IGNORECASE)
+        video_names = []
+        for episode in SEASON_PACK_EPISODES:
+            stem, replacements = marker_pattern.subn(f"{marker}E{episode:02d}", release, count=1)
+            if replacements == 0:
+                stem = f"{release}.{marker}E{episode:02d}"
+            video_names.append(f"{stem}{VIDEO_EXT}")
     return [
-        ([f"{release}{VIDEO_EXT}"], video_size, lambda: open(SOURCE, "rb")),
+        *[([name], video_size, lambda: open(SOURCE, "rb")) for name in video_names],
         ([f"{release}.nfo"], len(nfo), lambda n=nfo: io.BytesIO(n)),
     ]
 
@@ -182,6 +230,16 @@ STOPWORDS = {"season", "complete", "series", "the", "and"}
 
 
 def matches(release, query, season, ep):
+    # The isolated season-pack listener is intentionally a one-candidate
+    # fixture for a whole-season query.  Leaving the ordinary E01/E02 releases
+    # in its response made the real decision pipeline select an episode
+    # release first, then truthfully hold because that single-file candidate
+    # could not improve every installed episode.  The long-lived default
+    # listener keeps its ordinary catalogue; this applies only when the
+    # opt-in pack release is configured on the secondary listener.
+    if SEASON_PACK_RELEASE and season and not ep and release != SEASON_PACK_RELEASE:
+        return False
+
     hay = release.lower().replace(".", " ")
     low = release.lower()
     if season and ep:
@@ -320,9 +378,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if len(parts) != 2 or parts[0] not in TORRENTS:
                 return self._send("not found", "text/plain", 404, head_only=head_only)
             release, filename = parts
+            valid_files = {entry[0][0] for entry in layout(release)}
+            if filename not in valid_files:
+                return self._send("not found", "text/plain", 404, head_only=head_only)
             if filename == f"{release}.nfo":
                 return self._serve_bytes(nfo_bytes(release), head_only)
-            if filename == f"{release}{VIDEO_EXT}":
+            if filename.endswith(VIDEO_EXT):
                 return self._serve_file(SOURCE, head_only)
             return self._send("not found", "text/plain", 404, head_only=head_only)
 

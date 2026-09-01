@@ -35,7 +35,7 @@ Plus the four this run set out to close: [#280](https://github.com/jampat000/Del
 - **Background automation is paused on a fresh install**, and queued jobs are held. `/api/health/ready` says so plainly — *"Background automation is paused; queued jobs are intentionally held."* Nothing moves past the queue until step 4 of the setup ladder is done. This is correct and well reported; it is just easy to miss.
 - **MediaMop's Refiner writes output even when it decides no changes are needed**, into `<output>/<source leaf>/`, which is exactly the shape `FindCorrelatedProcessorOutputs` expects. It also empties the source folder, which will break seeding if that folder is the client's.
 
-**Still to run:** Phases 9–12 — missing and upgrade cycles, recovery and cleanup, lists, notifications, tags, destination rules, API keys, backup and restore, reboot. Phase 5's SABnzbd rungs are untouched; it is not installed on the rig yet.
+**Still to run:** Phases 9–12 — missing and upgrade cycles, recovery and cleanup, lists, notifications, tags, destination rules, API keys, backup and restore, reboot. SABnzbd is now installed and its deterministic NZB → NNTP/yEnc → native history → TV import path is proven in the 31 August run ledger; commercial-provider retention and availability remain outside this lab.
 
 **Open follow-up:** the Movies card for the imported film shows a `DOWNLOADING` chip while its detail page says *On disk — imported and verified*; the torrent is still seeding, so queue state appears to leak into the library card. Header counts are correct.
 
@@ -179,7 +179,7 @@ Start the torznab indexer first.
 | 8.6 | Watch the import | The refined file lands in `C:\Deluno\Library\Movies` with the naming you set | |
 | 8.7 | **Check the pipeline counts after import** | `processingCount` and `waitingForProcessorCount` return to zero while the torrent is still seeding. This is the #280 acceptance | |
 | 8.8 | Check the dashboard stage strip | Processing empties. Importing is never a negative number | |
-| 8.9 | Grab into the TV library via SABnzbd | Dispatch is attempted and its outcome is reported honestly | |
+| 8.9 | Grab into the TV library via SABnzbd | Dispatch is attempted and its outcome is reported honestly | Pass — real generated NZB/yEnc transfers imported S01E01 and multi-episode S01E04/E05; native history, shared destination identity, restart durability, and one-job dedupe were verified. |
 | 8.10 | Kill the processor mid-flight, wait past the timeout | Deluno reports the timeout somewhere a user sees it, and the failure mode you chose is what happens | |
 
 ## Phase 9 — missing, upgrades and automation
@@ -243,7 +243,7 @@ Start the torznab indexer first.
 
 ## What this plan cannot cover honestly
 
-- **Usenet transfers.** SABnzbd can be connected, tested, categorised and dispatched to, but there is no usenet provider or real NZB on this rig, so a completed usenet download is out of scope. Everything up to and including the dispatch attempt is testable; the transfer is not.
+- **Commercial Usenet-provider behaviour.** The rig now proves a completed SABnzbd transfer and Deluno import with a deterministic local NZB/NNTP/yEnc media fixture. It does not prove an external provider's authentication, propagation, retention, takedowns, throttling, or article availability.
 - **The NAS.** `\\storage-city\Data\Media` is not reachable from the VM's service account, so libraries stay local to the VM.
 - **Scale.** The 20,000-item invariant is a fixture concern, not something this rig demonstrates. Use `scripts/new-large-library-fixture.ps1`.
 
