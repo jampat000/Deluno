@@ -219,6 +219,20 @@ public static class ReleasePreferenceEvaluator
 
         if (!candidate.HardGatesPassed)
         {
+            // The same distinction the truth tables in section 3 draw, and
+            // the same one the standalone evaluation already makes: a gate
+            // that failed on proven absence is a rejection, while a gate that
+            // could not be decided because the evidence is unknown or
+            // conflicting is a review. Collapsing both into Rejected told the
+            // owner a rule had blocked a release when in fact Deluno had not
+            // been able to read one, which is a different problem with a
+            // different fix - probe the file, or look at the release.
+            if (candidate.Status == PreferenceEvaluationStatus.NeedsReview)
+            {
+                reasons.Add("Candidate has unknown or conflicting evidence for a required trait, so it is never automatic.");
+                return Result(PreferenceCandidateStatus.NeedsReview, false, false, false, null, reasons, current, candidate);
+            }
+
             reasons.Add("Candidate failed a hard safety or compatibility gate.");
             return Result(PreferenceCandidateStatus.Rejected, false, false, false, null, reasons, current, candidate);
         }
@@ -311,9 +325,21 @@ public static class ReleasePreferenceEvaluator
 
         if (firstDifference > 0)
         {
-            reasons.Add("Candidate is worse in the first differing preference family.");
+            // A candidate that is merely worse than the installed file was
+            // not rejected by anything: it passed every hard gate above.
+            // Reporting it as Rejected told the owner a rule had blocked a
+            // perfectly legal release, which is the opposite of the truth
+            // and hides the real reason nothing will happen. The contract
+            // names this outcome separately so the explanation can be
+            // "your file is better", with the family that decided it.
+            var decisiveDimension = plan.OrderedFamilies
+                .FirstOrDefault(item => string.Equals(item.Id, decisive, StringComparison.OrdinalIgnoreCase))
+                ?.Dimension ?? decisive;
+            reasons.Add(decisiveDimension is null
+                ? "The installed file is better than this candidate under this plan."
+                : $"The installed file is better than this candidate: '{decisiveDimension}' decides, and the candidate is lower.");
             return Result(
-                PreferenceCandidateStatus.Rejected,
+                PreferenceCandidateStatus.CurrentBetter,
                 false,
                 true,
                 false,

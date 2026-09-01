@@ -198,7 +198,14 @@ public static partial class ReleaseDecisionEngine
                 var currentMeetsCutoff = currentRank >= targetRank;
                 if (currentMeetsCutoff)
                 {
-                    hardReject = true;
+                    // The other legacy rank rules below are already guarded on
+                    // there being no typed plan; this one was not, so a typed
+                    // plan's own "your file is better" comparison was being
+                    // overwritten by a rank rule that could not see it. Keep
+                    // the warning either way - it is the useful half - but let
+                    // the typed comparator name the outcome when it owns the
+                    // decision. Neither path can dispatch automatically.
+                    hardReject = input.PreferencePlan is null;
                     risks.Add($"Downgrade blocked: current file ({normalizedCurrent}) already meets the quality target ({normalizedTarget}). Grab this manually if you want to downgrade.");
                 }
                 else
@@ -387,9 +394,10 @@ public static partial class ReleaseDecisionEngine
                 status = comparison.Status switch
                 {
                     PreferenceCandidateStatus.Upgrade => "preferred",
-                    PreferenceCandidateStatus.Rejected => "rejected",
+                    PreferenceCandidateStatus.Rejected => ReleaseDecisionStatuses.Rejected,
                     PreferenceCandidateStatus.NeedsReview => "held",
                     PreferenceCandidateStatus.Equivalent => "equivalent",
+                    PreferenceCandidateStatus.CurrentBetter => ReleaseDecisionStatuses.CurrentBetter,
                     _ => meetsCutoff ? "acceptable" : "eligible"
                 };
                 reasons.AddRange(comparison.Reasons);
@@ -446,7 +454,8 @@ public static partial class ReleaseDecisionEngine
             "preferred" => "Preferred by the typed release plan.",
             "held" => "Held for review by the typed release plan.",
             "equivalent" => "Equivalent to the installed file under the typed release plan.",
-            "rejected" => "Rejected by the typed release plan.",
+            ReleaseDecisionStatuses.CurrentBetter => "Your installed file is better than this release.",
+            ReleaseDecisionStatuses.Rejected => "Rejected by the typed release plan.",
             _ => "Eligible under the typed release plan."
         }} {explanation}";
     }
