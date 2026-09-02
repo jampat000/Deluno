@@ -265,15 +265,29 @@ public static class ReleasePreferenceEvaluator
             if (candidateFamily.State is PreferenceFactState.Unknown or PreferenceFactState.Conflicting
                 || currentFamily.State is PreferenceFactState.Unknown or PreferenceFactState.Conflicting)
             {
-                // Ranked families are lexicographic. Once a higher-priority
-                // family has proven a persistent improvement below its target,
-                // incomplete evidence in a lower-priority family cannot erase
-                // that proof. This matters for ordinary quality upgrades: a
-                // known 1080p -> 2160p improvement must not wait forever merely
-                // because the release name does not prove a lower-priority HDR
-                // or revision trait. Unknown evidence before any decisive
-                // improvement remains a review boundary.
-                if (firstDifference < 0 && persistentImprovement)
+                // Ranked families are lexicographic: the first differing
+                // family decides, so once one has decided, a lower-priority
+                // family's missing evidence cannot change the answer.
+                //
+                // Downwards, that means a proven persistent improvement below
+                // its target is not erased by a later unknown. A known
+                // 1080p -> 2160p upgrade must not wait forever merely because
+                // the release name does not prove a lower-priority HDR or
+                // revision trait.
+                //
+                // Upwards, it means the same thing for the opposite outcome.
+                // A candidate the installed file already beats on a
+                // higher-priority family is not going to be rescued by a
+                // repack token nobody can read: the answer is "no
+                // replacement" either way, and asking the owner to review it
+                // sends them to look at something that cannot change it. This
+                // is the common case in real searches, where release.revision
+                // is open-world and almost every ordinary release leaves it
+                // unknown.
+                //
+                // Unknown evidence before any decisive difference remains a
+                // review boundary, because there it really could decide.
+                if (firstDifference > 0 || (firstDifference < 0 && persistentImprovement))
                 {
                     continue;
                 }

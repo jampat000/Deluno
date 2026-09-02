@@ -205,7 +205,17 @@ public static partial class ReleaseDecisionEngine
                     // the warning either way - it is the useful half - but let
                     // the typed comparator name the outcome when it owns the
                     // decision. Neither path can dispatch automatically.
-                    hardReject = input.PreferencePlan is null;
+                    //
+                    // Only ever raise the flag here. Assigning it would clear a
+                    // hard gate an earlier rule had already raised - a release
+                    // outside the profile's allowed tiers is usually also a
+                    // downgrade, so that mistake would quietly reopen the exact
+                    // gate the allowed list exists to close.
+                    if (input.PreferencePlan is null)
+                    {
+                        hardReject = true;
+                    }
+
                     risks.Add($"Downgrade blocked: current file ({normalizedCurrent}) already meets the quality target ({normalizedTarget}). Grab this manually if you want to downgrade.");
                 }
                 else

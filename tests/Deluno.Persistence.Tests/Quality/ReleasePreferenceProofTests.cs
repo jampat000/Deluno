@@ -213,6 +213,62 @@ public sealed class ReleasePreferenceProofTests
     }
 
     /// <summary>
+    /// Section 6: the first differing dimension decides. A lower-priority
+    /// family whose evidence is missing therefore cannot reopen a question a
+    /// higher-priority family has already answered, in either direction.
+    ///
+    /// This is the ordinary case on a real indexer, not an edge case:
+    /// release.revision is open-world, so almost every ordinary release name
+    /// leaves it unknown. Without this rule, every worse-quality release comes
+    /// back as "needs review" and sends the owner to look at a repack token
+    /// that could not have changed the answer.
+    /// </summary>
+    [Theory]
+    [InlineData("movies")]
+    [InlineData("tv")]
+    public void An_unknown_lower_priority_family_cannot_reopen_a_decided_comparison(string mediaType)
+    {
+        var plan = AudioAndHdrPlan(mediaType);
+
+        // Audio is the higher-priority family and already decides against the
+        // candidate; HDR is unknown for the candidate and cannot rescue it.
+        var worseWithUnknownTail = ReleasePreferenceEvaluator.Compare(
+            plan,
+            MatrixFacts("audio.format.truehd", "video.dynamic-range.hdr10"),
+            [
+                new PreferenceFact("audio.format.dts", PreferenceFactState.Present),
+                new PreferenceFact("audio.format.truehd-atmos", PreferenceFactState.Absent),
+                new PreferenceFact("audio.format.dtsx", PreferenceFactState.Absent),
+                new PreferenceFact("audio.format.truehd", PreferenceFactState.Absent),
+                new PreferenceFact("audio.format.dts-hd-ma", PreferenceFactState.Absent),
+                new PreferenceFact("video.dynamic-range.hdr10", PreferenceFactState.Present),
+                new PreferenceFact("video.dynamic-range.dolby-vision-fallback", PreferenceFactState.Unknown),
+                new PreferenceFact("video.dynamic-range.sdr", PreferenceFactState.Absent)
+            ]);
+
+        Assert.Equal(PreferenceCandidateStatus.CurrentBetter, worseWithUnknownTail.Status);
+        Assert.Equal("audio", worseWithUnknownTail.DecisiveFamilyId);
+
+        // The boundary is unchanged where the unknown really could decide:
+        // with no higher-priority difference, incomplete evidence is a review.
+        var undecidedWithUnknownTail = ReleasePreferenceEvaluator.Compare(
+            plan,
+            MatrixFacts("audio.format.truehd", "video.dynamic-range.hdr10"),
+            [
+                new PreferenceFact("audio.format.truehd", PreferenceFactState.Present),
+                new PreferenceFact("audio.format.truehd-atmos", PreferenceFactState.Absent),
+                new PreferenceFact("audio.format.dtsx", PreferenceFactState.Absent),
+                new PreferenceFact("audio.format.dts-hd-ma", PreferenceFactState.Absent),
+                new PreferenceFact("audio.format.dts", PreferenceFactState.Absent),
+                new PreferenceFact("video.dynamic-range.hdr10", PreferenceFactState.Unknown),
+                new PreferenceFact("video.dynamic-range.dolby-vision-fallback", PreferenceFactState.Unknown),
+                new PreferenceFact("video.dynamic-range.sdr", PreferenceFactState.Unknown)
+            ]);
+
+        Assert.Equal(PreferenceCandidateStatus.NeedsReview, undecidedWithUnknownTail.Status);
+    }
+
+    /// <summary>
     /// Section 11 closing rule: when the owner says either TrueHD or DTS:X is
     /// fine, those alternatives share one level. Moving between them is
     /// lateral, so it must never become replacement work in either direction.
