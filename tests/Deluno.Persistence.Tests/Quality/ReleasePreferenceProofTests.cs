@@ -194,8 +194,11 @@ public sealed class ReleasePreferenceProofTests
         Assert.Equal(PreferenceCandidateStatus.CurrentBetter, dts.Status);
         Assert.True(dts.Regressed);
         Assert.Equal("audio", dts.DecisiveFamilyId);
+        // Names the family that decided it, without claiming a gate failed
+        // and without repeating the headline the summary already carries.
         Assert.Contains(dts.Reasons, reason =>
-            reason.Contains("installed file is better", StringComparison.OrdinalIgnoreCase));
+            reason.Contains("Audio format", StringComparison.OrdinalIgnoreCase)
+            && reason.Contains("ranks lower", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(dts.Reasons, reason =>
             reason.Contains("hard safety", StringComparison.OrdinalIgnoreCase));
 

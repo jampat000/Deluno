@@ -56,6 +56,17 @@ export function candidateTone(candidate: ReleaseCandidateStatusInput): Candidate
 }
 
 /**
+ * Whether Deluno is arguing *for* this release. A drawer headed "Why Deluno
+ * likes it" over a rejected release is telling the reader the opposite of
+ * what the page just decided.
+ */
+export function likesCandidate(candidate: ReleaseCandidateStatusInput | null | undefined): boolean {
+  if (!candidate) return true;
+  const status = candidate.decisionStatus?.toLowerCase() ?? "";
+  return status !== "rejected" && status !== "current-better" && status !== "equivalent";
+}
+
+/**
  * Whether this candidate could be the automatic winner. The "Best match"
  * caption on the first row is only true for a candidate that can actually
  * win; a list whose best row is one the installed file beats has no winner.

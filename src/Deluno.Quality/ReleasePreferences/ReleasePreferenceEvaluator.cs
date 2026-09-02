@@ -349,9 +349,13 @@ public static class ReleasePreferenceEvaluator
             var decisiveDimension = plan.OrderedFamilies
                 .FirstOrDefault(item => string.Equals(item.Id, decisive, StringComparison.OrdinalIgnoreCase))
                 ?.Dimension ?? decisive;
+            // Say the specific half only. The summary already carries the
+            // headline, and repeating it produced "Your installed file is
+            // better than this release. The installed file is better than
+            // this candidate: ..." on the deployed lab.
             reasons.Add(decisiveDimension is null
-                ? "The installed file is better than this candidate under this plan."
-                : $"The installed file is better than this candidate: '{decisiveDimension}' decides, and the candidate is lower.");
+                ? "No preference in this plan ranks this release above your file."
+                : $"{decisiveDimension} decided it; this release ranks lower.");
             return Result(
                 PreferenceCandidateStatus.CurrentBetter,
                 false,

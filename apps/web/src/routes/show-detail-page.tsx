@@ -34,7 +34,7 @@ import { authedFetch } from "../lib/use-auth";
 import { cn } from "../lib/utils";
 import { isEpisodeMissing, isEpisodeUpcoming, summariseEpisodes } from "../lib/episode-progress";
 import { describeSearchReason, formatSearchFailureNotice } from "../lib/search-reasons";
-import { candidateLabel, candidateTone, canWinSearch, isTypedCandidate } from "../lib/release-candidate-status";
+import { candidateLabel, candidateTone, canWinSearch, isTypedCandidate, likesCandidate } from "../lib/release-candidate-status";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
@@ -1483,7 +1483,7 @@ export function ShowDetailPage() {
             </DrawerSection>
 
             {openCandidate.decisionReasons?.length ? (
-              <DrawerSection title="Why Deluno likes it">
+              <DrawerSection title={likesCandidate(openCandidate) ? "Why Deluno likes it" : "How Deluno reached this"}>
                 <ul className="grid gap-1">
                   {openCandidate.decisionReasons.slice(0, 6).map((reason) => (
                     <li key={reason} className="text-[length:var(--type-body-sm)] text-muted-foreground">
