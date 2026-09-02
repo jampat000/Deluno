@@ -87,8 +87,11 @@ export function describeSearchReason(reason: string | undefined, fallback: strin
       };
     case "all_indexers_failed":
       return {
+        // Not "reached": a timeout never reached anything, and this line is
+        // shown for that case too. Each indexer's own failure follows and says
+        // precisely what happened to it, so this one only has to be true.
         title: "Every indexer failed to answer",
-        description: "Deluno reached the linked indexers, but they all failed. Check their health and credentials.",
+        description: "No linked indexer returned a usable answer.",
         action: { label: "Check indexers", href: "/indexers/indexers" }
       };
     case "circuit_open":
