@@ -84,9 +84,39 @@ to verify persisted state or external outcomes.
   queued/running/failed jobs, an unchanged catalogue of 2 movies and 1 show, retained
   historical job rows, both download clients healthy, and the staging directory removed.
   Local gates: `npm run ci:check` 8/8, backend 1,501 passed with 2 benchmark skips, web
-  284 passed with 10 skips. **Independent real-Chrome review of the candidate list on the
-  deployed lab is still outstanding**, and #354 remains open regardless: its definition of
-  done is downstream of #349–#353.
+  284 passed with 10 skips.
+
+  **The Chrome pass then found three more things, two of them serious.** Opening the
+  candidate list needed an interactive search, and with the fixture indexer stopped that
+  search returned HTTP 500 and the UI could only say “The search request failed.” The
+  event log had a `NullReferenceException` out of `FeedMediaSearchPlanner.WithTelemetry`:
+  `IntegrationResilienceResult<T>.Value` is declared `T?` and `IndexerSearchOutcome` is a
+  struct, so `result.Value is { } value` is a null test a value type can never fail — the
+  policy hands back `default(T)` with a null candidate list and the next line reads its
+  `.Count`. Every indexer timeout, refusal or open circuit crashed the whole search
+  instead of being reported as the typed failure the method had already built, which is
+  the opposite of the planner's own stated design and breaks acceptance row 5.11. Fixed
+  and merged separately as #338 work in PR #366, with a resilience-policy test double that
+  can actually fail — every existing planner test used one that always succeeds, which is
+  why nothing caught it. The other five call sites of that policy pass reference types and
+  were checked. Then the drawer itself said the same thing twice (“Your installed file is
+  better than this release. The installed file is better than this candidate…”) and headed
+  its reason list “Why Deluno likes it” over a release it had just refused; both corrected.
+
+  **Verified in real Chrome against the deployed lab.** The Big Buck Bunny candidate list
+  renders three distinct decisions with three distinct tones: `Your file is better` and
+  `Needs review` in the informational amber, and `Rejected` in red for the only release a
+  rule actually refused. Its drawer reads “Your installed file is better than this release.
+  Quality decided it; this release ranks lower.” under the heading “How Deluno reached
+  this”, keeps the honest “Downgrade blocked… grab this manually if you want to
+  downgrade” risk, and keeps the Force override. The rejected release names its own gate:
+  “WEB 720p is not one of the qualities this profile allows (WEB 2160p, WEB 1080p, Remux
+  2160p).” Final deployed executable SHA-256 is
+  `B7BA5F3B221CB2B4B6DD5238E7618B7082AAC2323F6566B5990CFA6B80497506` with rollback
+  `C:\Deluno\App.rollback-20260902-161951`. The lab finished at 9/9 ready, 0
+  queued/running/failed jobs, 2 movies and 1 show, no fixture rows and no tags left behind.
+
+  #354 remains open regardless: its definition of done is downstream of #349–#353.
 
 - **Real partly-installed season replacement proof for #342/#345 (1 September):** a deliberately isolated Torznab fixture exposed exactly one five-file Breaking Bad S01 2160p Blu-ray season pack. Deluno routed that one candidate to qBittorrent, whose real completed torrent (`6393632eb81a88496b78adb8aa7f123f87b57667`) imported through Deluno dispatch `01a05c53ce6b750b990d68e2c8d5e0b9`. S01E01–E05 each landed at their own final library path with the same `2026-09-01T09:36:35.8330933+00:00` catalogue update and SHA-256 `46F62396C755E1ED0AB856A1521378D54196E125EF1A1643A199AF087A15046B`; the retained qBittorrent source still contains five matching videos plus its NFO. The first fixed-point search exposed a real defect rather than being waived: only the representative episode had current same-plan evidence, so the candidate held with `season_pack_installed_evidence_missing`. The deployed correction makes the media probe episode-file scoped and atomically persists an evaluation for every distinct completed pack destination. Focused persistence tests passed 42/42, Series 42/42, the worker probe test 1/1, schema validation 28/28, and the mandatory CI gate passed 8/8 immediately before the final publish. The approved ZIP promotion verified archive SHA-256 `1FB484F11DF6A64C2EECB5B359E90F0A6AEA341FFF1E5C7A3D8DFA490D9D7087` and staged/promoted host SHA-256 `5A273217CB598B6C99363029975B84147AE9F62C1D32DFA396A394145AD332BB`. The deployed 20:05 media-probe created exact current-plan snapshots for all five files. Repeating the isolated season search then returned `held / season_pack_candidate_not_upgrade_for_every_episode`, five comparisons, `queuedCount: 0`, and no dispatch — the required fixed-point convergence result. Cleanup restored the original E2E TV profile and normal Torznab/SAB routing, deleted only the temporary custom format/indexer, stopped only the verified port-9120 listener while leaving normal port 9117 intact, and retained the fixture artifacts, qBittorrent torrent, source and audit rows. The normal 20:35 probe then re-evaluated all five final files under the restored plan. A final `Deluno Host` scheduled-task restart returned all nine readiness checks ready; qBittorrent remained healthy. Both #342 and #345 remain open for their broader representative-flow and remaining acceptance criteria; this is the real Standard-TV season-replacement, import, fixed-point, cleanup and restart slice.
 
