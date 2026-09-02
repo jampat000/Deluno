@@ -1,168 +1,172 @@
 # Deluno — current baseline and handover
 
-Snapshot: **1 September 2026, Australia/Sydney**.
+Snapshot: **3 September 2026, Australia/Sydney**.
 
-This is the current operational baseline. It replaces the old handover that
-described commit `de117a4`, a clean tree, 1,179 backend tests, and no work in
-flight. Those claims are no longer current.
+Replaces the 1 September handover, which described an intentionally dirty
+shared worktree at `38e5ae8`. That is no longer the operating mode: the tree is
+clean, every branch is merged, and work reaches `main` through pull requests.
 
 ## Start here
 
 - Work only from `C:\Projects\Deluno`.
 - Read `AGENTS.md` and `docs/PRODUCT_NORTH_STAR.md` before changing anything.
-- Preserve the shared working tree. Do not reset, checkout, clean, overwrite,
-  stage, commit, push, or close issues merely to make the repository look tidy.
 - Run `git status --short --branch` before editing.
-- Do not touch or close #78, #81, #82, #269, #329, or #330.
 - An issue closes only when its acceptance criteria have been implemented,
-  executed, remediated, and evidenced. Broad issues remain open when only one
-  slice is proven.
+  executed, remediated and evidenced. Broad issues stay open when one slice is
+  proven.
 
 ## Git baseline
 
-| Item | Current state |
+| Item | State |
 |---|---|
-| Branch | `main` |
-| HEAD | `38e5ae806d92a862fdcbd4bcaabef5bb83935add` |
-| `origin/main` | same commit; ahead 0, behind 0 |
-| Worktree | intentionally dirty shared worktree |
-| Tracked changes | 319 modified, 1 deleted |
-| Untracked paths | 182 |
-| Tracked diff | about 24,942 insertions and 4,306 deletions |
-| Whitespace check | `git diff --check` passes |
-| Current CI gate | `npm run ci:check` passed 8/8 with no warnings on 1 September after the latest local notification fix |
+| Branch | `main`, clean, ahead 0 behind 0 |
+| HEAD | `52e0916` — *a download the client calls errored is not ready to import (#373)* |
+| Merged 2 September | #365, #366, #367, #368, #369, #370, #371, #372, #373 |
+| Open PRs | none |
+| Local branches | none but `main` |
 
-The dirty tree contains the backlog implementation, tests, documentation, and
-test-result artefacts accumulated across the current autonomous run. It is not a
-safe candidate for a mechanical cleanup. Integration must be deliberate and
-path-scoped after the work has been reviewed.
+`main` **is** branch-protected and asks for one approving review. A solo
+squash-merge therefore needs `gh pr merge --squash --admin`; admin enforcement
+is off for exactly this, and the product owner has authorised agent-run merges.
+AGENTS.md said the branch was unprotected until 2 September; it was true once
+and stopped being true without the map noticing.
 
-## Live lab baseline
+## Lab baseline
 
-The Windows lab is at `http://10.1.1.142:5099`. Credentials and the scheduled-task
-deployment procedure are recorded in `E2E-full-product-test.md`. Never launch a
-second ad-hoc Deluno host; deploy and restart only through the **Deluno Host**
-scheduled task after `npm run ci:check` passes.
+`http://10.1.1.142:5099`, credentials and rig topology in
+`E2E-full-product-test.md`. Deploy only through the **Deluno Host** scheduled
+task.
 
-| Item | Current state |
+| Item | State |
 |---|---|
-| Scheduled task | `Deluno Host` running |
-| Host PID | 2604 |
-| Readiness | ready; all 9 checks ready |
-| Deployed executable SHA-256 | `45D004F5F3C53C27622CA9194278351D334D2E64A52F869EBB7D6447E9C8B3B6` |
-| Rollback | 10 retained; latest `C:\Deluno\App.rollback-20260901-165400` |
-| Catalogue | 2 movies, 1 show; no temporary catalogue titles |
-| Notifications | globally disabled |
-| Webhooks | one pre-existing `E2E webhook test`; the temporary DLQ fixture webhook was removed |
-| Download clients | SABnzbd and qBittorrent healthy |
-| qBittorrent | 3 retained completed/import-ready lab downloads |
-| SABnzbd | no queued download; retained native/import audit history |
-| Jobs | 156 completed, 114 historical dead-letter, 0 active |
+| Readiness | ready, 9/9 |
+| Executable | built by `publish-windows.ps1 -Fast` — loose assemblies, not a single-file bundle |
+| Catalogue | 2 movies, 1 show |
+| Jobs | 0 queued/running/failed; historical completed and dead-letter rows retained |
+| Download clients | qBittorrent and SABnzbd healthy |
+| Torznab fixture | **stopped**. It runs on the desktop, not the VM: `TORZNAB_BIND=0.0.0.0 TORZNAB_ADVERTISE=10.1.1.102 python scripts/lab/torznab_seed.py` |
 
-The lab is functionally healthy, not a blank database. Readiness confirms all
-five databases, migrations, writable storage, a fresh worker heartbeat, and no
-stalled or lagged jobs. Historical completed and dead-letter job rows are kept as
-audit evidence. One temporary webhook-delivery dead-letter row is also retained
-because delivery history deliberately survives deletion of its webhook.
+## Deployment is no longer slow — use the new scripts
 
-During this baseline audit, an old deterministic SAB entry named
-`Breaking.Bad.S01E01.2160p.WEB-DL.x264-DELUNO` was found creating a fresh rejected
-sample import every worker cycle. Only that exact SAB history entry
-(`4a5ee8bf-96a3-42c7-be7f-46445d57e2c5`) was removed. The imported `DELUNOLAB`
-entries and all user/catalogue state were left intact. The last already-created
-retry exhausted normally; the jobs API then reported **0 queued, running, or
-failed jobs**, and readiness remained 9/9.
+Deploying used to take about nine minutes and was moving roughly 300 MB to
+deliver, typically, under a megabyte of change. Two causes, both fixed:
 
-## What has been implemented and executed
+- **the publish folder was never cleaned.** `dotnet publish` does not remove
+  what it no longer produces and the web assets are content-hashed, so every
+  chunk since the project began was still there: 3,096 asset files where a
+  build makes 83. The lab had 9,586 files where 670 are real; the first new
+  deploy removed 9,506 orphans from it.
+- **every deploy rebuilt a 163 MB single-file bundle.** Right for a release
+  artifact, pointless for iteration.
 
-The detailed evidence ledger is
-`E2E-full-product-test-run-2026-08-31.md`. The highest-value completed slices are:
+```powershell
+./scripts/publish-windows.ps1 -Fast   # ~20s, executable is 0.15 MB
+$env:DELUNO_LAB_PASSWORD = '<lab password from E2E-full-product-test.md>'
+./scripts/deploy-lab.ps1              # SHA-256 per file, copies only what differs
+```
 
-1. **Real download/import path** — qBittorrent movie import and deterministic
-   SABnzbd NZB/yEnc TV downloads were executed through Deluno and survived
-   scheduled-task restarts. Multi-episode imports now persist final library paths,
-   not disposable client paths.
-2. **Season-pack safety and atomic import (#342)** — explicit episode manifests,
-   catalogue validation, rejection of ambiguous multi-video packs, transactional
-   catalogue writes, filesystem compensation, idempotent retry, and positive live
-   two-file placement were implemented and exercised.
-3. **Upgrade convergence and atomic replacement (#345/#342)** — installed-file
-   evidence is evaluated per episode; unsafe whole-season replacement is held
-   before external work; exact episode-to-owned-path manifests drive atomic
-   multi-file replacement with rollback and restart-safe `already-committed`
-   retries. A wrong-owner negative case and a positive two-file replacement were
-   executed live.
-4. **Calm TMDb removal recovery (#357)** — movie and TV titles, files, history,
-   monitoring, and local metadata are retained. Evidence can be acknowledged;
-   retry and reviewed remap are separate from removal. Remap preview/apply now has
-   confirmation tokens, conflict protection, stale-token checks, TV episode-loss
-   protection, and restart proof. This directly implements the product rule that
-   an upstream metadata deletion is a title-scoped recoverable condition, not a
-   system emergency.
-5. **Truthful SAB identity/telemetry (#338)** — SAB add responses now retain native
-   `nzo_id` at dispatch creation across grab paths; telemetry converges native and
-   dispatch-derived history into one stable row. The exact identity survived a
-   live restart.
-6. **Automation idempotency (#344)** — the PowerShell contract now sends the real
-   `Idempotency-Key`, verifies byte-identical replay, and requires 409 for the same
-   key with a conflicting body. A non-dry mixed movie/series write with explicit
-   episodes was executed, replayed, conflict-tested, verified, and cleaned up.
+`deploy-lab.ps1` verifies every file on the host matches the publish output,
+removes what the build no longer produces, restarts the task and proves
+readiness. Use `-Rollback` for anything you would struggle to rebuild. For a
+front-end-only change, `npm run build:web` and replace `App\wwwroot`.
 
-No broad issue was closed on the strength of these partial slices.
+**Never run two `dotnet` commands at once.** A second process takes file locks
+on the built assemblies and fails the first with `MSB3027`/`MSB3021`, which
+reads like a broken build and is not one. Several ten-minute losses on
+2 September came from exactly this.
 
-## Implemented locally but not deployed
+## Product decisions taken on 2 September
 
-The live webhook dead-letter exercise exposed a truthful-remediation defect: an
-exhausted delivery was labelled `RetryScheduled` and told the user Deluno would
-retry even though `nextAttemptUtc` was null. The local fix:
+These are the owner's calls. They are not negotiable defaults to re-derive.
 
-- records exhausted webhook delivery as `ManualAction`;
-- clears retry time;
-- tells the user to check the service/network and replay the delivery;
-- keeps transient retry wording for attempts that really are scheduled.
+| Decision | Consequence |
+|---|---|
+| **Deluno ships unsigned.** No code-signing certificate is being bought. | Windows SmartScreen warns on first install; README, the release checklist and the release-notes draft all say so and give the two clicks past it. `release.yml` used to hard-fail an unsigned 1.x build, so **no 1.x release could be produced at all** — fixed in #371. |
+| **#330 machine translation: not planned.** Deluno does not translate subtitles. | Closed. No code existed. |
+| **#349 playback goals: parked** for discussion. | Do not work it. Do not close it. |
+| **#81 and #82 are the very last things**, and can run in parallel. | Stop when you reach them. |
+| **#337: free rein on the VM / Hyper-V.** | Install a container runtime there; neither this machine nor the lab has one today. |
+| **#339: Cloudflare is available** for email. Park it if it becomes a project. | |
+| **#329 Whisper: go ahead on the lab VM**, and **measure** it — model size, CPU/GPU time per file, memory, effect on the rest of the app — then recommend whether it is worth shipping. A "no" is an acceptable answer. | |
 
-Focused notification/integration-failure tests passed **16/16**, and the complete
-CI gate passed **8/8** after the fix. This change is **not in the deployed hash
-above**. It still needs CI-gated scheduled-task deployment, live dead-letter
-replay, restart proof, cleanup, ledger evidence, and an issue comment before that
-slice can be called complete.
+## The mistake to not repeat
 
-## Open backlog baseline
+**Three issues were closed by accident in one day** — #354, #338, #357 and #78
+across four merges — because pull-request bodies and commit messages said
+things like *"this does not close #354"*. GitHub's parser does not read
+negation and does not care that you are quoting; one of the closures came from
+the very commit that documented the rule.
 
-There are **27 open issues**:
+Writing it into `AGENTS.md` did not stop it. It is now mechanical:
+`scripts/check-issue-closing-keywords.ps1` runs inside `npm run ci:check` and
+fails on a HEAD commit message that would close an issue. Write `Refs #NNN`,
+and keep the number away from close/fixes/resolves.
 
-- protected/external or explicitly untouched: #78, #81, #82, #269, #329, #330;
-- Subber/stack epics: #301, #321, #322;
-- infrastructure and integration: #337, #338, #344;
-- portal/mobile: #339, #340, #341;
-- TV/import/convergence: #342, #345;
-- media plans and release preferences: #343, #347–#354;
-- metadata recovery: #357.
+All four were reopened. If an issue disappears from the open list unexpectedly,
+check whether a merge closed it before assuming somebody decided it was done.
 
-Important remaining acceptance work:
+## Open backlog — 18 issues
 
-- #337 has no honest container runtime proof because Docker, Podman, and nerdctl
-  are absent locally and in the lab.
-- #338 still needs the broader client/indexer matrix and visible Health, Activity,
-  and title-level failure-mode acceptance.
-- #344 still needs the webhook replay slice above, Home Assistant install/action
-  proof, existing-library import automation, and clean-host CI orchestration.
-- #341 is a product-wide real-device mobile workflow matrix, not a small layout fix.
-- #342/#345 still need a real client/indexer season replacement dispatch,
-  automatic zero-work convergence, and representative Daily, Anime, specials,
-  scene-numbering, and owner-mapping flows.
-- #357 is implemented, tested, and live-proven for movie and TV, but remains open
-  because the work is still in this uncommitted shared tree rather than durable
-  integrated repository history.
-- #343 and #347–#354 are broad normative/implementation/proof/UX bodies of work;
-  they must not be closed from isolated tests or scaffolding.
+**Release-preference chain**, the largest interlocked body of work. #354 is the
+normative contract and closes only after #347–#353 do, so it cannot close
+early. Dependency order: **#351 → #350 → #352/#353**, with **#343** as its own
+lifecycle track. #349 is parked.
 
-## Recommended next sequence
+**Subber.** #301 is the outcome, #321 the Bazarr-parity delta, #329 Whisper. An
+audit on 2 September found **#321's body substantially stale** — the
+unknown-language question and embedded-as-a-choice are built end to end, and
+`.en.sdh.srt` naming exists. Read
+[the audit comment](https://github.com/jampat000/Deluno/issues/321#issuecomment-5508112058)
+before estimating. Genuinely unbuilt: Language Equals, must/must-not-contain
+language profiles, custom post-processing command, anti-captcha, the audio
+column. Content modification has 5 of Bazarr's 8.
 
-1. Deploy the already-tested webhook terminal-state fix through the scheduled
-   task, execute dead-letter → replay → restart proof, clean its temporary fixture,
-   and update #344 without closing the broad issue.
-2. Continue #338's remaining truthful failure surfaces and client/indexer matrix.
-3. Return to the real-client #342/#345 replacement/convergence gaps.
-4. Integrate the shared worktree in reviewable, explicit path groups; only then
-   reassess issue closure from acceptance evidence.
+**On subtitle credentials:** Deluno already models them per provider. Gestdown
+and Subf2m need nothing, Podnapisi is optional username/password, SubDL and
+SubSource take a key. OpenSubtitles.com needs username, password **and** an API
+key — that is the provider's REST API requirement, not Deluno's invention, and
+the key is free from the same account. Do not "fix" this.
+
+**#338** telemetry: three slices merged on 2 September. Remaining — the
+per-client contract depth, and a complete grab → client → import trace
+surviving restart for a torrent path.
+
+**#357** metadata recovery: phone/keyboard/screen-reader evidence merged.
+Remaining — populated file/assignment retention coverage, and a live-lab pass.
+
+**Blocked or last:** #337 (needs a runtime), #339 (needs email), #340 (iOS
+needs macOS and Xcode, which do not exist here), #341, #269, #322, and #78 →
+#81 → #82.
+
+## What the lab keeps proving
+
+On 2 September the deployed lab exposed **five defects a green 1,500-test suite
+had passed over**, two of them in code written and tested minutes earlier:
+
+- an unreachable indexer threw a `NullReferenceException` and returned HTTP 500
+  — `IntegrationResilienceResult<T>.Value` is `T?` and the payload was a
+  struct, so the null-test guarding it could never fail;
+- a guard written `hardReject = input.PreferencePlan is null` **cleared** a hard
+  gate an earlier rule had raised;
+- a lower-priority unknown family reopened a comparison a higher-priority one
+  had already decided, making "your file is better" unreachable in practice;
+- a completed download the client called *errored* was reported ready to import;
+- the drawer said the same sentence twice and headed a refusal "Why Deluno
+  likes it".
+
+Deploy and look before claiming a slice works. The suite has never once been
+the thing that found these.
+
+## Verification
+
+```powershell
+npm run ci:check                                    # 9 checks
+dotnet test Deluno.slnx --configuration Release     # 1,512 passed, 2 benchmark skips
+npm run test:web                                    # 286 passed, 10 skipped
+```
+
+Real-Chrome verification against the deployed lab is required for user-facing
+changes — batched per group of slices, not per slice. The lab session lives in
+`sessionStorage` with roughly an hour's life, so a new tab starts signed out and
+the owner has to sign in; park the tab on the target deep link first so the
+redirect lands where the check is.
