@@ -35,6 +35,59 @@ to verify persisted state or external outcomes.
 
 ## Findings
 
+- **Truthful comparison vocabulary for #354 (2 September):** the typed comparison
+  had five outcomes where the normative contract names six, so two different
+  things were both reported as `Rejected` — a release that passed every hard gate
+  and is simply worse than the installed file, and one whose required evidence is
+  unknown or conflicting, which section 3's truth tables call a review. Both showed
+  a red “Rejected” chip naming a rule that had never fired. `CurrentBetter` was added
+  and returned with the deciding family named in words; unknown evidence now returns
+  `NeedsReview`; the candidate ordering table moved into `ReleaseDecisionStatuses` so
+  “cannot win this search” is written once; and the candidate label/tone helpers,
+  which existed byte for byte in both the movie and show detail pages, were extracted
+  to one module. The section 11 and 12 canonical examples are now complete fixtures in
+  both Movie and TV paths, including the DTS “current is better” row, the DTS:X and
+  TrueHD Atmos upgrade rows, equal target alternatives being lateral, and the two
+  compatibility rows that decide whether Dolby Vision is safe.
+
+  **The deployed lab found two defects the whole suite had passed, and a third
+  wording defect.** First, the new downgrade guard was written
+  `hardReject = input.PreferencePlan is null` — an assignment. The allowed-quality
+  gate runs earlier in the same method and a not-allowed release is usually also a
+  downgrade, so a WEB 720p release came back `held` while still carrying the risk flag
+  saying that quality is not allowed: the gate had raised the flag and this line had
+  cleared it. Second, a lower-priority family whose evidence is unknown was reopening a
+  comparison a higher-priority family had already decided; because `release.revision`
+  is open-world and almost no release name proves it, every worse-quality candidate came
+  back “needs review” and sent the owner to look at a repack token that could not have
+  changed the answer. Third, a rejected candidate explained itself with the preference
+  comparison instead of the gate that rejected it. All three are fixed and pinned by
+  tests; every other gate flag in the engine was checked for the assignment shape.
+
+  Deployed through the `Deluno Host` scheduled task as a self-contained `win-x64`
+  publish with ZIP staging and hash verification at every hop: archive SHA-256
+  `9F60A597E2E856798C350FF9CEAE969F0B7041795645BE1A422D19ECE7D98E1B` matched local and
+  remote, promoted executable SHA-256
+  `D9B4C9D025C342BCEF5954C7B977E93F2385B4F4918B7EF725F1B130A8FDA995` matched the staged
+  copy, 9,042 files, previous build retained as
+  `C:\Deluno\App.rollback-20260902-103659`. Big Buck Bunny is installed at WEB 2160p
+  under the *E2E 4K Streaming Movies* profile, and the Torznab fixture serves the same
+  title at three tiers, so one search produced one of each outcome:
+  WEB 1080p → `current-better` (“Your installed file is better than this release…
+  'Quality' decides”), WEB 2160p → `held` (revision genuinely unknown for the
+  candidate), WEB 720p → `rejected` naming the actual gate (“WEB 720p is not one of the
+  qualities this profile allows”). Before this work all three said the same misleading
+  thing. The result was byte-identical after a scheduled-task restart (PID 2856 → 8920),
+  readiness stayed 9/9 throughout, and the served bundle carries the new copy in
+  `assets/rating-strip.TvQtjdbl.js` and `assets/settings-custom-formats-page.BslVxswN.js`.
+  Every search used `mode=preview`, so nothing was dispatched: the lab finished with 0
+  queued/running/failed jobs, an unchanged catalogue of 2 movies and 1 show, retained
+  historical job rows, both download clients healthy, and the staging directory removed.
+  Local gates: `npm run ci:check` 8/8, backend 1,501 passed with 2 benchmark skips, web
+  284 passed with 10 skips. **Independent real-Chrome review of the candidate list on the
+  deployed lab is still outstanding**, and #354 remains open regardless: its definition of
+  done is downstream of #349–#353.
+
 - **Real partly-installed season replacement proof for #342/#345 (1 September):** a deliberately isolated Torznab fixture exposed exactly one five-file Breaking Bad S01 2160p Blu-ray season pack. Deluno routed that one candidate to qBittorrent, whose real completed torrent (`6393632eb81a88496b78adb8aa7f123f87b57667`) imported through Deluno dispatch `01a05c53ce6b750b990d68e2c8d5e0b9`. S01E01–E05 each landed at their own final library path with the same `2026-09-01T09:36:35.8330933+00:00` catalogue update and SHA-256 `46F62396C755E1ED0AB856A1521378D54196E125EF1A1643A199AF087A15046B`; the retained qBittorrent source still contains five matching videos plus its NFO. The first fixed-point search exposed a real defect rather than being waived: only the representative episode had current same-plan evidence, so the candidate held with `season_pack_installed_evidence_missing`. The deployed correction makes the media probe episode-file scoped and atomically persists an evaluation for every distinct completed pack destination. Focused persistence tests passed 42/42, Series 42/42, the worker probe test 1/1, schema validation 28/28, and the mandatory CI gate passed 8/8 immediately before the final publish. The approved ZIP promotion verified archive SHA-256 `1FB484F11DF6A64C2EECB5B359E90F0A6AEA341FFF1E5C7A3D8DFA490D9D7087` and staged/promoted host SHA-256 `5A273217CB598B6C99363029975B84147AE9F62C1D32DFA396A394145AD332BB`. The deployed 20:05 media-probe created exact current-plan snapshots for all five files. Repeating the isolated season search then returned `held / season_pack_candidate_not_upgrade_for_every_episode`, five comparisons, `queuedCount: 0`, and no dispatch — the required fixed-point convergence result. Cleanup restored the original E2E TV profile and normal Torznab/SAB routing, deleted only the temporary custom format/indexer, stopped only the verified port-9120 listener while leaving normal port 9117 intact, and retained the fixture artifacts, qBittorrent torrent, source and audit rows. The normal 20:35 probe then re-evaluated all five final files under the restored plan. A final `Deluno Host` scheduled-task restart returned all nine readiness checks ready; qBittorrent remained healthy. Both #342 and #345 remain open for their broader representative-flow and remaining acceptance criteria; this is the real Standard-TV season-replacement, import, fixed-point, cleanup and restart slice.
 
 - **Fixed #356 (closed):** Live import left `{IMDb ID}` literal in a movie folder and flattened destination-template separators. Shared renderer and catalogue metadata propagation are now deployed and regression-tested.
