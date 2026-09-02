@@ -44,6 +44,12 @@ public sealed class ReleaseDecisionEngineQualityModelTests
         // The downgrade warning is still shown; it just does not decide.
         Assert.Contains(decision.RiskFlags, flag =>
             flag.Contains("Downgrade blocked", StringComparison.OrdinalIgnoreCase));
+
+        // A rejection names the gate that failed, not the preference
+        // comparison. Saying "your file is better" about a release the
+        // profile refused would name the wrong rule.
+        Assert.Contains("not one of the qualities", decision.Summary, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("installed file is better", decision.Summary, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

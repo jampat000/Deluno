@@ -432,7 +432,7 @@ public static partial class ReleaseDecisionEngine
 
         var summary = input.PreferencePlan is null
             ? BuildSummary(status, normalizedCandidate, normalizedTarget, input.CustomFormatScore, input.Seeders, risks.Count, risks)
-            : BuildTypedSummary(status, preferenceComparison, preferenceEvaluation);
+            : BuildTypedSummary(status, preferenceComparison, preferenceEvaluation, risks);
         return new ReleaseDecision(
             effectivePolicyVersion,
             status,
@@ -454,8 +454,21 @@ public static partial class ReleaseDecisionEngine
     private static string BuildTypedSummary(
         string status,
         PreferenceComparison? comparison,
-        PreferenceEvaluation? evaluation)
+        PreferenceEvaluation? evaluation,
+        IReadOnlyList<string> risks)
     {
+        // Section 10: a rejection names the gate that failed. The typed
+        // comparison's reasons describe the preference outcome, which for a
+        // rejected release is the wrong sentence - it explained a release
+        // the profile's allowed tiers had refused as "your file is better",
+        // naming a comparison instead of the rule that actually stopped it.
+        // The gate's own wording lives in the risk flags.
+        if (string.Equals(status, ReleaseDecisionStatuses.Rejected, StringComparison.Ordinal)
+            && risks.FirstOrDefault(risk => !string.IsNullOrWhiteSpace(risk)) is { } gate)
+        {
+            return $"Rejected by the typed release plan. {gate}";
+        }
+
         var reasons = comparison?.Reasons ?? evaluation?.Reasons ?? [];
         var explanation = reasons.FirstOrDefault(reason => !string.IsNullOrWhiteSpace(reason))
             ?? "Typed preference evaluation completed.";
