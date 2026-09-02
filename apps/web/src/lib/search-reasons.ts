@@ -97,7 +97,10 @@ export function describeSearchReason(reason: string | undefined, fallback: strin
     case "circuit_open":
       return {
         title: "Indexer search is temporarily paused",
-        description: "Deluno is waiting for an indexer circuit breaker to recover.",
+        // Not "circuit breaker": that is Deluno's word for it, not the
+        // owner's. The failure that follows names the indexer and the time
+        // it will be tried again, so this line only sets the scene.
+        description: "Deluno stopped querying an indexer after it failed repeatedly, and will try it again by itself.",
         action: { label: "Check indexers", href: "/indexers/indexers" }
       };
     case "no_results":

@@ -99,7 +99,9 @@ public sealed class IntegrationResiliencePolicy(
                 normalized.ServiceName ?? normalized.Operation,
                 normalized.Operation,
                 retryAfterUtc,
-                $"{normalized.ServiceName ?? normalized.Operation} is temporarily disabled after repeated failures.");
+                // Summary is "{ServiceName} {Operation} failed: {Message}",
+                // so naming the service here says it twice.
+                "Deluno paused it after repeated failures.");
             return new IntegrationResilienceResult<T>(
                 Value: default,
                 CircuitOpen: true,

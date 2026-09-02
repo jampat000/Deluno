@@ -83,6 +83,29 @@ public sealed class FeedMediaSearchPlannerReasonTests
     }
 
     /// <summary>
+    /// The paused-integration wording travels through the same Summary
+    /// template, so it must not name the service a second time.
+    /// </summary>
+    [Fact]
+    public void A_paused_integration_names_the_service_once()
+    {
+        var failure = IntegrationFailureFactory.CircuitOpen(
+            "indexer",
+            "primary",
+            "Primary indexer",
+            "search",
+            DateTimeOffset.UtcNow.AddMinutes(5),
+            "Deluno paused it after repeated failures.");
+
+        Assert.Equal(
+            "Primary indexer search failed: Deluno paused it after repeated failures.",
+            failure.Summary);
+
+        var occurrences = failure.Summary.Split("Primary indexer").Length - 1;
+        Assert.Equal(1, occurrences);
+    }
+
+    /// <summary>
     /// An indexer that does not answer is an ordinary, expected condition, and
     /// this planner already carries a typed failure for it. It used to throw a
     /// NullReferenceException out of the telemetry builder instead, so the API
