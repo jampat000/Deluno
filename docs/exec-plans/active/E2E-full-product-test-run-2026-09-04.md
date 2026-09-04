@@ -43,6 +43,14 @@ literally the shipped binary, and that limitation stands.
 | [#407](https://github.com/jampat000/Deluno/issues/407) | A library saves with a root folder that does not exist, and nothing ever creates it. The check says "That folder does not exist yet"; Create saves it anyway. `Deluno.Libraries` never calls `Directory.CreateDirectory`, so the library is pointed at nothing permanently. |
 | [#408](https://github.com/jampat000/Deluno/issues/408) | Path diagnostics report a non-existent folder as **Writable**. `Readable` probes the path, `Writable` probes the *parent* — one field name, two subjects, rendered as sibling chips. The negative case of the contract #294 fixed. |
 | [#409](https://github.com/jampat000/Deluno/issues/409) | **Test connection** spins for 25 seconds, then reports an 8-second timeout and one attempt. Both health tests omit `MaxAttempts`, so they retry three times; the two user-initiated *actions* set `MaxAttempts: 1` explicitly. Reproduced twice, identically. |
+| [#410](https://github.com/jampat000/Deluno/issues/410) | The category check confirms a category's **name** and never its save path. `deluno-tv` has an empty path and reports `ready`; its downloads land in `...\Downloads-Complete\deluno-tv`, not `...\TV`. `DownloadClientCategoryCheckResult` has no save-path field at all. |
+| [#411](https://github.com/jampat000/Deluno/issues/411) | **SABnzbd reports Healthy with a wrong API key.** The health test probes `mode=version`, which SABnzbd answers to anyone; the client itself uses `mode=queue`, which 403s. The Test button asks a question that cannot fail. |
+
+**Three of those five are one shape**: a check that validates something *adjacent*
+to the thing that matters. #408 reports `Writable` about the parent folder, #410
+confirms a category's name but not its destination, #411 tests an endpoint that
+does not need the credential under test. Worth one audit rather than three
+patches.
 
 ## Phase 0 — a genuinely clean install
 
@@ -127,9 +135,68 @@ called it `unreachable` — correctly. The failure was mine, not the product's,
 and the honest report is what let me tell the difference quickly. It is now
 started in a way that survives.
 
-## Phases 4, 6–13
+| 5.5 | **Open New client and press Add immediately** — a client is created from the defaults | pass — the #293 acceptance. The form arrives filled in and Add created a working qBittorrent client with no edits |
+| 5.6 | Healthy, and it names the host it reached | pass — "Connected to qBittorrent at localhost:8080", 5 ms |
+| 5.7 | The category check reports the truth about the real client | **fail — #410** |
+| 5.8 | Wrong API key: degraded, and says the key is the problem | **fail — #411**, reports Healthy |
+| 5.9 | Fix the key and re-test: healthy | pass — "Connected to SABnzbd at localhost:8085" |
+
+## Phase 4 — library profiles
+
+| # | Must be true | Outcome |
+|---|---|---|
+| 4.1 | Names what is missing rather than sitting inert (#293) | pass — same placeholder-as-value snag as 3.2, now seen twice |
+| 4.2 | Quality profile and release preferences selectable and persist | pass |
+| 4.3 | The library shows which profile governs it | pass — "Everyday movies · used by 1 library · Active" |
+
+## Phase 6 — routing
+
+| # | Must be true | Outcome |
+|---|---|---|
+| 6.x | Per-library routing is real | pass — Movies routed to Lab Torznab + qBittorrent, status **Ready**; TV still "Deluno can't search for this library" |
+
+## Phase 7 — adding media
+
+| # | Must be true | Outcome |
+|---|---|---|
+| 7.1 | Metadata resolves; the movie appears | pass — TMDb returned Big Buck Bunny (2008), `tt1254207`, cast and crew |
+| 7.4 | Results listed with quality, size, decision | pass — 3 real candidates: 1080p **Best match**, 720p **Eligible**, 2160p **Rejected** |
+| 7.5 | It says why in words, not only a number | pass |
+| 7.6 | The rejection reason is specific | pass — *"WEB 2160p is not one of the qualities this profile allows (WEB 720p, HDTV 1080p, WEB 1080p)"*, over six lines of reasoning including seeders, size-in-range and codec |
+
+## Phase 8 — acquisition
+
+| # | Must be true | Outcome |
+|---|---|---|
+| 8.1 | Activity records a send that actually happened (#292) | pass — *"Sent Big.Buck.Bunny.2008.1080p.WEB-DL.x264-DELUNO via Lab Torznab to the download client"* |
+| 8.2 | The torrent is really there, right category, right path | pass — in qBittorrent, category `deluno-movies`, `C:\Deluno\Downloads-Complete\Movies`, 100% |
+| 8.4 | The item moves to Processing, MediaMop receives the hand-off | **half** — Deluno reports `processingCount: 1`, `waitingForProcessorCount: 1`, which is the correct and honest state. No refiner output appeared, so the hand-off half is unproven |
+| 8.5–8.10 | | not run |
+
+The search that produced those candidates is real and was seen arriving at the
+indexer, carrying **movie-only categories** — which is 5.3 proven end to end
+rather than in the form:
+
+```
+GET /api?t=search&q=Big%20Buck%20Bunny%202008&cat=2000,2010,2020,2030,2040,2045,2050,2060,2070&limit=100
+```
+
+## Where it stopped, and why
+
+At 8.4, on a rig gap rather than a defect. MediaMop is running on 8788 but its
+Refiner is not producing output for the completed download, so nothing arrives
+in `Refined\Movies` for Deluno to import. The earlier entries in that folder are
+from previous runs. Deluno's own reporting is correct throughout — it says it is
+waiting for a processor, because it is.
+
+Two rig facts worth carrying forward:
+
+- **SABnzbd's config lives inside Deluno's data root** (`C:\Deluno\Data\sabnzbd\sabnzbd.ini`), so Phase 0.2's rename resets SABnzbd too. Either move it out or expect to reconfigure it each run.
+- **Phase 0 wipes the data root but not the media folders.** `Library\Movies` still holds items from previous runs, including one folder named `Big Buck Bunny (2008) [{IMDb ID}]` with the token unexpanded. That is old, not from this run, and was not investigated.
+
+## Phases 9–13
 
 Not yet run. Phase 3.4–3.10 also outstanding: the size sliders save per tier
 (WEB 1080p 1.5–25 GB, HDTV 1080p 1.3–14, WEB 720p 0.8–8) but the profile's
 preview judges release *names*, so "a release outside the range is rejected and
-says why" can only be proven with a real file in Phase 8.
+says why" needs the Phase 8 path finished.
