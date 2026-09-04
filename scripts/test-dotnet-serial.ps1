@@ -25,21 +25,28 @@ $failed = [System.Collections.Generic.List[string]]::new()
 foreach ($project in $projects) {
     Write-Host ""
     Write-Host "=== $($project.Name) ==="
-    # NOTE on --blame-hang, which was here and is deliberately not any more.
+    # DIAGNOSTIC, temporary. --blame-hang is back on with a short fuse, and the
+    # Sequence file it writes is printed below.
     #
-    # It was added to tell a hung project from a slow one, and it answered in
-    # one run: "All tests finished running" for every project, and then eight
-    # minutes of nothing in Deluno.Persistence.Tests. So no test hangs — every
-    # test passes and the test host then does not exit. That also reproduces on
-    # Windows, where a leftover testhost holds the built DLLs and the next build
-    # fails to copy them.
-    #
-    # It is off again because it turns that slow exit into a failed build, which
-    # stops work on everything else while a test-host lifetime problem is
-    # diagnosed. The problem is real and is written down; this gate should
-    # report on the tests.
+    # Blame writes a Sequence file only when tests were still in flight when the
+    # timer fired, and says "All tests finished running, Sequence file will not
+    # be generated" otherwise. Deluno.Persistence.Tests got a Sequence file — so
+    # something WAS running, and the file names it. That name is the whole
+    # question, and it is a few hundred bytes, so it goes in the log rather than
+    # an artifact nobody downloads.
+    $sequenceRoot = Join-Path (Split-Path $project.FullName -Parent) "TestResults"
+    if (Test-Path $sequenceRoot) { Remove-Item $sequenceRoot -Recurse -Force -ErrorAction SilentlyContinue }
+
     & $dotnet.Source test $project.FullName --configuration Release --no-build --no-restore `
-        --logger "trx;LogFileName=backend-tests.trx"
+        --logger "trx;LogFileName=backend-tests.trx" `
+        --blame-hang --blame-hang-timeout 3m --blame-hang-dump-type mini
+
+    if (Test-Path $sequenceRoot) {
+        foreach ($sequence in Get-ChildItem -Path $sequenceRoot -Filter "Sequence_*.xml" -Recurse -ErrorAction SilentlyContinue) {
+            Write-Host "--- blame sequence: $($sequence.Name) ---"
+            Get-Content $sequence.FullName | ForEach-Object { Write-Host "    $_" }
+        }
+    }
     if ($LASTEXITCODE -ne 0) {
         $failed.Add($project.Name)
     }
