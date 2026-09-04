@@ -42,6 +42,7 @@ literally the shipped binary, and that limitation stands.
 |---|---|
 | [#407](https://github.com/jampat000/Deluno/issues/407) | A library saves with a root folder that does not exist, and nothing ever creates it. The check says "That folder does not exist yet"; Create saves it anyway. `Deluno.Libraries` never calls `Directory.CreateDirectory`, so the library is pointed at nothing permanently. |
 | [#408](https://github.com/jampat000/Deluno/issues/408) | Path diagnostics report a non-existent folder as **Writable**. `Readable` probes the path, `Writable` probes the *parent* — one field name, two subjects, rendered as sibling chips. The negative case of the contract #294 fixed. |
+| [#409](https://github.com/jampat000/Deluno/issues/409) | **Test connection** spins for 25 seconds, then reports an 8-second timeout and one attempt. Both health tests omit `MaxAttempts`, so they retry three times; the two user-initiated *actions* set `MaxAttempts: 1` explicitly. Reproduced twice, identically. |
 
 ## Phase 0 — a genuinely clean install
 
@@ -111,6 +112,24 @@ HDTV 1080p allowed, it judged `Dune.2021.2160p.UHD.BluRay.REMUX.HDR.TrueHD.
 Atmos-FraMeSToR` live — *"Deluno would not take this — Remux 2160p is not one of
 the qualities this profile allows"* — before the profile was even saved.
 
-## Phases 4–13
+## Phase 5 — sources and download clients
 
-Not yet run.
+| # | Must be true | Outcome |
+|---|---|---|
+| 5.1 | The create form names the missing API key rather than doing nothing (#293) | pass — named all three gaps: name, URL, API key |
+| 5.2 | Reports reachable *and usable* | pass on the verdict — `healthy`, *"Reached 10.1.1.102 and received a valid Torznab response"*, 19 ms. **Fail on the wait — #409** |
+| 5.3 | Movies-only scope excludes it from TV searches | pass — selecting Movies dropped the 5xxx categories, 15 selected became 8 |
+| 5.4 | Saved; the sharing rule is one answer, not five dials | pass — one question, two answers, with the consequence spelled out |
+| 5.5–5.11 | | not yet run |
+
+A rig note worth keeping: the torznab seeder died partway through, and Deluno
+called it `unreachable` — correctly. The failure was mine, not the product's,
+and the honest report is what let me tell the difference quickly. It is now
+started in a way that survives.
+
+## Phases 4, 6–13
+
+Not yet run. Phase 3.4–3.10 also outstanding: the size sliders save per tier
+(WEB 1080p 1.5–25 GB, HDTV 1080p 1.3–14, WEB 720p 0.8–8) but the profile's
+preview judges release *names*, so "a release outside the range is rejected and
+says why" can only be proven with a real file in Phase 8.
