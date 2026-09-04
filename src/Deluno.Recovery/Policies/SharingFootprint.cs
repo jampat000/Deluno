@@ -127,7 +127,10 @@ public static class SharingFootprint
             return string.Concat(char.ToUpperInvariant(path[0]), ":\\");
         }
 
-        if (path.Length > 2 && (path[0] is '\\' or '/') && path[1] == path[0])
+        // Backslashes only. A UNC path written by Windows uses them, and a
+        // POSIX path is allowed to begin with "//" — reading that as a share
+        // would invent a volume out of a leading slash.
+        if (path.Length > 2 && path[0] == '\\' && path[1] == '\\')
         {
             // A share is the volume: \\server\share. Anything deeper is a
             // folder on it.

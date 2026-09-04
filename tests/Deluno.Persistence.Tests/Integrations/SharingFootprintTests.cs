@@ -65,6 +65,8 @@ public sealed class SharingFootprintTests
     [InlineData(@"\\nas\media\Movies", @"\\nas\media")]
     [InlineData("/media/Movies", null)]
     [InlineData("relative/path", null)]
+    // POSIX allows a path to begin with "//", and it is not a share.
+    [InlineData("//media/Movies", null)]
     public void A_windows_volume_is_recognised_by_the_shape_of_the_path(string path, string? expected)
         => Assert.Equal(expected, SharingFootprint.WindowsRootOf(path));
 
