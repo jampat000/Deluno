@@ -83,7 +83,7 @@ public static class SubtitleFileNaming
     public static string For(
         string videoPath, string language, bool hearingImpaired, bool omitLanguageCode = false)
     {
-        var stem = StemOf(videoPath);
+        var stem = MediaPath.FileNameWithoutExtension(videoPath);
         var code = SubtitleLanguages.Normalize(language) ?? SubtitleLanguages.Unknown;
         var variant = hearingImpaired ? ".sdh" : string.Empty;
 
@@ -91,41 +91,5 @@ public static class SubtitleFileNaming
         // impaired subtitle for the same film are two different files, and
         // dropping the distinction would have the second overwrite the first.
         return omitLanguageCode ? $"{stem}{variant}.srt" : $"{stem}.{code}{variant}.srt";
-    }
-
-    /// <summary>
-    /// The video's name, read from the path's own shape rather than the host's.
-    ///
-    /// <para><b>Why not <see cref="Path.GetFileNameWithoutExtension(string)"/>.</b>
-    /// On Linux a backslash is an ordinary filename character, so that function
-    /// reads <c>D:\Media\Dune\Dune (2021).mkv</c> as one very long file name -
-    /// and this would then name a subtitle
-    /// <c>D:\Media\Dune\Dune (2021).en.srt</c>. Deluno stores the path a title
-    /// was imported at, and the machine that reads that path back is not always
-    /// the machine that wrote it: the container image is Linux, the installer
-    /// is Windows, and a migration from Radarr carries whatever paths that
-    /// install recorded. What a file is called is a property of the path, not
-    /// of whoever is reading it.</para>
-    ///
-    /// <para>This decides the name and nothing else.
-    /// <see cref="SubtitleFileWriter"/> still asks the filesystem where to put
-    /// it, and a Windows directory does not exist on Linux - so a path this
-    /// host cannot reach is still refused, and refused for the honest
-    /// reason.</para>
-    ///
-    /// <para>The cost is a Linux file whose name genuinely contains a
-    /// backslash, which loses the part before it. Against that, the version
-    /// that took the host's word for it wrote the whole path into the file
-    /// name, every time, on the platform Deluno ships as a container.</para>
-    /// </summary>
-    private static string StemOf(string videoPath)
-    {
-        var separator = videoPath.LastIndexOfAny(['/', '\\']);
-        var name = separator >= 0 ? videoPath[(separator + 1)..] : videoPath;
-
-        // A leading dot is not an extension - ".srt" is the whole name - which
-        // is the rule Path uses and worth keeping.
-        var dot = name.LastIndexOf('.');
-        return dot > 0 ? name[..dot] : name;
     }
 }

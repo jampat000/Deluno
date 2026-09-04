@@ -48,6 +48,55 @@ public sealed class SharingFootprintTests
     }
 
     /// <summary>
+    /// Two drives are two drives on whichever machine reads the path.
+    ///
+    /// <para><b>CI found this the hour Actions came back on.</b> The volume was
+    /// taken from <c>Path.GetPathRoot(Path.GetFullPath(path))</c>, which answers
+    /// for the host: on Linux <c>C:\Deluno</c> is a relative path, so both of
+    /// these resolved under the working directory and came back with root
+    /// <c>/</c>. Equal roots, so the container told people a download on
+    /// <c>C:</c> and a library on <c>D:</c> were one set of file data — the
+    /// understating direction this file exists to avoid.</para>
+    /// </summary>
+    [Theory]
+    [InlineData(@"C:\Deluno\Movies", @"C:\")]
+    [InlineData(@"c:\deluno\movies", @"C:\")]
+    [InlineData(@"D:\Media", @"D:\")]
+    [InlineData(@"\\nas\media\Movies", @"\\nas\media")]
+    [InlineData("/media/Movies", null)]
+    [InlineData("relative/path", null)]
+    public void A_windows_volume_is_recognised_by_the_shape_of_the_path(string path, string? expected)
+        => Assert.Equal(expected, SharingFootprint.WindowsRootOf(path));
+
+    /// <summary>
+    /// And on Linux the volume is the mount point, because every path there has
+    /// root <c>/</c>.
+    ///
+    /// <para>In the container image <c>/downloads</c> and <c>/media</c> being
+    /// separate mounts is the ordinary arrangement, and a hardlink does not
+    /// cross one. Taking <c>/</c> at its word said every pair shared one copy.
+    /// The choice is tested here rather than on a machine that happens to have
+    /// those mounts.</para>
+    /// </summary>
+    [Theory]
+    [InlineData("/media/Movies/film.mkv", "/media")]
+    [InlineData("/downloads/film.mkv", "/downloads")]
+    [InlineData("/home/user/film.mkv", "/")]
+    [InlineData("/media", "/media")]
+    // The longest containing mount wins, not the first or the shortest.
+    [InlineData("/media/library/Movies", "/media/library")]
+    // A mount whose name merely starts the same is a different mount.
+    [InlineData("/mediaX/film.mkv", "/")]
+    public void A_posix_volume_is_the_mount_point_that_contains_it(string path, string expected)
+        => Assert.Equal(
+            expected,
+            SharingFootprint.MountPointOf(path, ["/", "/media", "/media/library", "/downloads"]));
+
+    [Fact]
+    public void A_path_on_no_known_mount_is_not_forced_onto_one()
+        => Assert.Null(SharingFootprint.MountPointOf("/media/Movies", ["/downloads"]));
+
+    /// <summary>
     /// A path Deluno cannot read is not the same answer as "different drives".
     /// It reports the space as used — the safe direction — but never invents a
     /// sentence claiming to know where the files are.
