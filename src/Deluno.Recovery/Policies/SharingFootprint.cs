@@ -78,13 +78,17 @@ public static class SharingFootprint
     /// is not always the one that wrote it, so a drive letter is recognised by
     /// its shape.</para>
     ///
-    /// <para><b>And a Linux path read by Linux.</b> Every POSIX path has root
-    /// <c>/</c>, so that answer cannot tell two volumes apart at all — and in
-    /// the container image, <c>/downloads</c> and <c>/media</c> being separate
-    /// mounts is the normal arrangement, not an exotic one. Hardlinks do not
-    /// cross a mount, so taking <c>/</c> at its word claimed every pair shared
-    /// one copy: understating disk use, which this file exists to avoid. The
-    /// volume is the mount point, so that is what is compared.</para>
+    /// <para><b>A known gap, left open deliberately.</b> On a genuinely POSIX
+    /// install every path is rooted at <c>/</c>, so this still cannot tell two
+    /// volumes apart there — and in the container image <c>/downloads</c> and
+    /// <c>/media</c> being separate mounts is the normal arrangement, which a
+    /// hardlink cannot cross. Answering that needs the mount table, and reading
+    /// it here is what broke: <see cref="DriveInfo.GetDrives"/> stats every
+    /// mount, a CI runner has some that do not answer promptly, and a test run
+    /// that had passed sat for eight minutes without exiting. Caching the
+    /// reading fixed the cost and not the blocking. It is worth doing on a
+    /// machine where it can be measured, which is not here, so it is not being
+    /// guessed at here.</para>
     /// </summary>
     private static string? RootOf(string? path)
     {
@@ -100,13 +104,7 @@ public static class SharingFootprint
 
         try
         {
-            var full = Path.GetFullPath(path);
-            if (MountPointOf(full, MountPoints()) is { } mountPoint)
-            {
-                return mountPoint;
-            }
-
-            var root = Path.GetPathRoot(full);
+            var root = Path.GetPathRoot(Path.GetFullPath(path));
             return string.IsNullOrWhiteSpace(root) ? null : root;
         }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException or IOException)
@@ -141,117 +139,6 @@ public static class SharingFootprint
         return null;
     }
 
-    /// <summary>
-    /// The longest mount point that contains <paramref name="fullPath"/>.
-    ///
-    /// <para>Separated from the enumeration so the choice can be tested without
-    /// a machine that has the mounts on it: given <c>/</c> and <c>/media</c>,
-    /// <c>/media/Movies</c> is on <c>/media</c>, and that is the whole rule.
-    /// </para>
-    /// </summary>
-    internal static string? MountPointOf(string fullPath, IEnumerable<string> mountPoints)
-    {
-        string? best = null;
-        foreach (var mountPoint in mountPoints)
-        {
-            if (string.IsNullOrEmpty(mountPoint) || !PathStartsWith(fullPath, mountPoint))
-            {
-                continue;
-            }
-
-            if (best is null || mountPoint.Length > best.Length)
-            {
-                best = mountPoint;
-            }
-        }
-
-        return best;
-    }
-
-    private static bool PathStartsWith(string fullPath, string mountPoint)
-    {
-        var trimmed = mountPoint.TrimEnd('/');
-        if (trimmed.Length == 0)
-        {
-            // The root mount contains everything.
-            return fullPath.StartsWith('/');
-        }
-
-        return fullPath.Equals(trimmed, StringComparison.Ordinal) ||
-               fullPath.StartsWith(trimmed + "/", StringComparison.Ordinal);
-    }
-
-    private static readonly Lock MountPointsGate = new();
-    private static string[]? _cachedMountPoints;
-    private static DateTime _mountPointsReadUtc;
-
-    /// <summary>How long a reading of the mount table is trusted for.</summary>
-    private static readonly TimeSpan MountPointsFreshFor = TimeSpan.FromMinutes(1);
-
-    /// <summary>
-    /// Where this machine has things mounted, read at most once a minute.
-    ///
-    /// <para><b>The cache is not an optimisation, it is the difference between
-    /// working and not.</b> This is asked once per path and twice per
-    /// comparison, and the dashboard compares every queued download.
-    /// <see cref="DriveInfo.GetDrives"/> on Linux reads the mount table and
-    /// stats every entry — a runner has dozens — so asking per path turned a
-    /// four-minute test suite into one that ran past a twenty-minute CI
-    /// timeout. Windows never reaches here at all: a drive letter is recognised
-    /// from the path's shape first.</para>
-    ///
-    /// <para>A minute is chosen so that mounting a drive shows up in the
-    /// dashboard's note without a restart, while a burst of comparisons costs
-    /// one reading between them.</para>
-    /// </summary>
-    private static IReadOnlyList<string> MountPoints()
-    {
-        lock (MountPointsGate)
-        {
-            if (_cachedMountPoints is { } cached &&
-                DateTime.UtcNow - _mountPointsReadUtc < MountPointsFreshFor)
-            {
-                return cached;
-            }
-
-            var read = ReadMountPoints();
-            _cachedMountPoints = read;
-            _mountPointsReadUtc = DateTime.UtcNow;
-            return read;
-        }
-    }
-
-    /// <summary>
-    /// Best effort: a machine that will not say falls back to the path root,
-    /// which is what this did before.
-    /// </summary>
-    private static string[] ReadMountPoints()
-    {
-        DriveInfo[] drives;
-        try
-        {
-            drives = DriveInfo.GetDrives();
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            return [];
-        }
-
-        var mountPoints = new List<string>(drives.Length);
-        foreach (var drive in drives)
-        {
-            try
-            {
-                mountPoints.Add(drive.RootDirectory.FullName);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                // A mount that cannot be described is one this cannot use.
-            }
-        }
-
-        return [.. mountPoints];
-    }
 
     /// <summary>"C:" rather than "C:\" — how a person says it.</summary>
     private static string DescribeDrive(string? path)

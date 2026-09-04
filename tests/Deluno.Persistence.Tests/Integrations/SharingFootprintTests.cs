@@ -71,34 +71,6 @@ public sealed class SharingFootprintTests
         => Assert.Equal(expected, SharingFootprint.WindowsRootOf(path));
 
     /// <summary>
-    /// And on Linux the volume is the mount point, because every path there has
-    /// root <c>/</c>.
-    ///
-    /// <para>In the container image <c>/downloads</c> and <c>/media</c> being
-    /// separate mounts is the ordinary arrangement, and a hardlink does not
-    /// cross one. Taking <c>/</c> at its word said every pair shared one copy.
-    /// The choice is tested here rather than on a machine that happens to have
-    /// those mounts.</para>
-    /// </summary>
-    [Theory]
-    [InlineData("/media/Movies/film.mkv", "/media")]
-    [InlineData("/downloads/film.mkv", "/downloads")]
-    [InlineData("/home/user/film.mkv", "/")]
-    [InlineData("/media", "/media")]
-    // The longest containing mount wins, not the first or the shortest.
-    [InlineData("/media/library/Movies", "/media/library")]
-    // A mount whose name merely starts the same is a different mount.
-    [InlineData("/mediaX/film.mkv", "/")]
-    public void A_posix_volume_is_the_mount_point_that_contains_it(string path, string expected)
-        => Assert.Equal(
-            expected,
-            SharingFootprint.MountPointOf(path, ["/", "/media", "/media/library", "/downloads"]));
-
-    [Fact]
-    public void A_path_on_no_known_mount_is_not_forced_onto_one()
-        => Assert.Null(SharingFootprint.MountPointOf("/media/Movies", ["/downloads"]));
-
-    /// <summary>
     /// A path Deluno cannot read is not the same answer as "different drives".
     /// It reports the space as used — the safe direction — but never invents a
     /// sentence claiming to know where the files are.

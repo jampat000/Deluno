@@ -28,8 +28,10 @@ foreach ($project in $projects) {
     # --blame-hang names the test that stopped responding. Without it a hung
     # project is indistinguishable from a slow one: the job simply runs to its
     # timeout and reports "cancelled", with the last line of output being the
-    # project it was part-way through. That happened, and cost a round to
-    # work out.
+    # project it was part-way through. That happened, and cost a round to work
+    # out. It earned its place immediately — the next run reported every test
+    # passing and an eight-minute stall, which is a different problem from a
+    # failing test and wants a different fix.
     & $dotnet.Source test $project.FullName --configuration Release --no-build --no-restore `
         --logger "trx;LogFileName=backend-tests.trx" `
         --blame-hang --blame-hang-timeout 8m
