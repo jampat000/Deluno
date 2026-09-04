@@ -246,9 +246,58 @@ show. The message is exactly what it should be:
 Clear, actionable, and it gave up rather than looping for ever. That is
 Phase 10.4's assertion met by accident.
 
-## Phases 9, 10, 13
+| 12.7 | All three services return by themselves; Deluno's state survives | pass — VM rebooted (uptime 1.3 min confirmed), Deluno Host, MediaMop and qBittorrent all came back **Running** unaided. Counts identical: 2 libraries, 1 indexer, 2 clients, 1 tag, 1 profile; readiness 9/9; the indexer still `healthy`. SABnzbd stayed `Ready` because its task is deliberately interactive, not automatic |
 
-Not yet run. Phase 3.4–3.10 also outstanding: the size sliders save per tier
+## Phase 13 — screenshots
+
+| # | Must be true | Outcome |
+|---|---|---|
+| 13.1 | Post-redesign, real data, no credentials on screen | pass — seven captures from the live install: dashboard, movies, shows, queue, quality, indexers, activity |
+| 13.2 | Replace `screenshots/` and check the README renders | pass — all seven filenames the README references were replaced in place |
+
+The indexers capture shows `http://10.1.1.102:9117/api`, `Healthy`, 30 ms, and
+no API key anywhere — the key is stored encrypted and the UI never renders it.
+
+## Phases 9 and 10
+
+Not run as scripted. Phase 10.4's assertion — an unmatched file classified as
+needs-review with a clear path forward — was met incidentally by the leftover
+season pack described above.
+
+## Summary
+
+Fourteen phases, eleven of them walked. Seven defects raised, none of which the
+1,632-test suite could see, because every one of them lives in the space between
+Deluno and something real.
+
+| | |
+|---|---|
+| [#407](https://github.com/jampat000/Deluno/issues/407) | A library saves with a root folder that does not exist |
+| [#408](https://github.com/jampat000/Deluno/issues/408) | A folder that does not exist is reported Writable |
+| [#409](https://github.com/jampat000/Deluno/issues/409) | Test connection waits 25 seconds, reports 8 and one attempt |
+| [#410](https://github.com/jampat000/Deluno/issues/410) | The category check never looks at the save path |
+| [#411](https://github.com/jampat000/Deluno/issues/411) | SABnzbd reports Healthy with a wrong API key |
+| [#412](https://github.com/jampat000/Deluno/issues/412) | Create forms use a placeholder that reads like a default |
+| [#413](https://github.com/jampat000/Deluno/issues/413) | A wrong-scope API key is refused with an empty 403 |
+
+**Three of the seven are one defect wearing three coats** — #408, #410 and #411
+are each a check that validates something adjacent to the thing that matters.
+Fix them as one audit of every check in the product against the question it is
+supposed to answer, not as three patches.
+
+**#411 is the one to fix first.** The others mislead; that one actively tells an
+owner a broken configuration is fine, on the field whose entire reason for
+having a Test button is that a typo in it is invisible until something fails
+hours later.
+
+What the walk also showed, which no defect list captures: the acquisition
+pipeline works end to end on real software. A real search left Deluno carrying
+movie-only categories, a real indexer answered, three candidates were judged
+with reasons in words, the best match went to a real qBittorrent, a real
+MediaMop remuxed it, and the file landed at
+`Library\Movies\Big Buck Bunny (2008)\Big Buck Bunny (2008).mkv` with the
+naming set five phases earlier — while the pipeline counts returned to zero and
+the torrent kept seeding. Phase 3.4–3.10 also outstanding: the size sliders save per tier
 (WEB 1080p 1.5–25 GB, HDTV 1080p 1.3–14, WEB 720p 0.8–8) but the profile's
 preview judges release *names*, so "a release outside the range is rejected and
 says why" needs the Phase 8 path finished.
