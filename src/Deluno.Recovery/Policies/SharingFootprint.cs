@@ -181,11 +181,51 @@ public static class SharingFootprint
                fullPath.StartsWith(trimmed + "/", StringComparison.Ordinal);
     }
 
+    private static readonly Lock MountPointsGate = new();
+    private static string[]? _cachedMountPoints;
+    private static DateTime _mountPointsReadUtc;
+
+    /// <summary>How long a reading of the mount table is trusted for.</summary>
+    private static readonly TimeSpan MountPointsFreshFor = TimeSpan.FromMinutes(1);
+
     /// <summary>
-    /// Where this machine has things mounted. Best effort: a machine that will
-    /// not say falls back to the path root, which is what this did before.
+    /// Where this machine has things mounted, read at most once a minute.
+    ///
+    /// <para><b>The cache is not an optimisation, it is the difference between
+    /// working and not.</b> This is asked once per path and twice per
+    /// comparison, and the dashboard compares every queued download.
+    /// <see cref="DriveInfo.GetDrives"/> on Linux reads the mount table and
+    /// stats every entry — a runner has dozens — so asking per path turned a
+    /// four-minute test suite into one that ran past a twenty-minute CI
+    /// timeout. Windows never reaches here at all: a drive letter is recognised
+    /// from the path's shape first.</para>
+    ///
+    /// <para>A minute is chosen so that mounting a drive shows up in the
+    /// dashboard's note without a restart, while a burst of comparisons costs
+    /// one reading between them.</para>
     /// </summary>
-    private static IEnumerable<string> MountPoints()
+    private static IReadOnlyList<string> MountPoints()
+    {
+        lock (MountPointsGate)
+        {
+            if (_cachedMountPoints is { } cached &&
+                DateTime.UtcNow - _mountPointsReadUtc < MountPointsFreshFor)
+            {
+                return cached;
+            }
+
+            var read = ReadMountPoints();
+            _cachedMountPoints = read;
+            _mountPointsReadUtc = DateTime.UtcNow;
+            return read;
+        }
+    }
+
+    /// <summary>
+    /// Best effort: a machine that will not say falls back to the path root,
+    /// which is what this did before.
+    /// </summary>
+    private static string[] ReadMountPoints()
     {
         DriveInfo[] drives;
         try
@@ -210,7 +250,7 @@ public static class SharingFootprint
             }
         }
 
-        return mountPoints;
+        return [.. mountPoints];
     }
 
     /// <summary>"C:" rather than "C:\" — how a person says it.</summary>

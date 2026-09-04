@@ -25,7 +25,14 @@ $failed = [System.Collections.Generic.List[string]]::new()
 foreach ($project in $projects) {
     Write-Host ""
     Write-Host "=== $($project.Name) ==="
-    & $dotnet.Source test $project.FullName --configuration Release --no-build --no-restore --logger "trx;LogFileName=backend-tests.trx"
+    # --blame-hang names the test that stopped responding. Without it a hung
+    # project is indistinguishable from a slow one: the job simply runs to its
+    # timeout and reports "cancelled", with the last line of output being the
+    # project it was part-way through. That happened, and cost a round to
+    # work out.
+    & $dotnet.Source test $project.FullName --configuration Release --no-build --no-restore `
+        --logger "trx;LogFileName=backend-tests.trx" `
+        --blame-hang --blame-hang-timeout 8m
     if ($LASTEXITCODE -ne 0) {
         $failed.Add($project.Name)
     }
