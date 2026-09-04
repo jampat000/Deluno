@@ -501,6 +501,108 @@ public static class SeriesEndpointRouteBuilderExtensions
             return Results.Ok(new { updated });
         });
 
+        // Why a title will not download, and what could be done about it.
+        //
+        // The question a person asks of a title that never arrives is not "what
+        // is its wanted status" — it is "why is nothing happening". Every media
+        // manager accumulates records that quietly answer that and never say
+        // so: a client that already holds the release, a processor still
+        // holding the file, an exclusion added when it was removed. This says
+        // them out loud, and marks the ones a person is allowed to override.
+        series.MapGet("/{id}/acquisition-blockers", async (
+            string id,
+            HttpContext httpContext,
+            ISeriesCatalogRepository repository,
+            AcquisitionBlockerGatherer gatherer,
+            IUnifiedExclusionRepository exclusions,
+            IDownloadDispatchesRepository dispatches,
+            IProcessorRepository processors,
+            CancellationToken cancellationToken) =>
+        {
+            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
+            if (denied is not null)
+            {
+                return denied;
+            }
+
+            var item = await repository.GetByIdAsync(id, cancellationToken);
+            if (item is null)
+            {
+                return Results.NotFound();
+            }
+
+            var held = await AcquisitionBlockerSources.FindAsync(
+                dispatches, processors, "tv", id, cancellationToken);
+            var excluded = await AcquisitionBlockerSources.IsExcludedAsync(
+                exclusions, "tv", item.Title, item.ImdbId, cancellationToken);
+
+            return Results.Ok(await gatherer.GatherAsync(
+                MediaKind.Series,
+                id,
+                item.Title,
+                held.DownloadClientName,
+                held.ProcessorName,
+                excluded,
+                cancellationToken));
+        });
+
+        // Clear what is standing in the way, deliberately and on the record.
+        //
+        // Destructive across systems Deluno does not own — it removes a
+        // download and its files, and restarts a processor hand-off — so it is
+        // a POST that reports every step, rather than something that happens
+        // quietly on the way to a search.
+        series.MapPost("/{id}/force-redownload", async (
+            string id,
+            HttpContext httpContext,
+            ISeriesCatalogRepository repository,
+            AcquisitionOverrideService overrides,
+            IUnifiedExclusionRepository exclusions,
+            IDownloadDispatchesRepository dispatches,
+            IProcessorRepository processors,
+            IActivityFeedRepository activityFeed,
+            CancellationToken cancellationToken) =>
+        {
+            var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
+            if (denied is not null)
+            {
+                return denied;
+            }
+
+            var item = await repository.GetByIdAsync(id, cancellationToken);
+            if (item is null)
+            {
+                return Results.NotFound();
+            }
+
+            var held = await AcquisitionBlockerSources.FindAsync(
+                dispatches, processors, "tv", id, cancellationToken);
+            var exclusionIds = await AcquisitionBlockerSources.ExclusionIdsAsync(
+                exclusions, "tv", item.Title, item.ImdbId, cancellationToken);
+
+            var result = await overrides.ForceAsync(
+                new AcquisitionOverrideRequest(
+                    id,
+                    item.Title,
+                    held.HandoffId,
+                    held.DownloadClientId,
+                    held.DownloadClientName,
+                    held.QueueItemId,
+                    exclusionIds),
+                cancellationToken);
+
+            await activityFeed.RecordActivityAsync(
+                "acquisition.override",
+                $"Someone forced a re-download of {item.Title}. {result.Summary}",
+                JsonSerializer.Serialize(new { result.Cleared, result.CouldNotClear }),
+                null,
+                "tv",
+                id,
+                cancellationToken);
+
+            return Results.Ok(result);
+        });
+
         series.MapPost("/{id}/search", async (
             string id,
             string? mode,

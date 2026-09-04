@@ -23,6 +23,10 @@ public static class MoviesServiceCollectionExtensions
         // answer exists wherever a catalogue does.
         services.TryAddSingleton<IMetadataLibraryPresence, MediaStateLibraryPresence>();
         services.TryAddSingleton<IMediaTagStore, SqliteMediaTagStore>();
+        // Answers "why will this not download". Registered by both media
+        // modules, like the state repository it reads.
+        services.TryAddSingleton<AcquisitionBlockerGatherer>();
+        services.TryAddSingleton<AcquisitionOverrideService>();
 
         // Registered beside the state it repairs. It is the other half of
         // WantedStatuses.Downloading: without it a failed dispatch leaves a
