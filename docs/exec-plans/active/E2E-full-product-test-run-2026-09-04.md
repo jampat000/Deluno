@@ -45,6 +45,8 @@ literally the shipped binary, and that limitation stands.
 | [#409](https://github.com/jampat000/Deluno/issues/409) | **Test connection** spins for 25 seconds, then reports an 8-second timeout and one attempt. Both health tests omit `MaxAttempts`, so they retry three times; the two user-initiated *actions* set `MaxAttempts: 1` explicitly. Reproduced twice, identically. |
 | [#410](https://github.com/jampat000/Deluno/issues/410) | The category check confirms a category's **name** and never its save path. `deluno-tv` has an empty path and reports `ready`; its downloads land in `...\Downloads-Complete\deluno-tv`, not `...\TV`. `DownloadClientCategoryCheckResult` has no save-path field at all. |
 | [#411](https://github.com/jampat000/Deluno/issues/411) | **SABnzbd reports Healthy with a wrong API key.** The health test probes `mode=version`, which SABnzbd answers to anyone; the client itself uses `mode=queue`, which 403s. The Test button asks a question that cannot fail. |
+| [#412](https://github.com/jampat000/Deluno/issues/412) | Create forms use a placeholder that reads exactly like a filled-in default. Seen on Quality Profiles, Library Profiles and Tags, while the download client form holds a real value in the same visual treatment. |
+| [#413](https://github.com/jampat000/Deluno/issues/413) | A wrong-scope API key is refused with an **empty 403** — zero-length body, no content type. Correct outcome, no explanation, on the surface used by scripts rather than people. |
 
 **Three of those five are one shape**: a check that validates something *adjacent*
 to the thing that matters. #408 reports `Writable` about the parent folder, #410
@@ -194,7 +196,57 @@ Two rig facts worth carrying forward:
 - **SABnzbd's config lives inside Deluno's data root** (`C:\Deluno\Data\sabnzbd\sabnzbd.ini`), so Phase 0.2's rename resets SABnzbd too. Either move it out or expect to reconfigure it each run.
 - **Phase 0 wipes the data root but not the media folders.** `Library\Movies` still holds items from previous runs, including one folder named `Big Buck Bunny (2008) [{IMDb ID}]` with the token unexpanded. That is old, not from this run, and was not investigated.
 
-## Phases 9–13
+## Phase 8, finished
+
+MediaMop's refiner is configured correctly and scans every 300 seconds; the wait
+was the schedule, not a fault. One manual scan later:
+
+| # | Must be true | Outcome |
+|---|---|---|
+| 8.5 | The processor produces output Deluno can see | pass — `Refined\Movies\Big.Buck.Bunny.2008.1080p.WEB-DL.x264-DELUNO` |
+| 8.6 | The refined file lands in the library with the naming you set | pass — `C:\Deluno\Library\Movies\Big Buck Bunny (2008)\Big Buck Bunny (2008).mkv` |
+| 8.7 | `processingCount` and `waitingForProcessorCount` return to zero while the torrent still seeds — the **#280 acceptance** | pass — both zero, torrent `stalledUP` |
+
+## Phase 11 — the rest of the product
+
+| # | Must be true | Outcome |
+|---|---|---|
+| 11.1 | Saves from the create form (#293) | pass, with #412 |
+| 11.2 | The preview shows real resulting paths | pass, and then some — source and destination in full, nine numbered reasoning steps, and three honest warnings: source not visible to Deluno, hardlink unlikely across filesystems, `D:\` differs from `C:\` |
+| 11.5 | The test reports honestly | pass — closed port gave `dead-letter`, **`attempts: 3`**, *"the target machine actively refused it. (127.0.0.1:9999)"* |
+| 11.6 | It says notifications are paused rather than lying about sending | pass — *"Notifications are paused. Turn on Send notifications to test this webhook."* |
+| 11.3–11.4, 11.7–11.8 | | not run |
+
+`attempts: 3` there is worth holding against #409, where the health test made
+three attempts and reported one. The right behaviour already exists in the
+product; the health tests are the outlier.
+
+## Phase 12 — system
+
+| # | Must be true | Outcome |
+|---|---|---|
+| 12.1 | Created once and shown once; a wrong scope is refused with a clear message | **half** — created once, secret absent when listed again, read `200`, write `403`, but the 403 is empty (**#413**) |
+| 12.2 | Revoke it and re-use it: refused | pass — `401` |
+| 12.3 | Take a backup and restore it | pass — tags 1 → 2 → **1 (Kids)** across a restart, five `.pre-restore` copies kept, readiness `200` in 4s. #403's fix holds on a real restore |
+| 12.4 | Every check names what to do | pass in substance — 9 of 9 ready, so nothing to name |
+| 12.5 | Reports the channel and current version truthfully | pass — *"This runtime is not a Velopack-managed Windows install. Update by installing a newer build package."* It does not pretend it can update itself |
+| 12.6 | Navigation is monochrome; no nav element uses a status colour (#290) | pass — labels grey/white, active item an accent bar, count badges neutral. The only colour is an amber dot in the dedicated "Needs a look" panel, which is not navigation |
+
+## Not a defect, worth recording
+
+The dashboard reported **10 failed jobs** after the restore. They are the
+leftover `Breaking.Bad.S01` season pack sitting in qBittorrent from a previous
+run, which Deluno keeps trying to import into a TV library that has no matching
+show. The message is exactly what it should be:
+
+> Season-pack import is blocked: Choose the existing TV show before importing a
+> season pack so every file can be matched to its canonical episode. The job
+> reached its retry limit and moved to dead-letter.
+
+Clear, actionable, and it gave up rather than looping for ever. That is
+Phase 10.4's assertion met by accident.
+
+## Phases 9, 10, 13
 
 Not yet run. Phase 3.4–3.10 also outstanding: the size sliders save per tier
 (WEB 1080p 1.5–25 GB, HDTV 1080p 1.3–14, WEB 720p 0.8–8) but the profile's
