@@ -307,6 +307,36 @@ is reachable. So an unreachable root becomes a health issue naming the library
 and the path, and searching, importing and reconciling pause for that library
 until it returns. Other libraries carry on.
 
+**13 — Deleting a download client mid-download.** The obvious answer was wrong.
+Refusing while downloads are in flight sounds safe until you notice that people
+delete a client precisely *because* it is dead — refusing would tell you to
+cancel downloads on a machine that is not there, and leave you unable to remove
+the entry at all. So Deluno warns, names how many it is about to lose track of,
+and on confirming puts those films back to missing and closes the dead records.
+Today they stay on "downloading" for ever, pointing at a client nothing can
+reach.
+
+**14 — Deleting a processor connection with files in flight.** Worse than the
+client case, because an unfinished hand-off is the very thing that stops an
+import running: the film downloaded, the file is there, and it waits for ever on
+a tool that no longer exists. What makes it easy is that the file is complete
+and importable — processing was an enhancement, not a requirement. So Deluno
+warns and then releases them to import unprocessed. You can re-process later; a
+film stuck for ever on a deleted tool helps nobody.
+
+**15 — Emptying the recycle bin.** The only irreversible act in the product.
+Everything else here can be undone or redone; this cannot, and today it is
+presented exactly like the rest.
+
+It also turned out that `RetentionDays` and `MaxSizeMb` already exist as
+settings and **nothing enforces them**, because nothing runs cleanup unless a
+person presses it. You can configure thirty days and it will never happen.
+
+So retention is enforced on a schedule, which is what those settings were always
+for, and a manual empty spells out precisely what it is about to take — "47
+files, 312 GB, 3 of them deleted in the last 24 hours" — and never touches
+anything still inside the retention window.
+
 ---
 
 ## The vocabulary
