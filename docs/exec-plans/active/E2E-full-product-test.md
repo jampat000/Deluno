@@ -41,6 +41,41 @@ Plus the four this run set out to close: [#280](https://github.com/jampat000/Del
 
 ---
 
+## Run 2 — 5 September 2026 (partial)
+
+Started after six pull requests landed in one day (#437–#442, DESIGN-007). Today's
+build was published and deployed to the rig — 246 files, readiness 9/9 — and the
+run stopped early on purpose: three defects turned up in the first hour and
+writing them up was worth more than ticking rows.
+
+**Verified live on the rig.** The failure and blocklist console renders with all
+three sections on real hardware: the list, the seventeen failure rules grouped by
+whose fault the failure was, and the schedules. Changing a rule, resetting it,
+changing the file-check cadence, running the file check by hand and previewing a
+recycle-bin empty all worked end to end against a real backend.
+
+**Found, none of which any test could see:**
+
+| | |
+|---|---|
+| #445 | `npm run ga:regression` never reached step two. Step one leaves MSBuild's persistent node servers alive; they inherit the handles `Start-Process -Wait` is waiting on. Step one finished at 18:50:17 and thirteen minutes later there was no `dotnet test` process — killing the nodes started step two within seconds. **The GA gate could not complete unattended and nothing said so.** |
+| #445 | The dashboard announced "136 jobs have failed" over a queue holding **455**. Job statuses were counted inside `ListAsync(200)`, so every number saturated at two hundred — and the System screen, counting differently, said 455 on the same data. The soak's daily rule watches `jobs_failed` for an upward trend, so a saturating metric would report healthy through the failure the soak exists to catch. |
+| #446 | **459 dead-letter import rows for one piece of work**, accumulated over seventeen hours, and the one thing the owner is told to do about it did nothing. The dashboard says open Activity and put them back in the queue; pressing that button left the count unchanged, because retry promotes one row per dedupe key and all 459 shared one. Fixed in #445: enqueueing work whose row has already given up revives that row instead of adding another, so there is one row per piece of work and retry can promote all of them. |
+
+**The same lesson as Run 1, twice.** The regression-gate hang is the defect
+`ci-check.ps1` had already fixed, one file over, with a comment describing it.
+When a fix lands, the next question is where else that shape lives.
+
+**Still to run:** Phases 9–13 were not worked through. They remain the untouched
+part of this plan, now on a build six pull requests newer than the one Run 1
+walked.
+
+**Rig note.** `SABnzbd E2E Interactive` will not start over WinRM — it needs an
+interactive session — so the usenet path was unavailable this run. qBittorrent,
+MediaMop and the torznab seeder were all up.
+
+---
+
 ## The rig
 
 | What | Where | Sign in |
