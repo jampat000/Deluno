@@ -901,3 +901,37 @@ A document that five code paths can ignore is the problem, not the fix.
    at the top of this page produces no card and no button.
 3. **The policy and the routing**, absorbing the seeding warning and the shared
    ownership check.
+
+---
+
+## What was built
+
+All of it, across six pull requests.
+
+| | Landed as |
+|---|---|
+| The reconcile, connected, with a schedule | #435 |
+| The "previously downloaded" blocker | #437 |
+| A download client can be told to forget, not just delete | #436 |
+| The failure table, the refusals, the clear-out, and the blocklist screen | #438 |
+| The rules — every decision a default, "ask me" included | #439 |
+| The manual triggers, and an empty that says what it takes | #440 |
+| The schedules — how often Deluno checks | #441 |
+| A library that is gone is paused, not worked on | #442 |
+
+What is deliberately **not** built is the register of five unknowns above.
+Every one of them needs the rig or a SABnzbd instance to answer, and guessing
+at them in code would be worse than leaving them written down.
+
+Two things are worth saying about how this went, because both were found by
+building rather than by reading:
+
+- **The check before the build.** Three times a capability was described as
+  missing when it existed under a name nobody had searched for — the
+  file-presence reconcile, the sharing rule, and recycle-bin retention. In this
+  codebase the answer is usually already there.
+- **The guards earned their keep.** The failure table's own guard found a
+  seventeenth reason nobody had decided about, because the code spells it `io`.
+  The one-spot guard caught a cadence being chosen at a call site. Playwright
+  caught two buttons sharing a name. None of those would have been noticed by
+  reading.
