@@ -208,10 +208,15 @@ public sealed class RecycleBinTests
     /// <summary>
     /// The other half of the retention rule, which nothing covered: an item
     /// that has not expired goes anyway once the bin is over its size limit,
-    /// oldest first.
+    /// and the oldest is the one that goes.
+    ///
+    /// <para>It happens at the moment of recycling rather than at the next
+    /// clean-up — every write enforces retention — which is why a preview a
+    /// second later has nothing to report. That is worth knowing and was
+    /// written down nowhere.</para>
     /// </summary>
     [Fact]
-    public async Task An_over_full_bin_takes_the_oldest_thing_in_it_even_though_it_has_not_expired()
+    public async Task An_over_full_bin_drops_the_oldest_thing_in_it_even_though_it_has_not_expired()
     {
         var sandbox = Path.Combine(Path.GetTempPath(), $"deluno-recycle-{Guid.NewGuid():N}");
         var dataRoot = Path.Combine(sandbox, "data");
@@ -231,22 +236,22 @@ public sealed class RecycleBinTests
             File.WriteAllText(firstPath, sevenHundredKb);
             var first = Assert.Single(
                 (await older.MoveAsync([new TrackedLibraryFile("library-1", firstPath)], [library], CancellationToken.None)).Items);
+            Assert.Single(await older.ListAsync(CancellationToken.None));
 
             var newer = CreateService(dataRoot, "2026-08-02T00:00:00Z");
             var secondPath = Path.Combine(libraryRoot, "Newer.2026.mkv");
             File.WriteAllText(secondPath, sevenHundredKb);
-            await newer.MoveAsync([new TrackedLibraryFile("library-1", secondPath)], [library], CancellationToken.None);
+            var second = Assert.Single(
+                (await newer.MoveAsync([new TrackedLibraryFile("library-1", secondPath)], [library], CancellationToken.None)).Items);
 
-            var preview = await newer.PreviewCleanupAsync(CancellationToken.None);
+            // 1.4 MB would not fit in a 1 MB bin, so the older one went as the
+            // newer one arrived.
+            var remaining = Assert.Single(await newer.ListAsync(CancellationToken.None));
+            Assert.Equal(second.Id, remaining.Id);
+            Assert.False(File.Exists(first.RecyclePath));
 
-            // 1.4 MB in a 1 MB bin: the older one goes, and it is named as an
-            // unexpired casualty rather than buried in a total.
-            Assert.Equal(first.Id, Assert.Single(preview.Items).Id);
-            Assert.Equal(0, preview.ExpiredCount);
-            Assert.Equal(1, preview.OverCapacityCount);
-
-            Assert.Equal(1, await newer.CleanupAsync(CancellationToken.None));
-            Assert.DoesNotContain(await newer.ListAsync(CancellationToken.None), item => item.Id == first.Id);
+            // And what is left fits, so an empty would take nothing.
+            Assert.Empty((await newer.PreviewCleanupAsync(CancellationToken.None)).Items);
         }
         finally
         {

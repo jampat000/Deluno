@@ -440,6 +440,11 @@ with the items that have **not** expired named first and separately: those are
 going because the bin is over its size limit, they are the only ones somebody
 might have wanted back, and a single total hid them.
 
+Retention is enforced on **every write**, not only by the schedule, so a bin
+that is over its size limit drops its oldest item the moment the next one is
+recycled. That was true already and written down nowhere; it now has a test,
+and it is why a preview taken a second later usually has nothing to report.
+
 Choosing what to take is now one function used by both the showing and the
 deleting. It also stopped recounting the bin's size on every step, which meant
 a file Deluno could not delete made it delete *another* one to make up the
