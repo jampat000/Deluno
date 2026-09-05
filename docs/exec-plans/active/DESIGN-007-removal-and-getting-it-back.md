@@ -215,6 +215,37 @@ That is a better answer than any single policy, because the right harshness
 depends on the library. Somebody on a fast connection with plenty of disk wants
 it strict; somebody on a flaky share does not.
 
+**5 — A download Deluno cannot identify.** Nothing is wrong with the copy; the
+matching failed. So nothing is refused. It is raised for the person to identify,
+with the file waiting, using the mechanism that already exists for unrecognised
+files found on disk — and then imported. No second download for a file you have
+already paid for.
+
+**6 — A failure with no recorded reason.** One retry, then refuse and list it.
+And each one is recorded as a **gap in Deluno's own reporting**, because "I do
+not know why" is Deluno's shortcoming rather than yours, and collecting them is
+what makes the unknown bucket shrink instead of being permanent.
+
+**7 — Deluno kept your copy instead of replacing it.** James asked why this
+case exists at all: *"there should never be a case of 2 copies of the same
+title unless its being upgraded in which case the older one gets deleted and
+the new one takes its place"*. He is right, and the answer is that this is the
+last check before that swap.
+
+The decision to upgrade is made from what the **indexer claimed** — quality,
+size, format in the release name. The only way to learn what the file actually
+is, is to download it and probe it. So Deluno probes both files at the moment
+of overwrite and refuses if the incoming one is lower resolution, under 92% of
+the existing runtime, or missing a video stream. The two copies exist for a few
+seconds, deliberately, so the good one is never destroyed on a promise.
+
+Which turns the row on its head. This is not Deluno being fussy about a fine
+file — it is Deluno catching a release that **misrepresented itself**. It is
+recorded as "kept your copy", with the comparison that decided it, and counts
+as no kind of failure. And the release **is** refused, because every copy of it
+lies in the same way. The surplus download is removed, being demonstrably worse
+than what is already held.
+
 ---
 
 ## The vocabulary
