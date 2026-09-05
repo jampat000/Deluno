@@ -34,10 +34,17 @@
 #>
 [CmdletBinding()]
 param(
-    [string] $Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+    [string] $Root
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Not a param default. See the ScriptRootInParamDefault rule below: this very
+# script hit it, which is how the rule got written.
+if (-not $Root) {
+    $here = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+    $Root = (Resolve-Path (Join-Path $here '..')).Path
+}
 
 # Token, and what to do instead. The advice matters more than the detection:
 # somebody hitting this needs the alternative, not a scolding.
@@ -58,6 +65,48 @@ $scripts = Get-ChildItem -Path $Root -Recurse -Filter *.ps1 -File |
     Where-Object { $_.FullName -notmatch '\\(node_modules|artifacts|bin|obj|\.git)\\' }
 
 $findings = @()
+
+# A rule that needs two lines to see, so it does not fit the token table above.
+#
+# On Windows PowerShell 5.1, a script with [CmdletBinding()] launched with a
+# relative -File path - exactly how run-powershell.mjs and ci-check launch these
+# - sees $PSScriptRoot as EMPTY while parameter defaults are being evaluated.
+# Without [CmdletBinding()] it is populated. Two scripts here had it, and both
+# were dead on arrival in a way that blamed something else:
+# generate-trash-guide-source-inventory.ps1 demanded an unrelated parameter, and
+# this very file died inside Join-Path.
+#
+# Compute the path in the body instead, with a $MyInvocation fallback.
+function Get-ScriptRootInParamDefault {
+    param([string[]] $Lines)
+
+    $hasCmdletBinding = $false
+    $inParamBlock = $false
+    $depth = 0
+    $hits = @()
+
+    for ($index = 0; $index -lt $Lines.Count; $index++) {
+        $line = $Lines[$index]
+        if ($line -match '^\s*\[CmdletBinding\b') { $hasCmdletBinding = $true; continue }
+
+        if (-not $inParamBlock -and $line -match '^\s*param\s*\(') {
+            if (-not $hasCmdletBinding) { break }
+            $inParamBlock = $true
+            $depth = 0
+        }
+
+        if ($inParamBlock) {
+            $depth += ([regex]::Matches($line, '\(')).Count
+            $depth -= ([regex]::Matches($line, '\)')).Count
+            if ($line -match '\$PSScriptRoot') {
+                $hits += [pscustomobject]@{ Line = $index + 1; Text = $line.Trim() }
+            }
+            if ($depth -le 0) { break }
+        }
+    }
+
+    return $hits
+}
 
 foreach ($script in $scripts) {
     $relative = $script.FullName.Substring($Root.Length).TrimStart('\', '/')
@@ -94,6 +143,21 @@ foreach ($script in $scripts) {
                     Text = $line.Trim()
                 }
             }
+        }
+    }
+}
+
+foreach ($script in $scripts) {
+    if ($script.Name -eq 'check-powershell-portability.ps1') { continue }
+    $relative = $script.FullName.Substring($Root.Length).TrimStart('\', '/')
+    foreach ($hit in Get-ScriptRootInParamDefault -Lines ([System.IO.File]::ReadAllLines($script.FullName))) {
+        if ($hit.Text -match '#\s*ps7-ok\b') { continue }
+        $findings += [pscustomobject]@{
+            File = $relative
+            Line = $hit.Line
+            Found = '$PSScriptRoot in a [CmdletBinding()] param default'
+            Advice = 'empty on 5.1 when the script is launched with a relative -File path; compute it in the body with a $MyInvocation fallback'
+            Text = $hit.Text
         }
     }
 }
