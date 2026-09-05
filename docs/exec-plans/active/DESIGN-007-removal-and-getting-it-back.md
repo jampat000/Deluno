@@ -267,6 +267,46 @@ instruction a person triggers never asks. It will check, and refuse what Deluno
 cannot prove it created, with a deliberate override for the times you do want
 it to tidy up something it did not make. The override is recorded.
 
+**11 — Deluno checks its files are still there, in the background, and fixes
+what it finds.** Today it never looks at a file again after importing it, so a
+film you deleted yourself still shows as complete, is never searched for, and
+answers "you already have this" when asked why it will not download. Three
+wrong answers, all sounding certain. The check exists already and only ever
+corrects Deluno's own notes — it never touches a file — so it runs on a
+schedule and applies the correction itself, plus a single check on whichever
+film is being asked about.
+
+**12 — Deleting a library.** James split a case I had run together:
+
+> "depends where a user is deleting it from? if its from the disk, deluno
+> should mark it as missing, if its within deluno then it should ask if you
+> want to prevent it being added by lists again and delete from disk right?"
+
+*Deleted inside Deluno* is removing everything in it, so it asks exactly what
+removing a film asks — keep or delete the files, prevent lists adding them
+back — and clears the download client per decision 9. No new concepts, and no
+orphaned records, which is what happens today.
+
+*Gone from disk* is the reconcile at library scale, and it has a trap in it.
+
+**The guard, which is a prerequisite rather than a decision.** Of the three
+scans, `FindOrphanFiles` and `FindPartialImportArtifacts` both bail out when the
+root is unreachable. The scan that marks files **missing** does not — it streams
+every tracked file and asks whether each exists, so an unmounted drive returns
+false for all of them and every film in the library becomes a *critical*
+missing-file issue. With decision 11 applying corrections automatically, that
+would mark a whole library missing and start re-downloading it. The guard is a
+straight consistency fix with its two siblings.
+
+**And the health check, which does not exist.** James expected one — *"thats
+where other mechanisms come into play with a missing library being flagged as a
+system health issue which would stop deluno doing anything at a library
+level"*. That is the right design and it is not built: the readiness service
+does not mention libraries, and nothing gates library work on whether its root
+is reachable. So an unreachable root becomes a health issue naming the library
+and the path, and searching, importing and reconciling pause for that library
+until it returns. Other libraries carry on.
+
 ---
 
 ## The vocabulary
