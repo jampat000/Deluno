@@ -157,6 +157,29 @@ public sealed class ForgettingAReleaseTests
         Assert.Contains("whole history", result.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// A torrent client needs no second request: it refuses by infohash, so the
+    /// transfer going away is the whole of forgetting. What matters is that the
+    /// files go with it — leaving them has the client refuse the same release
+    /// again for the same reason.
+    /// </summary>
+    [Fact]
+    public async Task Forgetting_on_qbittorrent_removes_the_transfer_with_its_files()
+    {
+        var bodies = new List<string>();
+        var handler = new StubHandler(request =>
+        {
+            bodies.Add(request.Content?.ReadAsStringAsync().GetAwaiter().GetResult() ?? string.Empty);
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("Ok.") };
+        });
+
+        var result = await new QbittorrentDownloadClient(() => handler)
+            .ExecuteActionAsync(Qbittorrent(), DownloadClientActions.Forget, "hash-1", CancellationToken.None);
+
+        Assert.True(result.Succeeded, result.Message);
+        Assert.Contains(bodies, body => body.Contains("deleteFiles=true", StringComparison.OrdinalIgnoreCase));
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private static DownloadClientItem Sabnzbd() => Client("sabnzbd", "SABnzbd", "api-key");

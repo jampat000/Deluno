@@ -35,6 +35,7 @@ public sealed class EveryVerbMeansSomethingDifferentTests
     /// dropped it.
     /// </summary>
     [Theory]
+    [InlineData("qbittorrent")]
     [InlineData("deluge")]
     [InlineData("transmission")]
     [InlineData("utorrent")]
@@ -54,6 +55,7 @@ public sealed class EveryVerbMeansSomethingDifferentTests
     /// And pausing one download is not pausing the client.
     /// </summary>
     [Theory]
+    [InlineData("qbittorrent")]
     [InlineData("deluge")]
     [InlineData("transmission")]
     [InlineData("utorrent")]
@@ -74,6 +76,7 @@ public sealed class EveryVerbMeansSomethingDifferentTests
     /// less than deleting.
     /// </summary>
     [Theory]
+    [InlineData("qbittorrent", false)]
     [InlineData("deluge", false)]
     [InlineData("transmission", false)]
     [InlineData("utorrent", false)]
@@ -144,6 +147,8 @@ public sealed class EveryVerbMeansSomethingDifferentTests
 
         DownloadClientActionResult result = protocol switch
         {
+            "qbittorrent" => await new QbittorrentDownloadClient(() => handler)
+                .ExecuteActionAsync(client, action, QueueItemId(protocol), CancellationToken.None),
             "deluge" => await new DelugeDownloadClient(new StubHttpClientFactory(handler))
                 .ExecuteActionAsync(client, action, QueueItemId(protocol), CancellationToken.None),
             "transmission" => await new TransmissionDownloadClient(new StubHttpClientFactory(handler))
@@ -221,12 +226,25 @@ public sealed class EveryVerbMeansSomethingDifferentTests
                 sent.Add($"{path} {body}".Trim());
             }
 
+            // Each client's sign-in wants its own shape back, and none of them
+            // is the verb under test.
             if (path.Contains("token.html", StringComparison.OrdinalIgnoreCase))
             {
                 return new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent("<div id='token'>test-token</div>", System.Text.Encoding.UTF8, "text/html")
                 };
+            }
+
+            if (path.Contains("auth/login", StringComparison.OrdinalIgnoreCase))
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("Ok.") };
+            }
+
+            // qBittorrent answers its action endpoints in plain text, not JSON.
+            if (path.Contains("api/v2/", StringComparison.OrdinalIgnoreCase))
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("Ok.") };
             }
 
             return new HttpResponseMessage(HttpStatusCode.OK)
