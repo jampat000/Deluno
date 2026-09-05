@@ -1,8 +1,13 @@
 # DESIGN-007 — Removing a title, and being able to get it back
 
-> **Status: proposed, not settled.** The audit below is fact — it is what the
-> code does today. The table is a proposal, and the questions in
-> [What still needs deciding](#what-still-needs-deciding) are genuinely open.
+> **Status: partly settled.** The audit is fact — it is what the code does
+> today. The vocabulary and the thirteen outcomes are **settled**. Rows marked
+> *contentious* are open, and so are the questions at the end.
+>
+> **Settled so far:** a release that fails to import is **blocked**, and future
+> searches **skip** it and say so — never silently. Every scenario answers all
+> thirteen outcomes. A blocked release gets a management screen where it can be
+> seen and unblocked; nothing may be blocked invisibly.
 
 James, on the scenario that started this:
 
@@ -169,59 +174,212 @@ what exists rather than building a reconciler. **Do not write a second one.**
 
 ---
 
-## The outcomes a removal decides
+## The vocabulary
 
-Seven, and each one is independently right or wrong:
+Settled. One word, one meaning, and the words appear in the product exactly as
+they appear here.
+
+| Word | Means | Does **not** mean |
+|---|---|---|
+| **Block release** | A durable, visible record that this exact release — name, indexer, infohash — is not to be used for this title again. Listed on a screen, clearable by hand, may carry an expiry. | Blocking the title |
+| **Skip** | What a search *does* when a candidate matches a blocked release. Always reported: "skipped 2 blocked releases". | Silently dropping it |
+| **Unblock** | Removing a block record | Re-downloading |
+| **Forget** | Clearing the *download client's* memory so it will accept the release again — infohash on a torrent client, history on a usenet one | Deleting files |
+| **Failed** | The attempt did not produce a library file | Deluno chose not to |
+| **Rejected** | Deluno deliberately declined | Failed |
+| **Recycle** | Moved to the recycle bin, restorable | Deleted |
+
+**Nothing is silent.** A block that cannot be seen and cleared is Radarr's
+blocklist, which is the thing that started this.
+
+## The outcomes
+
+Thirteen, and every scenario answers all thirteen. Most inherit a family
+default; only the differences are written per row.
 
 | # | Outcome | Values |
 |---|---|---|
-| 1 | The library file | keep · recycle bin · leave (already gone) |
-| 2 | The client transfer | leave · remove · remove with data |
-| 3 | The client's memory of the release | keep · forget |
-| 4 | The processor hand-off | leave · reset to waiting |
-| 5 | Import exclusion | none · add · remove |
-| 6 | Deluno's wanted state | untouched · missing · covered · gone |
-| 7 | A search | none · start one |
+| 1 | Library file you already have | untouched · replaced · recycled |
+| 2 | Downloaded payload in the client's folder | leave · delete |
+| 3 | Client queue entry | leave · remove · remove with data |
+| 4 | Client memory of the release | keep · forget |
+| 5 | Processor hand-off | none · leave · reset to waiting · mark failed |
+| 6 | Dispatch record | status written · archived · untouched |
+| 7 | Blocked release | no · yes, expiring · yes, permanent |
+| 8 | Import exclusion | none · add · remove |
+| 9 | Wanted state | untouched · missing · covered · gone |
+| 10 | Job queue | nothing · cancel pending · enqueue search |
+| 11 | Health strike against the client | counts · does not count |
+| 12 | Import-recovery case | none · raised for a decision |
+| 13 | What you are told | nothing · activity entry · needs-attention · notification |
 
-Outcomes 2 and 3 are separate on purpose, and that separation is the whole of
-the re-download problem. A torrent client refuses a release because it still
-holds the infohash, so removing the transfer *is* forgetting it. A usenet
-client refuses it from history, which outlives the transfer — so on SABnzbd and
-NZBGet, 2 and 3 are two different requests and doing only the first changes
-nothing while reporting success.
+Outcome 11 matters more than it looks: a strike is what eventually triggers
+automatic remediation, so counting a *release's* fault against the *client* is
+how a healthy client gets blamed for bad files.
 
 ---
 
-## The table
+## Family A — the import failed
 
-Rows are what the person did. Columns are the seven outcomes.
+**Family defaults**, true for every row unless it says otherwise: library file
+untouched (1); payload left (2); queue entry left (3); memory kept (4);
+dispatch written as failed (6); no exclusion (8); wanted state missing (9);
+search after the normal retry delay (10); an activity entry (13).
 
-| Trigger | 1 file | 2 transfer | 3 memory | 4 hand-off | 5 exclusion | 6 state | 7 search |
+| Reason | Block? | Strike? | Recovery case | Differs otherwise |
+|---|---|---|---|---|
+| `noVideoStream` | **permanent** | no | no | Payload **deleted** — it is not a film |
+| `likelySample` | **permanent** | no | no | Payload **deleted** |
+| `unsupportedFile` | **permanent** | no | no | — |
+| `mediaProbeFailed` | **contentious** | no | no | — |
+| `unmatched` | **contentious** | no | **raised** | Deluno needs help identifying it |
+| `importFailed` | **contentious** | no | **raised** | — |
+| `replacementRejected` | **contentious** | no | no | Not a failure at all — see below |
+| `replacementOwnershipMismatch` | no | no | **raised** | The guard working; a person must look |
+| `missingLibraryRoot` | no | no | no | **No search** — every title will fail until fixed |
+| `permission` | no | no | no | **No search** — same |
+| `hardlinkUnavailable` | no | no | no | **No search**; needs-attention, it is configuration |
+| `hardlinkFailed` | no | no | no | **No search**; needs-attention |
+| `missingSource` | no | **counts** | no | The client said done and the file is gone — that is the client's fault |
+| `samePath` | no | no | no | Nothing to do; activity only |
+| `conflict` | no | no | **raised** | Something is already there; a person decides |
+
+Three of those deserve their reason stated.
+
+**Payload deleted for `noVideoStream` and `likelySample`.** These are the only
+two rows where Deluno knows the file is not what was wanted. Leaving it costs
+disk for something nobody will ever import. Every other failure might be
+environmental, and deleting on a guess is unrecoverable.
+
+**`missingSource` strikes the client.** The client reported the download
+complete and the file was not there. That is the one import failure that is
+genuinely the client's fault, and it is exactly what the three-strike policy
+exists to catch.
+
+**Configuration failures stop searching.** `missingLibraryRoot`, `permission`
+and the hardlink pair will fail identically for every title. Continuing to
+search is how you get a hundred failed imports and one root cause.
+
+---
+
+## Family B — the grab failed
+
+**Defaults:** no library file involved; no payload; no hand-off; dispatch
+written as failed; wanted state missing; activity entry.
+
+| Scenario | Block? | Strike? | Search | Told |
+|---|---|---|---|---|
+| Client refused the release | no | counts | after delay | activity |
+| Client unreachable | no | counts | after delay | needs-attention if repeated |
+| Client address or API key missing | no | no | **none** | needs-attention — configuration |
+| Action unsupported by this client | no | no | **none** | needs-attention — configuration |
+| **Accepted, but nothing was added** | no | no | **none** | **needs-attention**, naming the release the client already holds, and offering the force |
+| Category missing at the client | no | no | **none** | needs-attention — configuration |
+| Grab timed out | no | counts | after delay | activity |
+
+The fifth row is the scenario that started all of this, and it did not exist
+before PR #432 — qBittorrent answered `Ok.` and Deluno recorded a successful
+grab. It is deliberately **not** a blocked release: the release is fine, the
+client simply already has it, and the answer is to forget it there, not to
+refuse it for ever.
+
+---
+
+## Family C — it timed out
+
+| Scenario | Client entry | Block? | Strike? | Told |
+|---|---|---|---|---|
+| Grab timeout — the client never confirmed | leave | no | counts | activity |
+| Detection timeout — grabbed, never appeared in the queue | leave | no | counts | needs-attention |
+| Import timeout — downloaded, never imported | leave | no | no | needs-attention, recovery case raised |
+
+None of these blocks a release. A timeout says something about the moment, not
+the file.
+
+---
+
+## Family D — the processor
+
+| Scenario | Hand-off | Client | Told |
+|---|---|---|---|
+| Hand-off submitted, no answer | leave open | leave | needs-attention after the library's timeout |
+| Processor reported failure | **mark failed** | leave | needs-attention, recovery case raised |
+| Processor unreachable | leave open | leave | needs-attention — configuration |
+| Processor connection deleted while hand-offs are open | **contentious** | leave | see Family G |
+
+---
+
+## Family E — nothing failed, it is just not downloading
+
+These are the acquisition blockers PR #432 added. No outcomes change; they are
+statements, not actions.
+
+| Scenario | Clearable | Offered |
+|---|---|---|
+| Already held at the target quality | no | lower the cutoff, or delete the file |
+| A download is with a client | yes | remove it and search again |
+| A processor is holding the file | yes | reset the hand-off |
+| An import exclusion covers it | yes | remove the exclusion |
+| The next scheduled search was skipped | yes | put it back in |
+| Searching is deferred after an earlier attempt | yes | clear the delay |
+| Not obtainable yet | no | change the availability rule |
+| **Previously downloaded and no longer held** | yes | forget it at the client and search again |
+| **Every candidate is a blocked release** | yes | unblock one, or all |
+
+The last two do not exist yet. The first is the scenario at the top of this
+document; the second is the failure mode that the block-release mechanism
+creates and must therefore answer for.
+
+---
+
+## Family F — you did something
+
+| Scenario | File | Client entry | Memory | Hand-off | Exclusion | State | Search |
 |---|---|---|---|---|---|---|---|
-| **Remove, keep files** | keep | remove | forget | reset | none | gone | none |
-| **Remove, delete files** | recycle bin | remove with data | forget | reset | none | gone | none |
-| **Remove, and don't add it back** | per above | remove | forget | reset | add | gone | none |
-| **Delete the file, keep the title** | recycle bin | remove with data | forget | reset | none | missing | start one |
-| **Force a re-download** | keep | remove with data | forget | reset | remove | missing | start one |
-| **Failed import, health remediation** | leave | remove | keep | leave | none | untouched | none |
-| **File vanished off disk** (reconcile) | leave | leave | leave | leave | none | missing | start one |
+| Remove, keep files | untouched | remove | **forget** | reset | none | gone | none |
+| Remove, delete files | **recycled** | remove with data | **forget** | reset | none | gone | none |
+| Remove, don't add it back | per above | remove | **forget** | reset | **add** | gone | none |
+| Delete the file, keep the title | **recycled** | remove with data | **forget** | reset | none | missing | **yes** |
+| Force a re-download | untouched | remove with data | **forget** | reset | **remove** | missing | **yes** |
+| Unblock a release | untouched | leave | leave | leave | none | untouched | **contentious** |
+| Restore from the recycle bin | **restored** | leave | leave | leave | none | **covered** | none |
+| Archive a dispatch | untouched | leave | leave | leave | none | untouched | none |
+| Queue action (delete-with-data) | untouched | remove with data | forget | leave | none | untouched | none |
 
-Three rows deserve their reason stated.
+Two need stating.
 
-**Remove → forget.** Today removal leaves the client holding everything, which
-is what makes a re-add fail. Forgetting on removal is the change that stops the
-scenario at the top of this page from arising in the first place; the force
-button then exists for the cases removal did not cause.
+**Restoring from the recycle bin has to set wanted state back to covered.**
+Otherwise Deluno restores your file and immediately searches for another copy.
+This is not currently done, and nothing in the product notices.
 
-**Health remediation keeps the client's memory.** It is the one row where the
-release genuinely failed, and remembering it is the mechanism that stops an
-endless re-download loop. Radarr is right about this. Clearing it here would
-trade a silent failure for a loud one.
+**Archiving a dispatch must keep the fetch fact.** Archive the operational
+detail; keep "Deluno fetched this title, at this time, through this client",
+because that is what the previously-downloaded blocker reads.
 
-**"File vanished" touches nothing but Deluno.** A reconcile reports what it
-found; it does not act on a client on the strength of a file being absent,
-because "absent" has innocent causes — an unmounted share, a renamed folder, a
-drive that has not spun up.
+---
+
+## Family G — you deleted something else
+
+The cascade cases, all newly found, none currently handled.
+
+| Scenario | What survives today | Proposed |
+|---|---|---|
+| Delete a library holding titles | Wanted rows, tracked files, dispatches, hand-offs — in another database, so no foreign key could catch it | **Refuse** while titles reference it, and say how many. Offer to move them |
+| Delete a download client with live dispatches | Dispatches naming a client id that resolves to nothing, so nothing can ever clear them | **Refuse** while dispatches are unresolved, or mark them orphaned and say so |
+| Delete a processor connection with open hand-offs | Hand-offs naming a processor that is gone — and an open hand-off blocks an import | **Release** the hand-offs to "no processor" so imports proceed |
+| Recycle-bin cleanup | Files permanently gone | The **only irreversible delete in the product**; it should say so, and say what it is about to take |
+
+---
+
+## Family H — something changed underneath you
+
+| Scenario | Detected by | Proposed |
+|---|---|---|
+| A library file was deleted outside Deluno | `FilesystemReconciliationService`, which nothing runs | Reconcile marks it missing, wanted state goes missing, search runs |
+| A library file was **moved** outside Deluno | Nothing — a moved file reads as deleted | Re-link rather than re-download, if file identity is recorded. See "better ways" |
+| The client reports a failure by webhook | `client-reported-failure` | Family A defaults, no block |
+| Health remediation acted | Existing three-strike policy | Client entry removed, **memory kept** — the release genuinely failed |
+
 
 ---
 
