@@ -421,6 +421,28 @@ never has to wait for a timer to find out what Deluno thinks.
 | An import fails and retries once | **Retry import now** | ✅ `POST /api/v1/download-dispatches/{id}/retry` |
 | A library pauses when its root is unreachable (decision 12) | **Re-check now**, rather than waiting | ✅ the same file check — it reports unreachable roots and touches nothing in them |
 
+### Decision 12, built
+
+A library whose root will not answer is now **paused**, not merely flagged.
+Search planning and import automation both filter through one
+`ILibraryAvailabilityService`, because two implementations of "is it there"
+would eventually disagree and the way you would find out is a library that
+imports but is never searched.
+
+- The pause is **said once** when it starts and once when it ends. A pause
+  nobody is told about is indistinguishable from Deluno having quietly stopped.
+- The answer is **held for a minute**. The worker asks on every tick, and a stat
+  call per library per tick against a sleeping NAS is its own problem.
+- A path that does not answer **within five seconds is treated as gone**, which
+  is what it is. An unreachable share fails when the network stack gives up,
+  and blocking the worker for that on every library is worse than the outage.
+- A library with **no root configured** is not called an outage. It is an
+  unfinished setup, and saying "not reachable" would send somebody to check a
+  drive that was never involved.
+
+Jobs already queued when a library goes still run; the gate is on planning, so
+what stops is Deluno *starting* new work it cannot finish.
+
 **Every one of these calls the same code the schedule calls.** The library file
 check and the refused-download clear-out were both bodies of lambdas inside the
 worker's planner, reachable only by a timer; they are now
