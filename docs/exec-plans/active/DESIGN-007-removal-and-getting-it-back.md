@@ -246,6 +246,27 @@ as no kind of failure. And the release **is** refused, because every copy of it
 lies in the same way. The surplus download is removed, being demonstrably worse
 than what is already held.
 
+**8 — Un-refusing a copy starts nothing.** James: *"there could be a number of
+scenarios when the blocklist is being cleared and if an individual title is
+removed the user is going to manually trigger the search anyway"*. Clearing in
+bulk is the common case, and firing a search per cleared row would be a storm
+nobody asked for. The screen still offers an explicit *search now* for the
+single-title case, so the capability is there without being automatic.
+
+**9 — Removing a film clears the download client, by default.** This is the
+cause of the original scenario rather than a symptom near it: today removal
+leaves the transfer, the infohash and the history behind, so the film cannot be
+re-added and, until PR #432, nothing said why. One setting turns it off, for
+people who seed and would rather keep the transfer than the ability to re-add.
+The people the default would hurt are the ones who know to change it.
+
+**10 — The ownership promise becomes true.** The codebase already says *"Deluno
+will not remove an external-client item or its payload without proven
+ownership"*, and honours it on exactly one path — the automatic one. The
+instruction a person triggers never asks. It will check, and refuse what Deluno
+cannot prove it created, with a deliberate override for the times you do want
+it to tidy up something it did not make. The override is recorded.
+
 ---
 
 ## The vocabulary
