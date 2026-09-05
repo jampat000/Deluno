@@ -561,6 +561,15 @@ public static class SeriesEndpointRouteBuilderExtensions
             IDownloadDispatchesRepository dispatches,
             IProcessorRepository processors,
             IActivityFeedRepository activityFeed,
+            IMediaStateRepository mediaStateRepository,
+            ILibrariesRepository platformSettingsRepository,
+            IQualityRepository qualityRepository,
+            IJobQueueRepository jobQueueRepository,
+            IAcquisitionDecisionPipeline acquisitionPipeline,
+            IDownloadClientGrabService downloadClientGrabService,
+            TimeProvider timeProvider,
+            IMediaTagStore tagStore,
+            IReleasePreferencePlanRepository releasePreferencePlanRepository,
             CancellationToken cancellationToken) =>
         {
             var denied = await UserAuthorization.RequireAuthenticatedAsync(httpContext, cancellationToken);
@@ -591,16 +600,60 @@ public static class SeriesEndpointRouteBuilderExtensions
                     exclusionIds),
                 cancellationToken);
 
+            // And then actually look for it. Clearing the obstacles and stopping
+            // there would leave the person exactly where they were, one button
+            // press poorer — "force a re-download" has to end in a download
+            // being looked for, or the word force is a lie.
+            //
+            // The search runs whether or not anything was cleared: someone who
+            // presses this has decided they want the title now, and "there was
+            // nothing in the way" is not a reason to refuse to go and find it.
+            var searchStarted = false;
+            var outcome = string.Empty;
+            try
+            {
+                var search = await RunSearchAsync(
+                    id,
+                    null,
+                    repository,
+                    mediaStateRepository,
+                    platformSettingsRepository,
+                    qualityRepository,
+                    jobQueueRepository,
+                    acquisitionPipeline,
+                    downloadClientGrabService,
+                    activityFeed,
+                    timeProvider,
+                    tagStore,
+                    releasePreferencePlanRepository,
+                    cancellationToken);
+
+                searchStarted = !search.NotFound;
+                outcome = search.Summary;
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                // The clearing already happened and is not undone by this. Say
+                // so rather than returning a 500 that hides what did work.
+                outcome = "The search could not be started, so try it by hand.";
+            }
+
+            var answer = result with
+            {
+                SearchStarted = searchStarted,
+                Summary = outcome.Length > 0 ? $"{result.Summary} {outcome}" : result.Summary
+            };
+
             await activityFeed.RecordActivityAsync(
                 "acquisition.override",
-                $"Someone forced a re-download of {item.Title}. {result.Summary}",
-                JsonSerializer.Serialize(new { result.Cleared, result.CouldNotClear }),
+                $"Someone forced a re-download of {item.Title}. {answer.Summary}",
+                JsonSerializer.Serialize(new { answer.Cleared, answer.CouldNotClear, answer.SearchStarted }),
                 null,
                 "tv",
                 id,
                 cancellationToken);
 
-            return Results.Ok(result);
+            return Results.Ok(answer);
         });
 
         series.MapPost("/{id}/search", async (
@@ -626,10 +679,10 @@ public static class SeriesEndpointRouteBuilderExtensions
                 return denied;
             }
 
-            var result = await MediaSearchHandler.ExecuteAsync(
-                MediaKind.Series,
+            var result = await RunSearchAsync(
                 id,
                 mode,
+                repository,
                 mediaStateRepository,
                 platformSettingsRepository,
                 qualityRepository,
@@ -638,23 +691,9 @@ public static class SeriesEndpointRouteBuilderExtensions
                 downloadClientGrabService,
                 activityFeedRepository,
                 timeProvider,
-                (seriesId, libraryId, triggerKind, outcome, now, nextEligibleUtc, lastSearchResult, releaseName, indexerName, detailsJson, cancellationToken) =>
-                    repository.RecordSearchAttemptAsync(
-                        seriesId,
-                        null,
-                        libraryId,
-                        triggerKind,
-                        outcome,
-                        now,
-                        nextEligibleUtc,
-                        lastSearchResult,
-                        releaseName,
-                        indexerName,
-                        detailsJson,
-                        cancellationToken),
-                cancellationToken,
                 tagStore,
-                releasePreferencePlanRepository);
+                releasePreferencePlanRepository,
+                cancellationToken);
 
             if (result.NotFound)
             {
@@ -2753,6 +2792,60 @@ public static class SeriesEndpointRouteBuilderExtensions
     }
 
     /// <summary>Blank means "no override", so it is stored as null rather than kept.</summary>
+    /// <summary>
+    /// One search, called from both places that start one.
+    ///
+    /// <para>The second place is a forced re-download, which would not be
+    /// forcing anything if it cleared every obstacle and then left the title
+    /// sitting exactly where it was. Extracted rather than copied because the
+    /// wiring is twenty-eight lines of service plumbing, and two copies of that
+    /// drift the moment one of them gains an argument.</para>
+    /// </summary>
+    private static Task<MediaSearchResult> RunSearchAsync(
+        string id,
+        string? mode,
+        ISeriesCatalogRepository repository,
+        IMediaStateRepository mediaStateRepository,
+        ILibrariesRepository platformSettingsRepository,
+        IQualityRepository qualityRepository,
+        IJobQueueRepository jobQueueRepository,
+        IAcquisitionDecisionPipeline acquisitionPipeline,
+        IDownloadClientGrabService downloadClientGrabService,
+        IActivityFeedRepository activityFeedRepository,
+        TimeProvider timeProvider,
+        IMediaTagStore tagStore,
+        IReleasePreferencePlanRepository releasePreferencePlanRepository,
+        CancellationToken cancellationToken)
+        => MediaSearchHandler.ExecuteAsync(
+            MediaKind.Series,
+            id,
+            mode,
+            mediaStateRepository,
+            platformSettingsRepository,
+            qualityRepository,
+            jobQueueRepository,
+            acquisitionPipeline,
+            downloadClientGrabService,
+            activityFeedRepository,
+            timeProvider,
+            (seriesId, libraryId, triggerKind, outcome, now, nextEligibleUtc, lastSearchResult, releaseName, indexerName, detailsJson, token) =>
+                repository.RecordSearchAttemptAsync(
+                    seriesId,
+                    null,
+                    libraryId,
+                    triggerKind,
+                    outcome,
+                    now,
+                    nextEligibleUtc,
+                    lastSearchResult,
+                    releaseName,
+                    indexerName,
+                    detailsJson,
+                    token),
+            cancellationToken,
+            tagStore,
+            releasePreferencePlanRepository);
+
     private static string? NormalizeOverride(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 

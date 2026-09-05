@@ -144,6 +144,37 @@ public sealed class AcquisitionBlockersApiTests
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    /// <summary>
+    /// And it goes and looks. Clearing every obstacle and then leaving the
+    /// title exactly where it was would make the word "force" a lie — the
+    /// person pressed a button that promised a re-download, not a tidy-up.
+    /// </summary>
+    [Theory]
+    [InlineData("movies", "/api/movies/")]
+    [InlineData("tv", "/api/series/")]
+    public async Task Forcing_starts_a_search_rather_than_only_clearing_the_way(string mediaType, string route)
+    {
+        await using var app = await ApplicationTestHost.StartAsync();
+        var root = Directory.CreateTempSubdirectory("deluno-force-").FullName;
+        try
+        {
+            await app.Client.PostAsJsonAsync("/api/libraries/", NewLibrary(mediaType, root));
+            var id = await AddAsync(app, route, mediaType);
+
+            var response = await app.Client.PostAsync($"{route.TrimEnd('/')}/{id}/force-redownload", null);
+            Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync());
+
+            using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Assert.True(
+                document.RootElement.GetProperty("searchStarted").GetBoolean(),
+                $"the force reported no search: {document.RootElement.GetProperty("summary").GetString()}");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private static async Task<JsonElement> BlockersAsync(ApplicationTestHost app, string route, string id)
@@ -170,4 +201,25 @@ public sealed class AcquisitionBlockersApiTests
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         return document.RootElement.GetProperty("id").GetString()!;
     }
+
+    private static object NewLibrary(string mediaType, string rootPath) => new
+    {
+        name = mediaType == "tv" ? "Shows" : "Films",
+        mediaType,
+        purpose = "collection",
+        rootPath,
+        downloadsPath = (string?)null,
+        qualityProfileId = (string?)null,
+        importWorkflow = "copy",
+        processorName = (string?)null,
+        processorOutputPath = (string?)null,
+        processorTimeoutMinutes = (int?)null,
+        processorFailureMode = (string?)null,
+        autoSearchEnabled = false,
+        missingSearchEnabled = false,
+        upgradeSearchEnabled = false,
+        searchIntervalHours = (int?)null,
+        retryDelayHours = (int?)null,
+        maxItemsPerRun = (int?)null
+    };
 }

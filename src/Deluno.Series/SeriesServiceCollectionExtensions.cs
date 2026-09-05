@@ -26,7 +26,10 @@ public static class SeriesServiceCollectionExtensions
         // Answers "why will this not download". Registered by both media
         // modules, like the state repository it reads.
         services.TryAddSingleton<AcquisitionBlockerGatherer>();
-        services.TryAddSingleton<AcquisitionOverrideService>();
+        // Scoped, not singleton: it consumes IDownloadClientTelemetryService,
+        // which is scoped. Registering it as a singleton captures that
+        // dependency, and the composition test refuses to build the container.
+        services.TryAddScoped<AcquisitionOverrideService>();
         services.TryAddSingleton<IMediaSubtitleRepository, SqliteMediaSubtitleRepository>();
         services.AddSingleton<ISeriesCatalogRepository, SqliteSeriesCatalogRepository>();
         // The quality ladder has to reach this catalogue's own database for a
