@@ -70,9 +70,10 @@ When a fix lands, the next question is where else that shape lives.
 part of this plan, now on a build six pull requests newer than the one Run 1
 walked.
 
-**Rig note.** `SABnzbd E2E Interactive` will not start over WinRM — it needs an
-interactive session — so the usenet path was unavailable this run. qBittorrent,
-MediaMop and the torznab seeder were all up.
+**Rig note.** `SABnzbd E2E Interactive` would not start over WinRM, so the usenet
+path was unavailable this run. qBittorrent, MediaMop and the torznab seeder were
+all up. *Fixed on 6 September — see the readiness section below; it did not need
+an interactive session.*
 
 ---
 
@@ -120,7 +121,24 @@ somewhere else in the codebase, sometimes with a comment describing the exact
 failure it was there to prevent. After a fix lands, the next question is where
 else that shape lives.
 
-**Ready for:** phases 9.4–9.9 and 10–13, none of which have ever been run.
+**The usenet path is available again, and this time it is a script.** Run 2
+recorded "SABnzbd will not start over WinRM, it needs an interactive session" as
+a fact about the rig, and wrote the whole usenet half of this plan off because of
+it. It was half true and it was not the reason: SABnzbd checks its own session id
+before parsing any argument and always concludes it is a Windows service, so the
+answer was to make it one. It now starts with the machine like its three
+neighbours.
+
+Underneath that was the part nobody had looked at: SABnzbd's configuration had
+gone — no news server, no category folder, relative paths, and an API key Deluno
+no longer agreed with. Deluno was saying so clearly and accurately ("SABnzbd
+rejected authentication with 403", next action "check the credential or API
+key"); nobody was reading it. `scripts/lab/provision-usenet.ps1` puts all of it
+back and then proves it, moving a genuine yEnc article over NNTP and comparing
+the decoded SHA-256 against the source.
+
+**Ready for:** phases 9.4–9.9 and 10–13, none of which have ever been run, on
+both the torrent and the usenet path.
 
 ---
 
@@ -134,13 +152,44 @@ else that shape lives.
 | SABnzbd | http://10.1.1.142:8085 | API key from its config |
 | Windows | 10.1.1.142 (RDP/WinRM) | `Administrator` / `Deluno-MM-Lab-2026!` |
 
-All services run as scheduled tasks at startup and survive a reboot.
+All four start without a person and come back after a reboot — Deluno,
+qBittorrent and MediaMop as SYSTEM scheduled tasks, SABnzbd as a real Windows
+service, because it refuses to run any other way (see below). Hold them to that:
 
-**The torznab indexer runs on the desktop, not the VM**, and is not a service. Start it before any acquisition step:
+```powershell
+./scripts/lab/ensure-rig-services.ps1            # -ReportOnly to look first
+```
+
+**Two fixtures run on the desktop, not the VM**, because there is no Python on
+the VM. Neither is a service. Start them before any acquisition step:
 
 ```bash
-TORZNAB_BIND=0.0.0.0 TORZNAB_ADVERTISE=10.1.1.102 python torznab_seed.py
+TORZNAB_BIND=0.0.0.0 TORZNAB_ADVERTISE=10.1.1.102 python scripts/lab/torznab_seed.py
 ```
+
+```powershell
+./scripts/lab/provision-usenet.ps1 -Verify       # nntp/nzb fixture + SABnzbd + Deluno
+```
+
+`provision-usenet.ps1` is idempotent and skips whatever is already right. With
+`-Verify` it pushes the fixture NZB through SABnzbd, waits for it to complete,
+and compares the decoded SHA-256 against the source before cleaning up after
+itself, so "the usenet path works" is a thing the rig demonstrates rather than a
+thing this document asserts.
+
+**Why SABnzbd is a service and not a task.** It checks its own session id at
+startup, before parsing any argument:
+
+```python
+if hasattr(sys, "frozen") and win32ts.ProcessIdToSessionId(...) == 0:
+    servicemanager.StartServiceCtrlDispatcher()
+```
+
+Every process launched over WinRM is in session 0, and so is every SYSTEM
+scheduled task, so SABnzbd always decides it is a Windows service — which is
+also why `SABnzbd.exe install` could not be run remotely either. As a real
+service the dispatcher connects and its options come from the `CommandLine`
+value under its own service key.
 
 Folder topology — both apps must agree, and that is a user responsibility rather than a bug:
 
@@ -313,7 +362,7 @@ Start the torznab indexer first.
 | 12.4 | Read System health | Every check names what to do, not just that something is wrong | |
 | 12.5 | Read the update screen | Reports the channel and the current version truthfully | |
 | 12.6 | Check both themes and mobile width | Navigation is monochrome; no nav element uses a status colour (#290) | |
-| 12.7 | Reboot the VM | All three services return by themselves; Deluno's state survives | |
+| 12.7 | Reboot the VM | All four services return by themselves; Deluno's state survives | Pass (6 September) — cold restart, nothing started by hand: 5099, 8080, 8085 and 8788 all answering, SABnzbd's news server and category intact, Deluno's library and catalogue unchanged. |
 
 ## Phase 13 — screenshots
 
