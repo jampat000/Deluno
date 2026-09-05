@@ -73,7 +73,18 @@ public sealed class QbittorrentDownloadClient(Func<HttpMessageHandler>? handlerF
         // start, which is exactly what it did on the lab: "Release URL sent to
         // qBittorrent" against a torrent stuck in missingFiles from a previous
         // run.
-        var after = await ListHashesAsync(http, cancellationToken);
+        // Adding by URL is asynchronous: qBittorrent answers "Ok." as soon as it
+        // has accepted the job, then fetches the .torrent and only afterwards
+        // does the infohash appear in its list. Asking once, immediately, is
+        // asking before the answer exists.
+        //
+        // That is what this used to do, so *every* grab of a genuinely new
+        // torrent was reported as "it already holds this release". On the lab
+        // rig qBittorrent held nothing, Deluno grabbed, recorded the dispatch
+        // failed, and qBittorrent then held the torrent — the release had
+        // arrived and the film stayed Missing, with a blocker card explaining a
+        // duplicate that never existed.
+        var after = await WaitForNewHashAsync(http, before, cancellationToken);
         if (before is not null && after is not null && !after.Except(before).Any())
         {
             return DownloadClientHelpers.GrabFailure(
@@ -279,6 +290,41 @@ public sealed class QbittorrentDownloadClient(Func<HttpMessageHandler>? handlerF
     /// worked, and a grab must not be failed on the strength of a question that
     /// went unanswered.</para>
     /// </summary>
+    /// <summary>
+    /// The client's hashes once a new one has appeared, or once we have waited
+    /// long enough to say it is not going to.
+    ///
+    /// <para>Bounded deliberately. A grab that really is a duplicate has to
+    /// come back and say so rather than hanging, and the caller is a person
+    /// waiting on a page — so this spends a few seconds at most, and returns
+    /// the moment something new shows up.</para>
+    /// </summary>
+    private static async Task<HashSet<string>?> WaitForNewHashAsync(
+        HttpClient http,
+        HashSet<string>? before,
+        CancellationToken cancellationToken)
+    {
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(6);
+        HashSet<string>? after = null;
+
+        while (true)
+        {
+            after = await ListHashesAsync(http, cancellationToken);
+
+            if (before is null || after is null || after.Except(before).Any())
+            {
+                return after;
+            }
+
+            if (DateTimeOffset.UtcNow >= deadline)
+            {
+                return after;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(400), cancellationToken);
+        }
+    }
+
     private static async Task<HashSet<string>?> ListHashesAsync(HttpClient http, CancellationToken cancellationToken)
     {
         try
