@@ -1034,6 +1034,28 @@ public sealed class SqliteJobStore(
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyDictionary<string, int>> CountJobsByStatusAsync(CancellationToken cancellationToken)
+    {
+        await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
+            DelunoDatabaseNames.Jobs,
+            cancellationToken);
+
+        using var command = connection.CreateCommand();
+        // Counted in SQL, over every row. A page cannot answer "how many" —
+        // it can only answer "how many of the ones I looked at", which is a
+        // different question that reads identically on a dashboard.
+        command.CommandText = "SELECT status, COUNT(*) FROM job_queue GROUP BY status;";
+
+        var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            counts[reader.GetString(0)] = reader.GetInt32(1);
+        }
+
+        return counts;
+    }
+
     public async Task<int> CountActiveJobsAsync(string jobType, CancellationToken cancellationToken)
     {
         await using var connection = await databaseConnectionFactory.OpenConnectionAsync(

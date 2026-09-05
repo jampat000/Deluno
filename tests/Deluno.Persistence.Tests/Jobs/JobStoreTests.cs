@@ -117,6 +117,54 @@ public sealed class JobStoreTests
             realtime.Published);
     }
 
+    /// <summary>
+    /// "How many jobs failed" is a question about the queue, not about the page
+    /// of it somebody happened to read.
+    ///
+    /// <para>The monitoring summary counted statuses inside
+    /// <c>ListAsync(200)</c>, so every number it published saturated at 200. On
+    /// the lab rig on 2026-09-05 the dashboard reported <b>136</b> failed jobs
+    /// against a queue holding <b>455</b> — and would have reported much the
+    /// same against ten thousand.</para>
+    ///
+    /// <para>That is not just a wrong number on a screen. The soak plan's daily
+    /// rule is that <c>jobs_failed</c> must not trend upward across three
+    /// consecutive days; a metric that saturates stops trending exactly when
+    /// the queue is growing worst, so the gate would report healthy through the
+    /// failure it exists to catch.</para>
+    /// </summary>
+    [Fact]
+    public async Task Counting_jobs_by_status_sees_past_the_end_of_a_page()
+    {
+        using var storage = TestStorage.Create();
+        var timeProvider = new FixedTimeProvider(DateTimeOffset.Parse("2026-09-05T04:00:00Z"));
+        await InitializeJobsAsync(storage, timeProvider);
+        var store = new SqliteJobStore(storage.Factory, timeProvider, new NullRealtimeEventPublisher(), new NullDownloadDispatchesRepository());
+
+        // More than one page of them, which is the whole point.
+        const int queuedCount = 250;
+        for (var index = 0; index < queuedCount; index++)
+        {
+            await store.EnqueueAsync(
+                new EnqueueJobRequest(
+                    JobType: "filesystem.import.execute",
+                    Source: "movies",
+                    PayloadJson: $$"""{"sourcePath":"C:\gone\{{index}}.mkv"}""",
+                    RelatedEntityType: "movie",
+                    RelatedEntityId: $"movie-{index}",
+                    IdempotencyKey: $"movie-{index}:import",
+                    DedupeKey: $"movie:movie-{index}:import"),
+                CancellationToken.None);
+        }
+
+        var counts = await store.CountJobsByStatusAsync(CancellationToken.None);
+
+        Assert.Equal(queuedCount, counts["queued"]);
+        Assert.True(
+            counts["queued"] > (await store.ListAsync(200, CancellationToken.None)).Count,
+            "The count came from a page rather than from the queue.");
+    }
+
     [Fact]
     public async Task EnqueueAsync_reuses_active_job_for_duplicate_idempotency_key()
     {
