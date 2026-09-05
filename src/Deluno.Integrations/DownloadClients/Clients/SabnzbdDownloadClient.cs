@@ -240,6 +240,22 @@ public sealed class SabnzbdDownloadClient(IHttpClientFactory httpClientFactory) 
         string queueItemId,
         CancellationToken cancellationToken)
     {
+        // SABnzbd's history delete takes an nzo id — and also the words "all"
+        // and "failed", which mean "empty the history". Deluno only ever passes
+        // an id it read from its own dispatch record, so this cannot happen
+        // today; it is here because the cost of being wrong once is somebody's
+        // entire download history, and the check is one comparison.
+        if (DangerousHistorySelectors.Contains(queueItemId))
+        {
+            return DownloadClientHelpers.ActionFailure(
+                client,
+                queueItemId,
+                DownloadClientActions.Forget,
+                $"\"{queueItemId}\" is not a download id — to SABnzbd it means the whole history, so Deluno will not send it.",
+                upstreamDetail: "Refused before the request was made.",
+                category: "configuration");
+        }
+
         var id = Uri.EscapeDataString(queueItemId);
         var key = Uri.EscapeDataString(apiKey);
 
@@ -266,6 +282,12 @@ public sealed class SabnzbdDownloadClient(IHttpClientFactory httpClientFactory) 
             "SABnzbd could not be reached to forget this release.",
             historyRemoved.StatusCode ?? queueRemoved.StatusCode);
     }
+
+    /// <summary>
+    /// Values SABnzbd reads as "everything" rather than as one download.
+    /// </summary>
+    private static readonly HashSet<string> DangerousHistorySelectors =
+        new(StringComparer.OrdinalIgnoreCase) { "all", "failed", "completed" };
 
     /// <summary>
     /// Whether SABnzbd answered at all, and whether it said yes.

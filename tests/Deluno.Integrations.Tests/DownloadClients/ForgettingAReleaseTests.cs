@@ -125,6 +125,35 @@ public sealed class ForgettingAReleaseTests
         Assert.Contains(bodies, body => body.Contains("HistoryFinalDelete", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// "all" is not a download id. To SABnzbd it means the whole history.
+    ///
+    /// <para>Deluno only ever passes an id it read from its own dispatch
+    /// record, so this cannot happen today. It is guarded because the cost of
+    /// being wrong once is somebody's entire download history, and the check is
+    /// one comparison.</para>
+    /// </summary>
+    [Theory]
+    [InlineData("all")]
+    [InlineData("failed")]
+    [InlineData("completed")]
+    public async Task Forgetting_refuses_a_value_sabnzbd_would_read_as_the_whole_history(string selector)
+    {
+        var sent = 0;
+        var handler = new StubHandler(_ =>
+        {
+            sent++;
+            return JsonResponse("{\"status\":true}");
+        });
+
+        var result = await new SabnzbdDownloadClient(new StubHttpClientFactory(handler))
+            .ExecuteActionAsync(Sabnzbd(), DownloadClientActions.Forget, selector, CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(0, sent);
+        Assert.Contains("whole history", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private static DownloadClientItem Sabnzbd() => Client("sabnzbd", "SABnzbd", "api-key");
