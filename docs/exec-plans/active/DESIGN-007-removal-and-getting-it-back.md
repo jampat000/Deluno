@@ -56,17 +56,35 @@ questions, and only the third is about deleting.
 3. **Who else is holding a copy?** The download client's transfer, the download
    client's *history*, the processor's hand-off.
 
-**Question 2 has no answer today.** There is no `File.Exists` anywhere in
-`Deluno.Movies` or `Deluno.Media`, and no endpoint that re-checks a library
-file — the route inventory has metadata refresh and subtitle rescan and nothing
-else. `HasFile` is whatever the import last set. Delete a file outside Deluno
-and the library still reports *Quality met*; the acquisition-blockers card
-answers "already here at the quality you asked for" and offers no override,
-because already-held is deliberately not clearable.
+**Question 2 is answerable, and nothing asks it.**
 
-That is a defect, not a policy choice, and no table fixes it. It is a
-**prerequisite**: question 2 must be answerable before the table below can be
-evaluated.
+*(Corrected. The first draft of this document said Deluno had no way to check
+whether a library file still exists. That was wrong — it was written from a
+search for "scan", "rescan" and "refresh", and the feature is called
+reconciliation. The mistake matters, because it would have had us build a
+second one.)*
+
+`FilesystemReconciliationService` already walks every library, calls
+`File.Exists` on each tracked path, raises a `missingTrackedFile` issue, and
+offers a `mark-missing` repair that calls `MarkTrackedFileMissingAsync` on the
+catalogue. It refuses any path outside the library root and it never deletes
+anything. It is reachable at `GET /api/filesystem/reconciliation` and
+`POST /api/filesystem/reconciliation/repair`.
+
+What is missing is not the capability. It is that **nothing ever runs it**:
+
+- no schedule, so a file deleted outside Deluno stays "held" indefinitely;
+- the repair is one manual action per issue, so noticing costs a person a trip
+  through a screen most people will never open;
+- and nothing that *reads* `HasFile` — the library grid, the search path, the
+  acquisition-blockers card — consults it or triggers it.
+
+So a title whose file was deleted outside Deluno still reports *Quality met*,
+and the blockers card answers "already here at the quality you asked for" and
+offers no override, because already-held is deliberately not clearable.
+
+That is still a prerequisite for the table below, but the work is connecting
+what exists rather than building a reconciler. **Do not write a second one.**
 
 ---
 
@@ -137,9 +155,12 @@ drive that has not spun up.
    say so — `SharingFootprint` reasons about whether the client's copy and the
    library's are one set of data. Currently the confirmation says "along with
    its files" and never mentions seeding.
-3. **Should the reconcile run on a schedule, on opening a title, or only when
-   asked?** A per-title check is one `stat` and could run whenever a detail page
-   or the blockers card is read. A library-wide sweep is a job.
+3. **Should the existing reconcile run on a schedule, on opening a title, or
+   stay on demand?** A per-title check is one `stat`. A library-wide sweep
+   already exists and is manual. My recommendation is both: the per-title check
+   where an answer is being given, and the sweep on the same schedule as other
+   maintenance — with `mark-missing` applied automatically, since it only ever
+   corrects Deluno's own belief and never touches a file.
 4. **Does an unmonitored title get reconciled?** Deluno is not watching it, but
    the library grid still claims it holds a file.
 
@@ -270,8 +291,11 @@ A document that five code paths can ignore is the problem, not the fix.
 
 ## Order of work
 
-1. **The reconcile.** Question 2 has to be answerable first; until it is, every
-   answer the blockers card gives about a deleted title is confidently wrong.
+1. **Connect the reconcile that exists.** Until something asks, every answer
+   the blockers card gives about a deleted title is confidently wrong. The
+   cheapest honest version is a single presence check for the one title being
+   asked about, routed through `MarkTrackedFileMissingAsync` so the state is
+   corrected rather than only the display — plus a schedule for the sweep.
 2. **The "previously downloaded" blocker.** A completed dispatch is invisible to
    `AcquisitionBlockerSources.FindAsync` today, which is why the exact scenario
    at the top of this page produces no card and no button.
