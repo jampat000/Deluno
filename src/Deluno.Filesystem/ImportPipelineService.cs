@@ -217,13 +217,26 @@ public sealed partial class ImportPipelineService(
             return Failed(StatusCodes.Status409Conflict, message);
         }
 
+        if (preview.MediaProbe is { Status: "unreadable" })
+        {
+            var message = preview.MediaProbe.Message ?? "Deluno could not read this file to check it.";
+            await RecordImportFailureAsync(
+                request,
+                request.Preview,
+                ImportFailurePolicy.MediaProbeUnreadable,
+                message,
+                "Check the file is reachable — a share that dropped, a lock, or a disk error. The release itself is not suspected.",
+                cancellationToken);
+            return Failed(StatusCodes.Status400BadRequest, message);
+        }
+
         if (preview.MediaProbe is { Status: "failed" })
         {
             var message = preview.MediaProbe.Message ?? "Media probing failed. Deluno cannot confirm this file is playable.";
             await RecordImportFailureAsync(
                 request,
                 request.Preview,
-                "mediaProbeFailed",
+                ImportFailurePolicy.MediaProbeRejected,
                 message,
                 "Check whether the file is complete, playable, and readable by ffprobe before importing.",
                 cancellationToken);
