@@ -23,4 +23,18 @@ public interface IBlockedReleaseRepository
     Task<IReadOnlySet<string>> ListKeysAsync(CancellationToken cancellationToken);
 
     Task<bool> UnblockAsync(string id, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Blocked releases whose leftovers are still in a download client.
+    ///
+    /// <para>Only the ones the table says should be cleared — a release refused
+    /// because Deluno could not identify it is not one whose file should be
+    /// destroyed.</para>
+    /// </summary>
+    Task<IReadOnlyList<BlockedRelease>> ListAwaitingCleanupAsync(CancellationToken cancellationToken);
+
+    /// <summary>What has been refused for one title.</summary>
+    Task<IReadOnlyList<BlockedRelease>> ListForAsync(string mediaType, string entityId, CancellationToken cancellationToken);
+
+    Task MarkCleanedUpAsync(string id, CancellationToken cancellationToken);
 }

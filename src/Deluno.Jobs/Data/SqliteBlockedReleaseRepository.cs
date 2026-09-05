@@ -53,7 +53,10 @@ public sealed class SqliteBlockedReleaseRepository(
             .First(item => string.Equals(item.ReleaseKey, release.ReleaseKey, StringComparison.Ordinal));
     }
 
-    public async Task<IReadOnlyList<BlockedRelease>> ListAsync(CancellationToken cancellationToken)
+    public Task<IReadOnlyList<BlockedRelease>> ListAsync(CancellationToken cancellationToken)
+        => ListWhereAsync(null, cancellationToken);
+
+    private async Task<IReadOnlyList<BlockedRelease>> ListWhereAsync(string? where, CancellationToken cancellationToken)
     {
         await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
             DelunoDatabaseNames.Jobs,
@@ -61,13 +64,11 @@ public sealed class SqliteBlockedReleaseRepository(
 
         using var command = connection.CreateCommand();
         command.CommandText =
-            """
-            SELECT id, release_key, release_name, indexer_name, media_type, entity_id, title,
-                   reason_code, reason, torrent_hash_or_item_id, download_client_id,
-                   download_client_name, blocked_utc
-            FROM blocked_releases
-            ORDER BY blocked_utc DESC;
-            """;
+            "SELECT id, release_key, release_name, indexer_name, media_type, entity_id, title, "
+            + "reason_code, reason, torrent_hash_or_item_id, download_client_id, "
+            + "download_client_name, blocked_utc FROM blocked_releases "
+            + (where is null ? string.Empty : $"WHERE {where} ")
+            + "ORDER BY blocked_utc DESC;";
 
         var results = new List<BlockedRelease>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -122,6 +123,37 @@ public sealed class SqliteBlockedReleaseRepository(
         Add(command, "@id", id);
 
         return await command.ExecuteNonQueryAsync(cancellationToken) > 0;
+    }
+
+    public async Task<IReadOnlyList<BlockedRelease>> ListAwaitingCleanupAsync(CancellationToken cancellationToken)
+        => (await ListWhereAsync(
+                "cleaned_up_utc IS NULL AND download_client_id IS NOT NULL AND torrent_hash_or_item_id IS NOT NULL",
+                cancellationToken))
+            .Where(release => ImportFailurePolicy.ShouldDeletePayload(release.ReasonCode))
+            .ToArray();
+
+    public async Task<IReadOnlyList<BlockedRelease>> ListForAsync(
+        string mediaType,
+        string entityId,
+        CancellationToken cancellationToken)
+        => (await ListAsync(cancellationToken))
+            .Where(release =>
+                string.Equals(release.MediaType, mediaType, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(release.EntityId, entityId, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+    public async Task MarkCleanedUpAsync(string id, CancellationToken cancellationToken)
+    {
+        await using var connection = await databaseConnectionFactory.OpenConnectionAsync(
+            DelunoDatabaseNames.Jobs,
+            cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE blocked_releases SET cleaned_up_utc = @now WHERE id = @id;";
+        Add(command, "@now", timeProvider.GetUtcNow().ToString("O", CultureInfo.InvariantCulture));
+        Add(command, "@id", id);
+
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     private static void Add(DbCommand command, string name, object value)
