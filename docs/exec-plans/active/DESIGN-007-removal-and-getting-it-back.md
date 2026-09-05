@@ -174,6 +174,49 @@ what exists rather than building a reconciler. **Do not write a second one.**
 
 ---
 
+## Decisions settled with James
+
+Taken one at a time, in plain terms. These are recorded as they were made; the
+matrix below is being brought into line with them.
+
+**1 — A download that turns out to be junk.** Deluno refuses that exact copy
+and **tells you**. The next search takes the next best copy and reports that it
+skipped one, and the refused copy appears on a list where it can be seen and
+undone. Radarr's mechanism without Radarr's silence, which was the whole
+complaint.
+
+**2 — How long a refusal lasts.** Forever, until you clear it. Combined with
+decision 1 that is a deliberate pairing: permanence is fine *because* nothing
+is hidden. It also makes the management screen a requirement rather than a
+nicety — a permanent refusal you cannot see is the failure mode we are
+avoiding.
+
+**3 — When the playability check fails.** Tell the two causes apart: the check
+read the file and rejected it, versus Deluno could not get at the file at all.
+Both are **called out** either way. Neither is allowed to retry indefinitely —
+James: *"I dont want it trying again later and continue to try if it comes up
+with the same behaviour... I think we need to be harsher"*. One retry, and if
+it fails the same way again the copy is refused and added to the list.
+
+**4 — Who decides.** Not us, in code, for ever. James: *"I think it should be
+case by case and should be configurable options for the user in some blocklist
+/ failure management section of the app"*.
+
+So every row of the matrix below is a **shipped default**, not a law. The
+product needs a **Failure and blocklist** section carrying both halves:
+
+- **The list** — every refused copy, with the release, the reason, when it was
+  refused, and an unblock button. Decisions 1 and 2 are unsafe without it.
+- **The rules** — per kind of failure, what Deluno does: never refuse · one
+  retry then refuse · refuse immediately · ask me. Shipped with the defaults
+  below, changeable by the person whose library it is.
+
+That is a better answer than any single policy, because the right harshness
+depends on the library. Somebody on a fast connection with plenty of disk wants
+it strict; somebody on a flaky share does not.
+
+---
+
 ## The vocabulary
 
 Settled. One word, one meaning, and the words appear in the product exactly as
