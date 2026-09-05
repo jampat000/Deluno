@@ -315,7 +315,11 @@ function jobTypeLabel(jobType: string) {
 const RUN_NOW: Record<string, { path: string; label: string; said: (result: LibraryFileCheckResult) => string }> = {
   "library.file.check": {
     path: "/api/filesystem/file-check",
-    label: "Check now",
+    // Not "Check now": the metadata maintenance card on this same screen
+    // already has one, and it checks something else entirely. Two buttons with
+    // one name on one screen is a coin toss for the reader, and Playwright
+    // found it before a person did.
+    label: "Check files now",
     said: (result) =>
       result.markedMissing === 0 && result.unreachableRoots === 0
         ? "Every file Deluno is holding is still on disk."
