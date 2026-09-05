@@ -207,15 +207,15 @@ public sealed class QbittorrentDownloadClient(Func<HttpMessageHandler>? handlerF
             "pause" => new[] { "api/v2/torrents/stop", "api/v2/torrents/pause" },
             "resume" => new[] { "api/v2/torrents/start", "api/v2/torrents/resume" },
             "delete" => new[] { "api/v2/torrents/delete" },
-            "delete-with-data" => new[] { "api/v2/torrents/delete" },
+            "delete-with-data" or DownloadClientActions.Forget => new[] { "api/v2/torrents/delete" },
             "recheck" => new[] { "api/v2/torrents/recheck" },
             _ => null
         };
         if (endpoints is null) return DownloadClientHelpers.Unsupported(client, queueItemId, action, "qBittorrent");
         var pairs = new List<KeyValuePair<string, string>> { new("hashes", queueItemId) };
-        if (action is "delete" or "delete-with-data")
+        if (action is "delete" or "delete-with-data" or DownloadClientActions.Forget)
         {
-            pairs.Add(new("deleteFiles", action == "delete-with-data" ? "true" : "false"));
+            pairs.Add(new("deleteFiles", action is "delete-with-data" or DownloadClientActions.Forget ? "true" : "false"));
         }
         HttpResponseMessage? lastResponse = null;
         foreach (var endpoint in endpoints)

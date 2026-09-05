@@ -55,7 +55,7 @@ public sealed class UTorrentDownloadClient : DownloadClientBase
     {
         // "removedata" is uTorrent's remove-the-file-too verb; "remove" forgets
         // the torrent and leaves the payload where it is (#287).
-        var verb = action switch { "pause" => "pause", "resume" => "start", "delete" => "remove", "delete-with-data" => "removedata", "recheck" => "recheck", _ => null };
+        var verb = action switch { "pause" => "pause", "resume" => "start", "delete" => "remove", "delete-with-data" or DownloadClientActions.Forget => "removedata", "recheck" => "recheck", _ => null };
         if (verb is null) return DownloadClientHelpers.Unsupported(client, queueItemId, action, "uTorrent");
         var baseUri = DownloadClientHelpers.ResolveEndpoint(client);
         if (baseUri is null) return DownloadClientHelpers.MissingAddress(client, queueItemId, action);

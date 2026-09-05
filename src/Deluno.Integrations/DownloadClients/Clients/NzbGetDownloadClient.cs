@@ -49,12 +49,45 @@ public sealed class NzbGetDownloadClient(IHttpClientFactory httpClientFactory) :
 
     public override async Task<DownloadClientActionResult> ExecuteActionAsync(DownloadClientItem client, string action, string queueItemId, CancellationToken cancellationToken)
     {
-        var method = action switch { "pause" => "pausedownload", "resume" => "resumedownload", "delete" => "editqueue", _ => null };
+        var method = action switch
+        {
+            DownloadClientActions.Pause => "pausedownload",
+            DownloadClientActions.Resume => "resumedownload",
+            DownloadClientActions.Delete or DownloadClientActions.DeleteWithData or DownloadClientActions.Forget => "editqueue",
+            _ => null
+        };
         if (method is null) return DownloadClientHelpers.Unsupported(client, queueItemId, action, "NZBGet");
         var baseUri = DownloadClientHelpers.ResolveEndpoint(client);
         if (baseUri is null) return DownloadClientHelpers.MissingAddress(client, queueItemId, action);
-        object[] parameters = action == "delete" ? ["GroupDelete", 0, "", new[] { DownloadClientHelpers.ParseId(queueItemId) }] : [];
-        await DownloadClientHelpers.PostJsonAsync<NzbGetResponse<object>>(CreateHttp(client), new Uri(baseUri, "jsonrpc"), new NzbGetRequest(method, parameters), cancellationToken);
+
+        var id = DownloadClientHelpers.ParseId(queueItemId);
+        var http = CreateHttp(client);
+        var endpoint = new Uri(baseUri, "jsonrpc");
+
+        if (string.Equals(action, DownloadClientActions.Forget, StringComparison.OrdinalIgnoreCase))
+        {
+            // Two requests, because NZBGet keeps the thing that refuses a
+            // release somewhere the first one does not reach. GroupDelete
+            // empties the queue; the history entry is what its duplicate check
+            // reads, and HistoryFinalDelete is the only command that removes it
+            // rather than hiding it. A forget that only did the first would
+            // report success and change nothing.
+            await DownloadClientHelpers.PostJsonAsync<NzbGetResponse<object>>(
+                http, endpoint, new NzbGetRequest("editqueue", ["GroupDelete", 0, "", new[] { id }]), cancellationToken);
+            await DownloadClientHelpers.PostJsonAsync<NzbGetResponse<object>>(
+                http, endpoint, new NzbGetRequest("editqueue", ["HistoryFinalDelete", 0, "", new[] { id }]), cancellationToken);
+
+            return DownloadClientHelpers.ActionSuccess(
+                client,
+                queueItemId,
+                action,
+                "Removed the download and its history entry from NZBGet, so it will accept this release again.");
+        }
+
+        object[] parameters = action is DownloadClientActions.Delete or DownloadClientActions.DeleteWithData
+            ? ["GroupDelete", 0, "", new[] { id }]
+            : [];
+        await DownloadClientHelpers.PostJsonAsync<NzbGetResponse<object>>(http, endpoint, new NzbGetRequest(method, parameters), cancellationToken);
         return DownloadClientHelpers.ActionSuccess(client, queueItemId, action, "NZBGet action sent.");
     }
 
