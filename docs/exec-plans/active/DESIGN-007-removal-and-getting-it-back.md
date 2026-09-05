@@ -404,6 +404,45 @@ search for it by hand. At no point does the answer depend on a timer.
 
 ---
 
+## Decision 17 — Seeding, and a correction to three decisions above
+
+I was about to add a seeding warning to every action that removes a download.
+James stopped it: *"this should be build into the seeding route or
+mechanism... if a user chooses the option to seed deluno should know that"*.
+
+He is right, and better than right — **it already is**. Deluno has a sharing
+rule (#288): per-indexer settings for how long a site expects you to keep
+sharing, inheriting from a global rule where an indexer says nothing, evaluated
+by the worker into holds that carry a deadline in plain words — *"2 days left"* —
+and a flag for when the rule can no longer be met and Deluno was told to ask
+rather than act.
+
+The import pipeline already defers to it, in as many words:
+
+> "The sharing rule owns this file now. It knows how long the site the release
+> came from expects you to keep sharing."
+>
+> "The download client is still sharing this, so Deluno left its copy alone. It
+> will ask the client to remove it once your sharing rule is met."
+
+**So decisions 9, 16 and the force are wrong as written.** Each reaches into
+the download client directly and would remove a transfer the sharing rule
+currently owns. That is not a missing warning — it is three new paths ignoring
+an owner that the oldest path in the system already respects.
+
+The correction: **every action that would remove a transfer goes through the
+sharing rule**, exactly as the import pipeline does. A title under an active
+hold is not removed; the removal is recorded as pending and happens when the
+rule is met, and the existing ask-rather-than-act setting decides whether
+Deluno waits or asks. No new mechanism, no new warning, and one place that
+knows about seeding rather than four.
+
+This is the second time in this document that the right answer was to connect
+something that already existed rather than build one — the file-presence check
+was the first. Worth noticing as a pattern.
+
+---
+
 ## The vocabulary
 
 Settled. One word, one meaning, and the words appear in the product exactly as
