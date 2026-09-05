@@ -4,10 +4,12 @@
 > Eighteen decisions were taken with James one at a time and are recorded below
 > in his words; nothing is left open.
 >
-> Two of them corrected earlier ones, both for the same reason: the capability
-> already existed and the new design was about to duplicate it. The file
-> presence check, and the sharing rule that owns seeding. **Check before
-> building.**
+> Three of them corrected earlier claims of mine, every time for the same
+> reason: the capability already existed and the design was about to duplicate
+> it. The file presence check, the sharing rule that owns seeding, and the
+> recycle bin retention that is already enforced on the heartbeat. **Check
+> before building** — in this codebase the answer is usually already there under
+> a name you did not search for.
 
 James, on the scenario that started this:
 
@@ -328,14 +330,18 @@ film stuck for ever on a deleted tool helps nobody.
 Everything else here can be undone or redone; this cannot, and today it is
 presented exactly like the rest.
 
-It also turned out that `RetentionDays` and `MaxSizeMb` already exist as
-settings and **nothing enforces them**, because nothing runs cleanup unless a
-person presses it. You can configure thirty days and it will never happen.
+*(Corrected. I claimed `RetentionDays` and `MaxSizeMb` were settings nothing
+enforced. Wrong — `SystemTasks.RecycleBinCleanup` runs on the heartbeat and
+calls `CleanupAsync`, whose own log line says it "permanently removed N expired
+or over-capacity item(s)". I had grepped `Deluno.Jobs` for "recycle" and never
+looked in `Deluno.Worker`. **Third time in this document** the capability
+already existed and I was about to rebuild it.)*
 
-So retention is enforced on a schedule, which is what those settings were always
-for, and a manual empty spells out precisely what it is about to take — "47
-files, 312 GB, 3 of them deleted in the last 24 hours" — and never touches
-anything still inside the retention window.
+So the automatic half is done. What is left of this decision is the manual half:
+an empty spells out precisely what it is about to take — "47 files, 312 GB, 3 of
+them deleted in the last 24 hours" — and never touches anything still inside the
+retention window. It is the one irreversible act in the product and it should
+say so before it acts.
 
 **16 — What happens to a copy that has been refused.** A hole in everything
 above, and James found it: *"if we are refusing something, is it being deleted
