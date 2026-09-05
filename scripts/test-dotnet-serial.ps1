@@ -59,9 +59,7 @@ foreach ($project in $projects) {
     # stops work on everything else while a test-host lifetime problem is
     # diagnosed. The problem is real and is written down; this gate should
     # report on the tests.
-    # TEMPORARY: naming a hang on CI, to be removed before merge.
     & $dotnet.Source test $project.FullName --configuration Release --no-build --no-restore `
-        --blame-hang --blame-hang-timeout 4m `
         --logger "trx;LogFileName=backend-tests.trx"
     if ($LASTEXITCODE -ne 0) {
         $failed.Add($project.Name)
