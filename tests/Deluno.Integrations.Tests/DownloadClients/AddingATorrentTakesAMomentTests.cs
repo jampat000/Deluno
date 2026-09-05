@@ -53,6 +53,10 @@ public sealed class AddingATorrentTakesAMomentTests
             .GrabAsync(Client(), Request(), CancellationToken.None);
 
         Assert.True(result.Succeeded, result.Message);
+        // And the hash it just took is recorded, which is only possible because
+        // the check waited for it. Without this the dispatch carried no queue
+        // item id and nothing downstream could follow the download.
+        Assert.Equal("abc123", result.ExternalId);
     }
 
     /// <summary>

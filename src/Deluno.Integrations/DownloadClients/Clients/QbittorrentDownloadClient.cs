@@ -97,7 +97,21 @@ public sealed class QbittorrentDownloadClient(Func<HttpMessageHandler>? handlerF
             };
         }
 
-        return DownloadClientHelpers.GrabSuccess(client, request, "Release URL sent to qBittorrent.");
+        // Record the infohash the client just took.
+        //
+        // Waiting for it above is what makes this possible at all, and without
+        // it the dispatch carried no queue item id: nothing downstream could
+        // tie the release to the torrent. That is why a stuck download could
+        // not be followed, and why forcing a re-download could not work out
+        // which item to ask the client to forget.
+        var added = before is not null && after is not null
+            ? after.Except(before).FirstOrDefault()
+            : null;
+
+        return DownloadClientHelpers.GrabSuccess(client, request, "Release URL sent to qBittorrent.") with
+        {
+            ExternalId = added
+        };
     }
 
     public override async Task<DownloadClientTelemetrySnapshot?> GetSnapshotAsync(DownloadClientItem client, DateTimeOffset capturedUtc, CancellationToken cancellationToken)
