@@ -76,6 +76,54 @@ MediaMop and the torznab seeder were all up.
 
 ---
 
+## Run 3 readiness — 6 September 2026
+
+**The core loop closes.** Until it did, there was nothing to run phases 9–13
+against: every phase after 8 assumes a library with something in it, and the rig
+had an empty library.
+
+Six defects stood between "a title is wanted" and "a file is in the library",
+each one a layer confidently reporting something untrue and the layer above
+believing it:
+
+| | |
+|---|---|
+| #453 | qBittorrent adds asynchronously. The adapter compared the hash list before and after the add, so **every new torrent grab was reported as a failure** and the infohash was never recorded. The source of the rest of this chain. |
+| #451 | `NormalizeAction` did not list `forget`, killing every path that asks a client to forget a release. Nothing caught it because every caller mocks the service that was refusing. |
+| #450 | The force said "there was nothing to clear" about the very obstacle it was offered for. |
+| #455 | A re-download inherited the previous attempt's hand-off outcome and was reported `imported` over an empty library. |
+| #445 | Failed jobs counted from a 200-row page — 136 reported against 455 real — so the GA regression gate never reached step two. |
+| #448 | Retry left out the pile it had promoted from. |
+| #454 | A completed import reserved its refined folder for ever, so a release could be imported exactly once. The rule that fixes this already existed one loop above, with a comment naming the failure. |
+
+Rig state on `86d0fa98`:
+
+```
+grab          : dispatch=sent queueItem='1800621d8a6a3a60c5280a172c3f6cf803bac2f5'
+client        : status=imported
+downloaded    : 0 in Downloads-Complete\Movies
+refined       : 1 in Refined\Movies
+library       : 1 in Library\Movies
+catalogue     : hasFile=True wanted=covered
+import status : 'imported'
+```
+
+```
+C:\Deluno\Library\Movies\Big Buck Bunny (2008)\Big Buck Bunny (2008).mkv   61,878,609 bytes
+```
+
+Named from the catalogue rather than the release string, which is the other half
+of what the refine-before-import path was getting wrong.
+
+**The lesson, a third time.** Six of the seven were a rule that already existed
+somewhere else in the codebase, sometimes with a comment describing the exact
+failure it was there to prevent. After a fix lands, the next question is where
+else that shape lives.
+
+**Ready for:** phases 9.4–9.9 and 10–13, none of which have ever been run.
+
+---
+
 ## The rig
 
 | What | Where | Sign in |
