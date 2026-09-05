@@ -74,6 +74,35 @@ function contrast(a: Hsl, b: Hsl): number {
 }
 
 /**
+ * The dark theme's value for a token — index 1, since the light `:root` is
+ * declared first.
+ */
+function dark(name: string): Hsl {
+  const values = tokens(name);
+  expect(values.length, `--${name} is not defined for both themes`).toBeGreaterThan(1);
+  return values[1];
+}
+
+/**
+ * CIE L*, perceptual lightness on a 0-100 scale.
+ *
+ * <p>Used instead of a WCAG ratio for comparing two large flat planes, because
+ * a ratio is a metric for text on a background and answers the wrong question
+ * here — asked whether the two themes' planes were separated alike, it said
+ * yes while the light theme visibly read flatter. L* found the gap at once.</p>
+ */
+function perceptualLightness(colour: Hsl): number {
+  const y = luminance(colour);
+  const delta = 6 / 29;
+  return y > delta * delta * delta ? 116 * Math.cbrt(y) - 16 : (y * 8) / (delta * delta * delta);
+}
+
+/** How far apart two planes look, regardless of which theme they are in. */
+function step(a: Hsl, b: Hsl): number {
+  return Math.abs(perceptualLightness(a) - perceptualLightness(b));
+}
+
+/**
  * The light theme is allowed to be light. It is not allowed to be a lightbulb.
  *
  * <p>It used to paint the page at 97% and every card at a flat 100%, which is
@@ -118,8 +147,8 @@ describe("the light theme's brightness", () => {
   });
 
   it("still reads as a light theme rather than a dimmed dark one", () => {
-    expect(light("background").lightness).toBeGreaterThanOrEqual(90);
-    expect(light("card").lightness).toBeGreaterThanOrEqual(95);
+    expect(light("background").lightness).toBeGreaterThanOrEqual(88);
+    expect(light("card").lightness).toBeGreaterThanOrEqual(93);
   });
 
   /**
@@ -156,6 +185,40 @@ describe("the light theme's brightness", () => {
   it("softens body text without letting go of it", () => {
     expect(light("foreground").lightness).toBeGreaterThan(10);
     expect(contrast(light("foreground"), light("card"))).toBeGreaterThanOrEqual(12);
+  });
+
+  /**
+   * The two themes should feel like each other's opposite, and for a while
+   * this one did not. The check is in L* rather than in HSL lightness,
+   * because equal HSL steps are not equal steps to an eye — the sRGB curve
+   * compresses the top end, so the same numeric gap that reads clearly at
+   * 7% lightness nearly vanishes at 93%.
+   */
+  it.each([
+    ["the page from the card", "background", "card"],
+    ["a dialog from the card", "card", "card-elevated"]
+  ])("separates %s as far as dark mode does", (_, lower, upper) => {
+    const inDark = step(dark(lower), dark(upper));
+    const inLight = step(light(lower), light(upper));
+
+    // Within half a unit of dark's step, in either direction. Exactness is
+    // not the point; being visibly flatter than the other theme is.
+    expect(Math.abs(inLight - inDark), `dark ${inDark.toFixed(1)}, light ${inLight.toFixed(1)}`)
+      .toBeLessThanOrEqual(0.5);
+  });
+
+  /**
+   * Except the rail, where a literal mirror is wrong. Dark's rail is only
+   * 1.6 L* below its page and still reads as chrome because it sits at the
+   * floor of the scale; light has no floor to sit on, so the same number
+   * gives a slightly tinted margin instead of a region.
+   */
+  it("steps the rail further from the page than dark mode needs to", () => {
+    const inDark = step(dark("sidebar-background"), dark("background"));
+    const inLight = step(light("sidebar-background"), light("background"));
+
+    expect(inLight).toBeGreaterThan(inDark);
+    expect(inLight, "the rail is a whisper rather than a region").toBeGreaterThanOrEqual(4);
   });
 
   /**
