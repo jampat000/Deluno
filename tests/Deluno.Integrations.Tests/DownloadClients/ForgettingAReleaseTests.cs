@@ -121,7 +121,10 @@ public sealed class ForgettingAReleaseTests
             .ExecuteActionAsync(NzbGet(), DownloadClientActions.Forget, "42", CancellationToken.None);
 
         Assert.True(result.Succeeded, result.Message);
-        Assert.Contains(bodies, body => body.Contains("GroupDelete", StringComparison.Ordinal));
+        // GroupFinalDelete rather than GroupDelete: forgetting takes the files
+        // too, and leaving them has the client refuse the release again for the
+        // same reason.
+        Assert.Contains(bodies, body => body.Contains("GroupFinalDelete", StringComparison.Ordinal));
         Assert.Contains(bodies, body => body.Contains("HistoryFinalDelete", StringComparison.Ordinal));
     }
 

@@ -192,15 +192,24 @@ public sealed class SabnzbdDownloadClient(IHttpClientFactory httpClientFactory) 
             return await ForgetAsync(http, client, baseUri, client.Secret, queueItemId, cancellationToken);
         }
 
+        // One arm per verb, and `del_files` is the whole of the difference
+        // between two of them. `delete-with-data` was absent entirely until
+        // now, which is how a forced re-download against a usenet client came
+        // to do nothing while reporting success: the override asked for it, and
+        // SABnzbd answered "does not support this action".
+        //
+        // `forget` is handled above rather than here, because on SABnzbd it is
+        // genuinely a different request and not a flag on this one — its
+        // duplicate detection reads the history, which outlives the queue.
         var mode = action switch
         {
-            "pause" => "queue&name=pause",
-            "resume" => "queue&name=resume",
-            "delete" => "queue&name=delete",
-            // Absent until now, which meant a forced re-download against a
-            // usenet client silently did nothing: the override asks for
-            // delete-with-data, and SABnzbd answered "unsupported".
-            "delete-with-data" => "queue&name=delete&del_files=1",
+            DownloadClientActions.Pause => "queue&name=pause",
+            DownloadClientActions.Resume => "queue&name=resume",
+            DownloadClientActions.Delete => "queue&name=delete",
+            DownloadClientActions.DeleteWithData => "queue&name=delete&del_files=1",
+            // SABnzbd verifies its own downloads and exposes no per-item
+            // recheck, so that verb is refused rather than quietly mapped onto
+            // something adjacent.
             _ => null
         };
         if (mode is null) return DownloadClientHelpers.Unsupported(client, queueItemId, action, "SABnzbd");
