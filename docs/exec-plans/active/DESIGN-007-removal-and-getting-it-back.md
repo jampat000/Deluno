@@ -22,26 +22,107 @@ And on why a table rather than another fix:
 
 ## Why this exists
 
-Deluno removes things in five places, and they do not agree.
+Deluno removes things in **six** places, and they do not agree. Three spell the
+action as a bare string, one builds an ownership opinion that nothing is
+obliged to consult, and the two a person triggers deliberately — the queue
+action and the force — consult nothing at all.
 
-| Path | What it removes | Ownership check |
+**And no removal path touches the download client.** Removing a title cancels
+its jobs, moves its files to the recycle bin and deletes the row. The client
+keeps the transfer, the infohash and the history; the processor keeps its
+hand-off. Add the title again and it will not download. That is the direct
+cause of the scenario at the top of this page, not an edge case near it.
+
+## The audit
+
+Every route below was read, not recalled. Where something is inferred rather
+than verified it says so.
+
+### Delete routes that touch media or acquisition state
+
+| Route | What it verifiably does | What it leaves behind |
 |---|---|---|
-| `POST /api/{movies,series}/bulk` — remove | Catalogue row, tracked files to the recycle bin, intake exclusions | — |
-| `DELETE /api/{movies,series}/{id}` | The same, via the same helper | — |
-| Health remediation | Client queue entry, `"delete"` | **Yes** — "will not remove an external-client item or its payload without proven ownership" |
-| `ReclaimCompletedAsync` | Client entry and payload, `"delete-with-data"` | — |
-| `POST /{id}/force-redownload` | Client entry and payload, hand-off reset, exclusions | — |
+| `DELETE /api/{movies,series}/{id}`<br>`POST /api/{movies,series}/bulk` (remove) | Cancels pending jobs for the entity. If *delete files*: moves tracked files to the **recycle bin**. If *don't add it back*: writes an intake exclusion per origin source. Deletes the catalogue row. Records activity. | The client's transfer, the client's history, the processor hand-off, and every dispatch row |
+| `POST /api/download-clients/{clientId}/queue/actions` | Passes **any** action string straight to `ExecuteActionAsync` — including `delete-with-data` | Nothing checked: no ownership test, no preview, no record of why |
+| `GET /api/download-clients/{clientId}/queue/{id}/cleanup-preview` | Builds the ownership/threshold opinion — *"Deluno will not remove an external-client item or its payload without proven ownership"* | It is a **separate GET**. Nothing forces a caller to ask it, and the action endpoint above never does |
+| `DELETE /api/v1/download-dispatches/{dispatchId}` | Soft-archives Deluno's own dispatch record with a reason | The client keeps the release — **and the evidence that Deluno ever fetched it is now gone** |
+| `DELETE /api/libraries/{id}` | `DELETE FROM libraries WHERE id = @id`, then removes automation state and publishes events | Wanted rows, tracked files, dispatches and hand-offs keyed to that library. Media state lives in a **different database**, so no foreign key could have saved this |
+| `DELETE /api/download-clients/{id}` | `DELETE FROM download_clients WHERE id = @id` | In-flight dispatches keep a `DownloadClientId` that no longer resolves |
+| `DELETE /api/integrations/processors/connections/{id}` | `DELETE FROM processor_connections WHERE id = @id` | Open hand-offs keep a processor name that no longer resolves |
+| `DELETE /api/exclusions/{id}` | Removes one exclusion row | Nothing — this is the "let it back in" route, and it is correct |
+| `DELETE /api/recycle-bin/{id}`<br>`POST /api/recycle-bin/cleanup` | Permanently removes recycled files *(behaviour inferred from the contract; not read line by line)* | **The only genuinely irreversible deletion in the product** |
+| `DELETE /api/{movies,series}/import-recovery/{id}` | Dismisses an import-recovery case *(inferred)* | The file it was about |
+| `DELETE /api/metadata/cache` | Clears cached metadata | Nothing that matters |
 
-Three of those five spell the action as a bare string. One consults the
-cleanup preview. The one a person triggers deliberately — the force — consults
-nothing, which is the wrong way round.
+Config deletes — API keys, indexers, quality profiles, tags, custom formats,
+policy sets, library views, webhooks, backups, path mappings, the setup draft —
+are out of scope here. They delete a row and own nothing on disk.
 
-**And none of the removal paths touch the download client at all.** Removing a
-title cancels its pending jobs, moves its files to the recycle bin and deletes
-the catalogue row. The client keeps the transfer, the infohash and the history;
-the processor keeps its hand-off. Add the title again and it will not download,
-and until PR #432 nothing said why. That is not a missing feature at the edge —
-it is the direct cause of the scenario at the top of this page.
+### Re-download routes
+
+| Route | What it does | Does it clear anything first? |
+|---|---|---|
+| `POST /api/{movies,series}/{id}/search` | Full decision pipeline, then grabs the winner | **No** |
+| `POST /api/series/{id}/seasons/{n}/search`, `/episodes/search` | The same, scoped | **No** |
+| `POST /api/{movies,series}/bulk/search` | The same, many titles | **No** |
+| `POST /api/libraries/{id}/search-now` | The same, whole library | **No** |
+| `POST /api/{movies,series}/{id}/grab` | Sends one chosen release to a client | **No** |
+| `POST /api/download-clients/{clientId}/grab` | Sends a release straight to a client | **No** |
+| `POST /api/v1/download-dispatches/{dispatchId}/retry` | Refuses unless the grab status is `failed`; enqueues a library search job with `maxItems: 1` | **No** — so it walks into the same wall the first attempt hit |
+| `POST /api/integrations/processors/handoffs/{id}/retry` | Re-submits a hand-off *(inferred)* | n/a |
+| `POST /api/jobs/retry-failed` | Re-runs failed jobs | **No** |
+| `POST /api/{movies,series}/{id}/force-redownload` (PR #432) | Clears hand-off, download and exclusions, then searches | **Yes — and it is the only one** |
+
+**Of ten re-acquisition routes, exactly one clears anything at the client
+first, and it is not merged yet.** Every other path asks a client for a release
+it may already be refusing, and until PR #432's qBittorrent change, was told
+`Ok.` when it was refused.
+
+### The four questions, where the answer is interesting
+
+**Removing a title — should it do more?** Yes: forget at the client. It is the
+single change that stops the scenario arising rather than explaining it
+afterwards. **Can it?** Yes — the dispatch record names the client and the
+queue item. **Is it needed?** Yes; this is the cause.
+
+**`queue/actions` — should it do more?** Yes: consult the same ownership
+opinion the preview builds. **Can it?** Yes, `PreviewCleanupAsync` is on the
+same service. **Is it needed?** Yes — it is the widest-open removal in the
+product and the one with no record of why.
+
+**Archiving a dispatch — is it needed?** Yes, for tidiness, but it should not
+be the same act as *forgetting*. Archiving the only record that Deluno fetched
+a title is what would blind the "previously downloaded" blocker. **Should it do
+more?** It should keep the fetch fact even when the operational detail is
+archived.
+
+**Dispatch retry — should it do more?** Yes: clear before it searches, exactly
+as the force does. **Is it needed at all?** Arguably not, once the force exists
+and once failures are remembered per release — it is a search with extra steps
+and one guard.
+
+**Search / grab — should they clear first?** No. Clearing is a decision a
+person makes; a routine search doing it silently would remove a seed nobody
+asked to lose. They should *report* the refusal, which the qBittorrent honesty
+change now makes possible, and offer the force.
+
+### Cases nobody had enumerated
+
+1. **Deleting a library orphans its media state.** Wanted rows, tracked files,
+   dispatches and hand-offs survive it, in another database, unreachable and
+   uncounted.
+2. **Deleting a download client leaves dangling dispatches.** They still name a
+   client id that resolves to nothing, so nothing can ever clear them.
+3. **Deleting a processor connection leaves open hand-offs** naming a processor
+   that no longer exists — and a hand-off is what blocks an import.
+4. **Archiving a dispatch destroys the evidence** that Deluno ever fetched the
+   title, which is the fact the "previously downloaded" blocker depends on.
+5. **`queue/actions` is an unguarded removal API** that can delete any queue
+   item with its data, owned by Deluno or not.
+6. **Retry-after-failure hits the same wall,** because it clears nothing.
+7. **Recycle-bin cleanup is the only irreversible delete** in the product, and
+   nothing in the table above treats it differently from the reversible ones.
+
 
 ---
 
