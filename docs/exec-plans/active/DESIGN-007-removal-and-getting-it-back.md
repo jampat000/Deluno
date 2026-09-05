@@ -337,6 +337,71 @@ for, and a manual empty spells out precisely what it is about to take — "47
 files, 312 GB, 3 of them deleted in the last 24 hours" — and never touches
 anything still inside the retention window.
 
+**16 — What happens to a copy that has been refused.** A hole in everything
+above, and James found it: *"if we are refusing something, is it being deleted
+and cleaned up so there are no traces of it or did we already figure that
+out?"*. We had decided *whether* to refuse without deciding the fate of the
+thing refused — so today a refused copy still costs disk, still sits in your
+queue, and the client still remembers it.
+
+Keep the distinction straight: the **record** of the refusal is deliberate, and
+lives on the list where it can be undone. The **artefacts** are what this
+decides — and they are cleaned up completely. The file is deleted, the queue
+entry removed, and the client's memory of the release cleared.
+
+That last part is not tidiness. Leave the client remembering a refused release
+and the day you un-refuse it the client silently declines to fetch it — the
+original trap, reappearing at the far end of the same feature.
+
+---
+
+## Two rules that apply to everything above
+
+James, having gone through all sixteen:
+
+> "I think all these things we decided need to have configuration toggles to
+> set them on and off in a management / blocklist console."
+>
+> "everything we have decided as far as a lot of the behaviour can have manual
+> overrides like if a file is missing and the schedule hasn't run, a user can
+> manually trigger a refresh of the library and it should come up as missing
+> and then the user can manually trigger a search."
+
+### Every decision is a default, and every default is a toggle
+
+Nothing above is hard-coded behaviour. Each decision ships as the default and is
+changeable in the **Failure and blocklist** console, which carries three things:
+
+- **The list** — every refused copy: the release, the reason, when, and unblock.
+- **The rules** — per kind of failure: never refuse · one retry then refuse ·
+  refuse immediately · ask me. Plus the clean-up choice from decision 16, the
+  clear-the-client-on-removal setting from decision 9, and the ownership
+  override from decision 10.
+- **The schedules** — how often the file check runs, and the recycle bin's
+  retention, which exists today and is enforced by nothing.
+
+The right harshness depends on the library. Somebody on a fast line with spare
+disk wants it strict; somebody on a flaky share does not.
+
+### Nothing automatic is only automatic
+
+Every scheduled or automatic behaviour has a manual equivalent, so a person
+never has to wait for a timer to find out what Deluno thinks.
+
+| Automatic | Manual equivalent |
+|---|---|
+| Background file check (decision 11) | **Refresh this library now**, and **check this film now** |
+| A film found missing is searched for | **Search now**, already exists |
+| Retention clears the recycle bin (decision 15) | **Empty now**, saying exactly what it will take |
+| A refused copy is cleaned up (decision 16) | **Clean up now** on a refusal that predates the setting |
+| Removal clears the client (decision 9) | **Forget at the client** on a title, on its own |
+| An import fails and retries once | **Retry import now** |
+| A library pauses when its root is unreachable (decision 12) | **Re-check now**, rather than waiting |
+
+James's own worked example is the shape of it: the file is gone, the schedule
+has not run, so you refresh the library by hand, it comes up missing, and you
+search for it by hand. At no point does the answer depend on a timer.
+
 ---
 
 ## The vocabulary
