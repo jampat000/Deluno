@@ -1,13 +1,13 @@
 # DESIGN-007 — Removing a title, and being able to get it back
 
-> **Status: partly settled.** The audit is fact — it is what the code does
-> today. The vocabulary and the thirteen outcomes are **settled**. Rows marked
-> *contentious* are open, and so are the questions at the end.
+> **Status: settled.** The audit is fact — it is what the code does today.
+> Eighteen decisions were taken with James one at a time and are recorded below
+> in his words; nothing is left open.
 >
-> **Settled so far:** a release that fails to import is **blocked**, and future
-> searches **skip** it and say so — never silently. Every scenario answers all
-> thirteen outcomes. A blocked release gets a management screen where it can be
-> seen and unblocked; nothing may be blocked invisibly.
+> Two of them corrected earlier ones, both for the same reason: the capability
+> already existed and the new design was about to duplicate it. The file
+> presence check, and the sharing rule that owns seeding. **Check before
+> building.**
 
 James, on the scenario that started this:
 
@@ -441,6 +441,21 @@ This is the second time in this document that the right answer was to connect
 something that already existed rather than build one — the file-presence check
 was the first. Worth noticing as a pattern.
 
+**18 — The file check covers unmonitored titles too.** Unmonitored means "do
+not go looking for it", not "lie to me about it". An unmonitored film, season
+or episode can still have a file, and Deluno still claims to hold it.
+
+Nothing can be downloaded as a result — unmonitored titles are never searched
+for — so the only thing this changes is whether Deluno is telling the truth.
+Episode counts, coverage and disk figures stop counting files that are not
+there. And the case that actually bites: **the wrong answer is stored and
+waits**. Re-monitor that season a year later and Deluno believes it already
+holds those episodes, so it never looks — which would make unmonitoring
+something a quiet way of making it permanently wrong.
+
+Films are one file each. TV is three levels — series, season, episode — and all
+three are checked.
+
 ---
 
 ## The vocabulary
@@ -654,25 +669,15 @@ The cascade cases, all newly found, none currently handled.
 
 ## What still needs deciding
 
-1. **Does removing a title always forget it at the client, or only when the
-   person also deleted the files?** The table says always. The argument against
-   is a private tracker: forgetting means removing the transfer, which ends the
-   seed and may cost ratio. The argument for is that leaving it is exactly what
-   makes a re-add fail silently.
-2. **Should a force warn that it stops a seed?** Deluno already knows enough to
-   say so — `SharingFootprint` reasons about whether the client's copy and the
-   library's are one set of data. Currently the confirmation says "along with
-   its files" and never mentions seeding.
-3. **Should the existing reconcile run on a schedule, on opening a title, or
-   stay on demand?** A per-title check is one `stat`. A library-wide sweep
-   already exists and is manual. My recommendation is both: the per-title check
-   where an answer is being given, and the sweep on the same schedule as other
-   maintenance — with `mark-missing` applied automatically, since it only ever
-   corrects Deluno's own belief and never touches a file.
-4. **Does an unmonitored title get reconciled?** Deluno is not watching it, but
-   the library grid still claims it holds a file.
+Nothing. All four of the questions this section originally held were settled
+with James, along with fourteen more that came out of working through them:
 
----
+| Was open | Settled by |
+|---|---|
+| Does removing a title forget it at the client? | 9 — yes, by default, with a setting |
+| Should a force warn that it stops a seed? | 17 — no warning; it goes through the sharing rule that already owns the file |
+| Should the reconcile run scheduled, on open, or on demand? | 11 — in the background, applying its own corrections |
+| Does an unmonitored title get reconciled? | 18 — yes, at all three TV levels |
 
 ## Finding the gaps, rather than noticing them
 
