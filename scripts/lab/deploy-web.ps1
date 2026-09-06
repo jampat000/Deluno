@@ -31,15 +31,21 @@
 #>
 [CmdletBinding()]
 param(
-    [string] $ComputerName = '10.1.1.142',
-    [string] $UserName = 'Administrator',
-    [string] $Password = 'Deluno-MM-Lab-2026!',
+    [string] $ComputerName,
+    [string] $UserName,
+    [string] $Password,
     [string] $Destination = 'C:\Deluno\App\wwwroot',
     # For redeploying a build you have already made and inspected.
     [switch] $SkipBuild
 )
 
 $ErrorActionPreference = 'Stop'
+
+. (Join-Path $PSScriptRoot 'Get-Rig.ps1')
+$rig = Get-Rig
+if (-not $ComputerName) { $ComputerName = $rig.host }
+if (-not $UserName) { $UserName = $rig.userName }
+if (-not $Password) { $Password = $rig.password }
 
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $dist = Join-Path $repo 'apps\web\dist'
