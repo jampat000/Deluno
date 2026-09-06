@@ -93,10 +93,15 @@ $body = {
             WorkingDir = 'C:\Program Files\qBittorrent'
         },
         @{
+            # Unpacked to a fixed path, not a user profile. The retired VM had
+            # MediaMop under C:\Users\Administrator\AppData\Local, because
+            # Velopack installs per-user - which only worked because everything
+            # there ran as that user. The rig's services run as a dedicated
+            # account now, and a per-user install would be in the wrong profile.
             Kind = 'task'; Name = 'MediaMop Server'; Port = 8788
-            Command = 'C:\Users\Administrator\AppData\Local\MediaMop\current\server\MediaMopServer.exe'
+            Command = 'C:\Deluno\MediaMop\current\server\MediaMopServer.exe'
             Arguments = ''
-            WorkingDir = 'C:\Users\Administrator\AppData\Local\MediaMop\current\server'
+            WorkingDir = 'C:\Deluno\MediaMop\current\server'
         },
         @{
             # A real service, for the reason in the comment block above. The
