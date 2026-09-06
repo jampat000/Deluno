@@ -13,13 +13,18 @@
     "tested' and 'whatever that URL serves now'.",
     "",
     "sha256 is empty until the file has been staged and hashed once; provisioning",
-    "fills it in and then refuses anything that does not match."
+    "fills it in and then refuses anything that does not match.",
+    "",
+    "On staying at 5.2.1 when qBittorrent 5.2.3 is out: this run is testing",
+    "Deluno, not the client. Holding the client at the version phases 0-8 were",
+    "walked against means a failure is Deluno's. Testing the client upgrade is",
+    "worth doing, and is a different run."
   ],
 
   "qbittorrent": {
     "version": "5.2.1",
     "fileName": "qbittorrent_5.2.1_x64_setup.exe",
-    "url": "https://sourceforge.net/projects/qbittorrent/files/qbittorrent-windows/qbittorrent-5.2.1/qbittorrent_5.2.1_x64_setup.exe/download",
+    "url": "https://sourceforge.net/projects/qbittorrent/files/qbittorrent-win32/qbittorrent-5.2.1/qbittorrent_5.2.1_x64_setup.exe/download",
     "sha256": "",
     "silentArgs": "/S",
     "installedTo": "C:\\Program Files\\qBittorrent\\qbittorrent.exe"
@@ -27,8 +32,8 @@
 
   "sabnzbd": {
     "version": "5.0.4",
-    "fileName": "SABnzbd-5.0.4-win64-setup.exe",
-    "url": "https://github.com/sabnzbd/sabnzbd/releases/download/5.0.4/SABnzbd-5.0.4-win64-setup.exe",
+    "fileName": "SABnzbd-5.0.4-win-setup.exe",
+    "url": "https://github.com/sabnzbd/sabnzbd/releases/download/5.0.4/SABnzbd-5.0.4-win-setup.exe",
     "sha256": "",
     "silentArgs": "/S",
     "installedTo": "C:\\Program Files\\SABnzbd\\SABnzbd.exe"
