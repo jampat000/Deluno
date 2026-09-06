@@ -4,6 +4,50 @@ The bits needed to run [`docs/exec-plans/active/E2E-full-product-test.md`](../..
 
 These lived in a session scratchpad and had to be hunted for across old session directories every time. They live here now.
 
+## `provision-rig.ps1`
+
+Turns a fresh Windows machine into the rig: the service account, the folder
+topology, qBittorrent, SABnzbd and MediaMop at pinned versions, the client
+configuration, and the services.
+
+```powershell
+./scripts/lab/provision-rig.ps1 -ComputerName <ip> -Password <admin> `
+    -ServiceAccount deluno -ServiceAccountPassword <pw> `
+    -LibraryPath '\nas\share' -NasUser <u> -NasPassword <p>
+```
+
+Stages are separable (`-Stage folders`), because provisioning a machine is a
+long sequence of things that each fail on their own and re-running all of it to
+retry the last step wastes the afternoon.
+
+**It stops before Deluno's first run, deliberately.** Phase 0.5 of the
+end-to-end plan is "a clean install asks to create an account, not to sign in",
+and phases 1 to 7 are the first-run experience, the libraries, the profiles and
+the connections. Provisioning those would destroy the first thing the plan
+tests, so this leaves Deluno installed, running and untouched.
+
+It does not restate the service shape either - `ensure-rig-services.ps1` owns
+that, and provisioning calls it.
+
+Two things it gets right that the hand-built rig got wrong:
+
+- The **NAS credential is stored in the service account's own vault**, through a
+  one-shot task running as that account. `cmdkey` only ever writes to the vault
+  of whoever runs it, so storing it as the administrator would leave the service
+  refused - the same shape as the bug the service account exists to avoid.
+- The **share is probed as the service account**, not from the provisioning
+  session. A WinRM session has no delegatable network credentials, so testing
+  the share from here fails whether or not the service could reach it, and sends
+  you to debug the wrong machine.
+
+## `rig-software.json`
+
+The exact software the rig runs, pinned by SHA-256 - captured from the
+simulation VM before it was retired, so a new rig starts from a set the
+end-to-end plan has actually been walked against rather than from whatever is
+current that day. Installers are staged on the developer machine and copied
+over, so the rig needs no internet and cannot quietly get a different build.
+
 ## `ensure-rig-services.ps1`
 
 Holds every service on the VM to one rule: it starts without a person, and it
