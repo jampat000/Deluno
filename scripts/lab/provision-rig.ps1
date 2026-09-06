@@ -66,7 +66,9 @@ if (-not $UserName) { $UserName = $rig.userName }
 if (-not $Password) { $Password = $rig.password }
 
 $repoRoot   = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$stagingDir = Join-Path $repoRoot 'artifacts\rig-staging'
+# vendor, not artifacts: these are inputs to a build, not output from one, and
+# nothing on the developer machine is meant to live outside C:\Projects.
+$stagingDir = Join-Path $repoRoot 'vendor\rig-installers'
 $software   = Get-Content (Join-Path $PSScriptRoot 'rig-software.json') -Raw | ConvertFrom-Json
 
 $credential = New-Object System.Management.Automation.PSCredential(
@@ -117,34 +119,51 @@ if (Should 'stage') {
     Head 'Staging the installers'
 
     New-Item -ItemType Directory -Force $stagingDir | Out-Null
+    # MediaMop's portable zip is read from the sibling repository where its own
+    # build already puts it, rather than copied here. It is 190 MB, so a copy
+    # would duplicate that for nothing - and it is already inside C:\Projects.
+    if (-not (Test-Path $software.mediamop.source)) {
+        throw "MediaMop's portable zip is not built. Run packaging\windows\build-velopack.ps1 in C:\Projects\MediaMop."
+    }
+
     $wanted = @(
         @{ Key = 'qbittorrent'; Local = Join-Path $stagingDir $software.qbittorrent.fileName },
         @{ Key = 'sabnzbd';     Local = Join-Path $stagingDir $software.sabnzbd.fileName },
-        @{ Key = 'mediamop';    Local = Join-Path $stagingDir 'MediaMop-win-Portable.zip' }
+        @{ Key = 'mediamop';    Local = $software.mediamop.source }
     )
 
-    # MediaMop is built here rather than downloaded.
-    if (-not (Test-Path $wanted[2].Local)) {
-        if (Test-Path $software.mediamop.source) {
-            Copy-Item $software.mediamop.source $wanted[2].Local
-            Step "copied MediaMop $($software.mediamop.version) from the sibling repository"
-        } else {
-            throw "MediaMop's portable zip is not built. Run packaging\windows\build-velopack.ps1 in C:\Projects\MediaMop."
-        }
-    }
-
     foreach ($item in $wanted) {
+        $spec = $software.($item.Key)
+
         if (-not (Test-Path $item.Local)) {
-            throw "Missing $([IO.Path]::GetFileName($item.Local)) in $stagingDir. Download it from $($software.($item.Key).url) and run this stage again."
+            $where = if ($spec.note) { "$($spec.url)`n  $($spec.note)" } else { $spec.url }
+            throw "Missing $([IO.Path]::GetFileName($item.Local)) in $stagingDir.`n  Get it from $where"
+        }
+
+        # Before the hash, two cheaper questions: is it plausibly the file at
+        # all, and did the vendor sign it? SourceForge answered a scripted
+        # download with a 0.1 MB Cloudflare challenge page saved under the
+        # installer's name. A hash alone would have pinned that happily on the
+        # first run and copied a web page to the rig to be "installed".
+        $actualBytes = (Get-Item $item.Local).Length
+        if ($spec.minimumBytes -and $actualBytes -lt $spec.minimumBytes) {
+            throw "$([IO.Path]::GetFileName($item.Local)) is only $([math]::Round($actualBytes/1MB,1)) MB, under the $([math]::Round($spec.minimumBytes/1MB,1)) MB floor. That is usually a download page saved under the installer's name, not the installer."
+        }
+        if ($spec.mustBeSigned) {
+            $sig = Get-AuthenticodeSignature $item.Local
+            if ($sig.Status -ne 'Valid') {
+                throw "$([IO.Path]::GetFileName($item.Local)) has no valid signature (Authenticode says $($sig.Status)). Refusing to stage an unsigned installer."
+            }
+            Step "$([IO.Path]::GetFileName($item.Local)) signed by $(($sig.SignerCertificate.Subject -split ',')[0] -replace '^CN=','')"
         }
 
         $hash = (Get-FileHash $item.Local -Algorithm SHA256).Hash
-        $pinned = $software.($item.Key).sha256
+        $pinned = $spec.sha256
 
         if (-not $pinned) {
             # First time: record what we staged, so every rig after this one
             # gets the same bytes rather than whatever the URL serves later.
-            $software.($item.Key).sha256 = $hash
+            $spec.sha256 = $hash
             Step "pinned $([IO.Path]::GetFileName($item.Local)) at $($hash.Substring(0,16))..."
         } elseif ($pinned -ne $hash) {
             throw "$([IO.Path]::GetFileName($item.Local)) does not match the pinned hash.`n  pinned  $pinned`n  staged  $hash"

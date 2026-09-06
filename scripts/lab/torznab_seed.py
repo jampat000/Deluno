@@ -32,10 +32,17 @@ BIND = os.environ.get("TORZNAB_BIND", "127.0.0.1")
 ADVERTISE = os.environ.get("TORZNAB_ADVERTISE", BIND)
 HOST = ADVERTISE
 BASE = f"http://{ADVERTISE}:{PORT}"
-SOURCE = r"C:\Deluno\e2e\data\bbb.mp4"
+# Repo-relative, so the fixtures follow the checkout rather than living at an
+# absolute path on one machine. They used to sit in C:\Deluno\e2e, which was
+# both outside the project tree and confusingly named: C:\Deluno on the *rig*
+# means something else entirely.
+FIXTURES = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "vendor", "e2e-fixtures")
+SOURCE = os.environ.get("TORZNAB_SOURCE", os.path.join(FIXTURES, "data", "bbb.mp4"))
 # A secondary rig can write its torrent metadata beside the main lab rather
 # than racing the long-lived listener for the same files.
-OUT = os.environ.get("TORZNAB_OUT", r"C:\Deluno\e2e\torrents")
+OUT = os.environ.get("TORZNAB_OUT", os.path.join(FIXTURES, "torrents"))
 PIECE_LEN = 262144  # 256 KiB
 
 os.makedirs(OUT, exist_ok=True)

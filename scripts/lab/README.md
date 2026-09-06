@@ -95,8 +95,8 @@ Started for you by `provision-usenet.ps1`. Directly:
 
 ```powershell
 python -u scripts/lab/fake-nntp-server.py --port 1119 --http-port 1180 `
-  --article 'C:\Deluno\e2e\data\Breaking.Bad.S01E01.1080p.WEB-DL.x264-DELUNO.mkv' `
-  --log 'C:\Deluno\e2e\logs\nntp.log'
+  --article 'vendor\e2e-fixtures\data\Breaking.Bad.S01E01.1080p.WEB-DL.x264-DELUNO.mkv' `
+  --log 'vendor\e2e-fixtures\logs\nntp.log'
 ```
 
 ## `torznab_seed.py`
@@ -113,7 +113,7 @@ TORZNAB_BIND=0.0.0.0 TORZNAB_ADVERTISE=10.1.1.102 python scripts/lab/torznab_see
 
 `TORZNAB_ADVERTISE` must be the address the VM can reach the desktop on, because it is baked into the torrent's webseed URLs. Defaults to loopback, which the VM cannot use.
 
-Expects source media at `C:\Deluno\e2e\data\bbb.mp4` and writes torrents to `C:\Deluno\e2e\torrents`.
+Expects source media at `vendor/e2e-fixtures/data/bbb.mp4` and writes torrents to `vendor/e2e-fixtures/torrents`, both repo-relative. Override with `TORZNAB_SOURCE` and `TORZNAB_OUT`.
 
 Add it to Deluno as a Torznab indexer at `http://10.1.1.102:9117/api`. Any API key is accepted.
 
@@ -130,7 +130,7 @@ episode plus its `.nfo`; qBittorrent still transfers and checks every byte.
 $env:TORZNAB_PORT = '9120'
 $env:TORZNAB_BIND = '0.0.0.0'
 $env:TORZNAB_ADVERTISE = '10.1.1.102'
-$env:TORZNAB_OUT = 'C:\Deluno\e2e\torrents-season-replacement'
+$env:TORZNAB_OUT = 'vendor\e2e-fixtures\torrents-season-replacement'
 $env:DELUNO_E2E_SEASON_PACK_RELEASE = 'Show.Name.S01.2160p.BluRay.x265-DELUNO'
 $env:DELUNO_E2E_SEASON_PACK_EPISODES = '1,2,3,4,5'
 python -u scripts\lab\torznab_seed.py
