@@ -39,13 +39,19 @@
 #>
 [CmdletBinding()]
 param(
-    [string] $ComputerName = '10.1.1.142',
-    [string] $UserName = 'Administrator',
-    [string] $Password = 'Deluno-MM-Lab-2026!',
+    [string] $ComputerName,
+    [string] $UserName,
+    [string] $Password,
     [switch] $ReportOnly
 )
 
 $ErrorActionPreference = 'Stop'
+
+. (Join-Path $PSScriptRoot 'Get-Rig.ps1')
+$rig = Get-Rig
+if (-not $ComputerName) { $ComputerName = $rig.host }
+if (-not $UserName) { $UserName = $rig.userName }
+if (-not $Password) { $Password = $rig.password }
 
 $credential = New-Object System.Management.Automation.PSCredential(
     $UserName, (ConvertTo-SecureString $Password -AsPlainText -Force))

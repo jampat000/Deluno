@@ -1,0 +1,42 @@
+{
+  "$comment": [
+    "Where the simulation rig is. One file, because seven scripts each carried",
+    "their own copy of the address as a parameter default, and a default aimed",
+    "at a decommissioned machine is worse than no default: it points somewhere",
+    "plausible and fails somewhere else.",
+    "",
+    "These credentials are for a disposable lab machine on a private subnet.",
+    "They are deliberately in the repository and are not used anywhere else.",
+    "Nothing here is a production secret, and nothing here should become one."
+  ],
+
+  "host": "10.1.1.142",
+  "userName": "Administrator",
+  "password": "Deluno-MM-Lab-2026!",
+
+  "deluno": {
+    "url": "http://10.1.1.142:5099",
+    "userName": "admin",
+    "password": "Deluno-Lab-2026!",
+    "appPath": "C:\\Deluno\\App",
+    "taskName": "Deluno Host"
+  },
+
+  "services": {
+    "qbittorrent": "http://10.1.1.142:8080",
+    "mediamop": "http://10.1.1.142:8788",
+    "sabnzbd": "http://10.1.1.142:8085"
+  },
+
+  "$fixtures": [
+    "The torznab indexer and the NNTP/NZB fixture run on the developer desktop,",
+    "not on the rig, because there is no Python on the rig. The rig has to be",
+    "able to reach this address."
+  ],
+  "fixtures": {
+    "host": "10.1.1.102",
+    "torznabPort": 9117,
+    "nntpPort": 1119,
+    "nzbPort": 1180
+  }
+}
