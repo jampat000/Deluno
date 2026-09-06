@@ -14,6 +14,17 @@
   "userName": "Administrator",
   "password": "Deluno-MM-Lab-2026!",
 
+  "$serviceAccount": [
+    "Who the rig's services run as. null means SYSTEM, which is right when",
+    "everything the services touch is local.",
+    "",
+    "A library on a network share is the reason to change it: a SYSTEM process",
+    "authenticates to SMB as the machine account, not as a user, so a workgroup",
+    "NAS refuses it. That, not networking, is why the old VM could never reach",
+    "\\\\storage-city\\Data\\Media."
+  ],
+  "serviceAccount": null,
+
   "deluno": {
     "url": "http://10.1.1.142:5099",
     "userName": "admin",
