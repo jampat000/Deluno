@@ -144,27 +144,59 @@ both the torrent and the usenet path.
 
 ## The rig
 
+**The Hyper-V VM is retired.** It was destroyed on 6 September 2026 along with
+Hyper-V itself. Six weeks of hand-building had made it unable to answer the one
+question phases 0 and 1 ask — its `C:\Deluno` held forty-eight directories,
+twenty-eight of them `App.rollback-*` — and a machine nobody can rebuild had
+already lost a GA gate once when its SABnzbd configuration quietly vanished.
+
+The replacement is a physical server with a NAS-hosted library. Its address and
+credentials live in [`scripts/lab/rig.json`](../../../scripts/lab/rig.json), not
+in this document, so moving the rig again is a value change rather than an
+archaeology exercise.
+
 | What | Where | Sign in |
 |---|---|---|
-| Deluno | http://10.1.1.142:5099 | `admin` / `Deluno-Lab-2026!` |
-| MediaMop | http://10.1.1.142:8788 | `admin` / `MediaMop-Lab-2026!` |
-| qBittorrent | http://10.1.1.142:8080 | LAN subnet whitelisted |
-| SABnzbd | http://10.1.1.142:8085 | API key from its config |
-| Windows | 10.1.1.142 (RDP/WinRM) | `Administrator` / `Deluno-MM-Lab-2026!` |
+| Deluno | `<rig>:5099` | `admin` / `Deluno-Lab-2026!` |
+| MediaMop | `<rig>:8788` | `admin` / `MediaMop-Lab-2026!` |
+| qBittorrent | `<rig>:8080` | LAN subnet whitelisted |
+| SABnzbd | `<rig>:8085` | API key from its config |
+| Windows | `<rig>` (RDP/WinRM) | `Administrator` |
 
-All four start without a person and come back after a reboot — Deluno,
-qBittorrent and MediaMop as SYSTEM scheduled tasks, SABnzbd as a real Windows
-service, because it refuses to run any other way (see below). Hold them to that:
+Build it:
+
+```powershell
+./scripts/lab/provision-rig.ps1 -ComputerName <ip> -Password <admin> `
+    -ServiceAccount deluno -ServiceAccountPassword <pw> `
+    -LibraryPath '\<nas>\<share>' -NasUser <u> -NasPassword <p>
+```
+
+That installs the pinned software set, the folder topology, the client
+configuration and the services — and **stops before Deluno's first run**,
+because phase 0.5 below is "a clean install asks to create an account, not to
+sign in". Provisioning that would destroy the first thing this plan tests.
+
+All four services start without a person and come back after a reboot — Deluno,
+qBittorrent and MediaMop as scheduled tasks, SABnzbd as a real Windows service,
+because it refuses to run any other way (see below). Hold them to that:
 
 ```powershell
 ./scripts/lab/ensure-rig-services.ps1            # -ReportOnly to look first
 ```
 
-**Two fixtures run on the desktop, not the VM**, because there is no Python on
-the VM. Neither is a service. Start them before any acquisition step:
+**On a NAS library, the services do not run as SYSTEM.** A SYSTEM process
+authenticates to SMB as the machine account rather than as a user, so a
+workgroup NAS refuses it — that, not networking, is why the retired VM could
+never reach a share. They run as a dedicated account with the share credential
+stored in *that account's* vault, and provisioning probes the share **as that
+account** rather than from the provisioning session, because a WinRM session has
+no delegatable network credentials and would fail either way.
+
+**Two fixtures run on the developer desktop, not the rig**, because there is no
+Python on the rig. Neither is a service. Start them before any acquisition step:
 
 ```bash
-TORZNAB_BIND=0.0.0.0 TORZNAB_ADVERTISE=10.1.1.102 python scripts/lab/torznab_seed.py
+TORZNAB_BIND=0.0.0.0 TORZNAB_ADVERTISE=<desktop-ip> python scripts/lab/torznab_seed.py
 ```
 
 ```powershell
@@ -191,14 +223,26 @@ also why `SABnzbd.exe install` could not be run remotely either. As a real
 service the dispatcher connects and its options come from the `CommandLine`
 value under its own service key.
 
-Folder topology — both apps must agree, and that is a user responsibility rather than a bug:
+Folder topology — both apps must agree, and that is a user responsibility rather
+than a bug. `provision-rig.ps1` creates all of it:
 
 ```
-C:\Deluno\Downloads-Complete\Movies   qBittorrent category save path AND MediaMop Refiner watched folder
-C:\Deluno\Refined\Movies              MediaMop Refiner output AND Deluno library clean-output path
-C:\Deluno\Library\Movies              Deluno library root
-C:\Deluno\Work\{Movies,TV}            Refiner work dirs (must not overlap each other)
+C:\Deluno\Downloads-Complete\{Movies,TV}   qBittorrent category save paths AND MediaMop's watched folders
+C:\Deluno\Refined\{Movies,TV}              MediaMop output AND Deluno's library clean-output path
+C:\Deluno\Work\{Movies,TV}                 Refiner work dirs (must not overlap each other)
+\<nas>\<share>                            Deluno library root
 ```
+
+The library moving to a share is new, and it is the interesting part: an import
+across a network boundary is a copy rather than a rename, which is what most
+people actually run and what the retired VM could never test. Emby points at the
+same share independently, so whether Deluno named and nested a file correctly is
+answered by something other than reading the path.
+
+One correction carried over from the old rig: qBittorrent's `deluno-tv` category
+had an **empty** save path while `deluno-movies` named a subfolder, so TV landed
+in the root of `Downloads-Complete` and left a stray `deluno-tv` folder behind.
+Provisioning names both.
 
 Verify live in **real Chrome**. The in-app browser pane is not a substitute.
 
@@ -208,10 +252,10 @@ Verify live in **real Chrome**. The in-app browser pane is not a substitute.
 
 | # | Do | Must be true | Outcome |
 |---|---|---|---|
-| 0.1 | Stop the Deluno scheduled task on the VM | The port stops answering | |
-| 0.2 | Rename the data root aside (`data` → `data.before-e2e`) | The previous config is recoverable, not destroyed | |
-| 0.3 | Copy the new build over the install directory | The binary is the revision under test | |
-| 0.4 | Start the task, load `http://10.1.1.142:5099` in Chrome | The **app renders** — not its own source. This is the #291 regression | |
+| 0.1 | Provision the server from bare Windows | `provision-rig.ps1` completes every stage, and says what it did | |
+| 0.2 | Confirm Deluno's data root is empty | Provisioning stopped before first run; there is no config to preserve because there has never been one | |
+| 0.3 | Deploy the build under test | The binary is the revision under test, and `deploy-lab.ps1` proves readiness before returning | |
+| 0.4 | Load the rig in Chrome | The **app renders** — not its own source. This is the #291 regression | |
 | 0.5 | Confirm the first-run screen appears | A clean install asks to create an account, not to sign in | |
 
 ## Phase 1 — first run
